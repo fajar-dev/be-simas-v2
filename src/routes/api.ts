@@ -94,12 +94,11 @@ routes.delete("/location/:id", authMiddleware, (c) => locationController.destroy
 
 // Asset
 routes.get("/asset", authMiddleware, (c) => assetController.index(c))
+routes.get("/asset/check-code", authMiddleware, (c) => assetController.checkCode(c))
 routes.get("/asset/:id", authMiddleware, (c) => assetController.show(c))
 routes.post("/asset", authMiddleware, zValidator("json", CreateAssetValidator, validationHook), (c) => assetController.store(c))
 routes.put("/asset/:id", authMiddleware, zValidator("json", UpdateAssetValidator, validationHook), (c) => assetController.update(c))
 routes.delete("/asset/:id", authMiddleware, (c) => assetController.destroy(c))
-
-
 
 
 // Upload

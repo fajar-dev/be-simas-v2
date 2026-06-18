@@ -1,5 +1,10 @@
 import { z } from "zod"
 
+const LabelSchema = z.object({
+    key: z.string().min(1, "Label key is required"),
+    value: z.string().min(1, "Label value is required"),
+})
+
 export const CreateAssetValidator = z.object({
     code: z.string().min(1, "Code is required"),
     name: z.string().min(1, "Name is required"),
@@ -10,6 +15,7 @@ export const CreateAssetValidator = z.object({
     model: z.string().optional().nullable(),
     image: z.string().optional().nullable(),
     subCategoryId: z.number().int().positive("Sub category is required"),
+    labels: z.array(LabelSchema).optional(),
 })
 
 export type CreateAssetValidator = z.infer<typeof CreateAssetValidator>
@@ -24,6 +30,7 @@ export const UpdateAssetValidator = z.object({
     model: z.string().optional().nullable(),
     image: z.string().optional().nullable(),
     subCategoryId: z.number().int().positive("Sub category is required").optional(),
+    labels: z.array(LabelSchema).optional(),
 })
 
 export type UpdateAssetValidator = z.infer<typeof UpdateAssetValidator>

@@ -42,6 +42,10 @@ export class TypeOrmAssetRepository implements IAssetRepository {
         })
     }
 
+    async findByCode(code: string): Promise<Asset | null> {
+        return await this.repository.findOne({ where: { code } })
+    }
+
     async save(data: Partial<Asset>, manager?: EntityManager): Promise<Asset> {
         const repo = manager ? manager.getRepository(Asset) : this.repository
         return await repo.save(data)

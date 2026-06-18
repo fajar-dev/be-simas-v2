@@ -19,6 +19,11 @@ export class AssetService {
         return asset
     }
 
+    async checkCode(code: string): Promise<boolean> {
+        const asset = await this.repository.findByCode(code)
+        return !!asset
+    }
+
     async create(data: Partial<Asset>): Promise<Asset> {
         if (data.image !== undefined) {
             data.image = minio.sanitizePath(data.image) ?? undefined
@@ -37,6 +42,11 @@ export class AssetService {
         const asset = await this.getById(id)
         if (data.image !== undefined) {
             data.image = minio.sanitizePath(data.image) ?? undefined
+        }
+        // Handle labels replacement
+        if (data.labels !== undefined) {
+            asset.labels = (data.labels || []) as any
+            delete data.labels
         }
         this.repository.merge(asset, data)
         try {

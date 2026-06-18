@@ -1,5 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from "typeorm"
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, JoinColumn } from "typeorm"
+import type { Relation } from "typeorm"
 import { SubCategory } from "../../sub-category/entities/sub-category.entity"
+import { AssetLabel } from "./asset-label.entity"
 
 @Entity("assets")
 export class Asset {
@@ -14,7 +16,6 @@ export class Asset {
 
     @Column({ nullable: true })
     description?: string
-
 
     @Column({ type: "integer", nullable: true })
     price?: number
@@ -43,4 +44,7 @@ export class Asset {
 
     @UpdateDateColumn({ name: "updated_at" })
     updatedAt!: Date
+
+    @OneToMany(() => AssetLabel, (label) => label.asset, { cascade: true, eager: true })
+    labels!: Relation<AssetLabel[]>
 }

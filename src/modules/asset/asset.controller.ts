@@ -24,6 +24,15 @@ export class AssetController {
         return ApiResponse.success(c, serialized, "Asset retrieved successfully")
     }
 
+    async checkCode(c: Context) {
+        const code = c.req.query("code") || ""
+        if (!code) {
+            return ApiResponse.success(c, { exists: false }, "Code is empty")
+        }
+        const exists = await this.service.checkCode(code)
+        return ApiResponse.success(c, { exists }, exists ? "Code already exists" : "Code is available")
+    }
+
     async store(c: Context) {
         const data = c.req.valid("json" as never)
         const asset = await this.service.create(data)

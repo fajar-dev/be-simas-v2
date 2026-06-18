@@ -162,7 +162,7 @@ describe("POST /api/location", () => {
         expect(body.data).toBeDefined()
         expect(body.data.name).toBe(locationData.name)
         expect(body.data.description).toBe(locationData.description)
-        expect(body.data.branchId).toBe(branch.id)
+        expect(body.data.branch.id).toBe(branch.id)
         expect(body.data.branch).toBeDefined()
         expect(body.data.branch.id).toBe(branch.id)
         expect(body.data.branch.name).toBe(branch.name)
@@ -405,7 +405,7 @@ describe("GET /api/location/:id", () => {
         expect(body.data.id).toBe(locationId)
         expect(body.data.name).toBe(locationData.name)
         expect(body.data.description).toBe(locationData.description)
-        expect(body.data.branchId).toBe(branch.id)
+        expect(body.data.branch.id).toBe(branch.id)
         expect(body.data.branch.id).toBe(branch.id)
     })
 

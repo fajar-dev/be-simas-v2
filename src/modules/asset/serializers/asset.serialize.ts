@@ -56,6 +56,11 @@ export class AssetSerializer {
             } : null,
             createdAt: asset.createdAt,
             updatedAt: asset.updatedAt,
+            labels: (asset.labels || []).map(l => ({
+                id: l.id,
+                key: l.key,
+                value: l.value,
+            })),
         }
     }
 
