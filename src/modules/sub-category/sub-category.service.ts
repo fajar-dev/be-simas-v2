@@ -10,6 +10,10 @@ export class SubCategoryService {
         return await this.repository.findAll(page, limit, q, categoryId)
     }
 
+    async getByCategoryId(categoryId: number): Promise<SubCategory[]> {
+        return await this.repository.findByCategoryId(categoryId)
+    }
+
     async getById(id: number): Promise<SubCategory> {
         const subCategory = await this.repository.findById(id)
         if (!subCategory) {

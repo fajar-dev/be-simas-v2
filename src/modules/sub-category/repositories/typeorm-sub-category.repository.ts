@@ -38,6 +38,14 @@ export class TypeOrmSubCategoryRepository implements ISubCategoryRepository {
         return { data, total }
     }
 
+    async findByCategoryId(categoryId: number): Promise<SubCategory[]> {
+        return await this.repository.find({
+            where: { categoryId },
+            relations: ["category"],
+            order: { name: "ASC" }
+        })
+    }
+
     async findById(id: number): Promise<SubCategory | null> {
         return await this.repository.findOne({
             where: { id },

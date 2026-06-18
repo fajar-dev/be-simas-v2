@@ -61,6 +61,7 @@ routes.delete("/category/:id", authMiddleware, (c) => categoryController.destroy
 
 // Sub Category
 routes.get("/sub-category", authMiddleware, (c) => subCategoryController.index(c))
+routes.get("/sub-category/by-category/:categoryId", authMiddleware, (c) => subCategoryController.byCategory(c))
 routes.get("/sub-category/:id", authMiddleware, (c) => subCategoryController.show(c))
 routes.post("/sub-category", authMiddleware, zValidator("json", CreateSubCategoryValidator, validationHook), (c) => subCategoryController.store(c))
 routes.put("/sub-category/:id", authMiddleware, zValidator("json", UpdateSubCategoryValidator, validationHook), (c) => subCategoryController.update(c))

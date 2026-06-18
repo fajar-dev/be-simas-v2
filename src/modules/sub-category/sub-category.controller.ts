@@ -17,6 +17,12 @@ export class SubCategoryController {
         return ApiResponse.paginate(c, SubCategorySerializer.collection(data), total, page, limit, "Sub categories retrieved successfully")
     }
 
+    async byCategory(c: Context) {
+        const categoryId = Number(c.req.param("categoryId"))
+        const data = await this.service.getByCategoryId(categoryId)
+        return ApiResponse.success(c, SubCategorySerializer.collection(data), "Sub categories retrieved successfully")
+    }
+
     async show(c: Context) {
         const id = Number(c.req.param("id"))
         const subCategory = await this.service.getById(id)
