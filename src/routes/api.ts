@@ -6,6 +6,7 @@ import crypto from "crypto"
 import { RegisterValidator, LoginValidator, ForgotPasswordValidator, ResetPasswordValidator, RefreshTokenValidator, GoogleLoginValidator, UpdateProfileValidator, UpdatePasswordValidator } from "../modules/auth/validators/auth.validator"
 import { CreateUserValidator, UpdateUserValidator } from "../modules/user/validators/user.validator"
 import { CreateCategoryValidator, UpdateCategoryValidator } from "../modules/category/validators/category.validator"
+import { CreateSubCategoryValidator, UpdateSubCategoryValidator } from "../modules/sub-category/validators/sub-category.validator"
 
 // ── Middlewares ──────────────────────────────────────────────────────────────
 import { authMiddleware } from "../core/middlewares/auth.middleware"
@@ -16,6 +17,7 @@ import { BadRequestException } from "../core/exceptions/base"
 import { authController } from "../modules/auth/auth.module"
 import { userController } from "../modules/user/user.module"
 import { categoryController } from "../modules/category/category.module"
+import { subCategoryController } from "../modules/sub-category/sub-category.module"
 
 // ── Routes ───────────────────────────────────────────────────────────────────
 const routes = new Hono()
@@ -46,6 +48,13 @@ routes.get("/category/:id", authMiddleware, (c) => categoryController.show(c))
 routes.post("/category", authMiddleware, zValidator("json", CreateCategoryValidator, validationHook), (c) => categoryController.store(c))
 routes.put("/category/:id", authMiddleware, zValidator("json", UpdateCategoryValidator, validationHook), (c) => categoryController.update(c))
 routes.delete("/category/:id", authMiddleware, (c) => categoryController.destroy(c))
+
+// Sub Category
+routes.get("/sub-category", authMiddleware, (c) => subCategoryController.index(c))
+routes.get("/sub-category/:id", authMiddleware, (c) => subCategoryController.show(c))
+routes.post("/sub-category", authMiddleware, zValidator("json", CreateSubCategoryValidator, validationHook), (c) => subCategoryController.store(c))
+routes.put("/sub-category/:id", authMiddleware, zValidator("json", UpdateSubCategoryValidator, validationHook), (c) => subCategoryController.update(c))
+routes.delete("/sub-category/:id", authMiddleware, (c) => subCategoryController.destroy(c))
 
 // Upload
 routes.post("/upload", authMiddleware, async (c) => {

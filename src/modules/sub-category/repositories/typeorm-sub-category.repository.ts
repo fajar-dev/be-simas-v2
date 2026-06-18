@@ -1,0 +1,56 @@
+import { EntityManager, Repository } from "typeorm"
+import { AppDataSource } from "../../../config/database"
+import { SubCategory } from "../entities/sub-category.entity"
+import { ISubCategoryRepository } from "../interfaces/sub-category.repository.interface"
+
+export class TypeOrmSubCategoryRepository implements ISubCategoryRepository {
+    private readonly repository: Repository<SubCategory>
+
+    constructor() {
+        this.repository = AppDataSource.getRepository(SubCategory)
+    }
+
+    async findAll(page: number, limit: number, q: string): Promise<{ data: SubCategory[]; total: number }> {
+        const offset = (page - 1) * limit
+
+        const query = this.repository.createQueryBuilder("sub_category")
+            .leftJoinAndSelect("sub_category.category", "category")
+
+        if (q) {
+            query.where(
+                "(sub_category.name LIKE :q OR sub_category.description LIKE :q)",
+                { q: `%${q}%` }
+            )
+        }
+
+        const total = await query.getCount()
+
+        const data = await query
+            .orderBy("sub_category.id", "DESC")
+            .skip(offset)
+            .take(limit)
+            .getMany()
+
+        return { data, total }
+    }
+
+    async findById(id: number): Promise<SubCategory | null> {
+        return await this.repository.findOne({
+            where: { id },
+            relations: ["category"]
+        })
+    }
+
+    async save(data: Partial<SubCategory>, manager?: EntityManager): Promise<SubCategory> {
+        const repo = manager ? manager.getRepository(SubCategory) : this.repository
+        return await repo.save(data)
+    }
+
+    merge(entity: SubCategory, data: Partial<SubCategory>): SubCategory {
+        return this.repository.merge(entity, data)
+    }
+
+    async delete(id: number): Promise<void> {
+        await this.repository.delete(id)
+    }
+}

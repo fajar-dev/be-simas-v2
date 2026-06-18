@@ -4,6 +4,7 @@ import { cors } from "hono/cors"
 import { DataSource } from "typeorm"
 import { User } from "../src/modules/user/entities/user.entity"
 import { Category } from "../src/modules/category/entities/category.entity"
+import { SubCategory } from "../src/modules/sub-category/entities/sub-category.entity"
 import { ApiResponse } from "../src/core/helpers/response"
 import { BaseException, ValidationException } from "../src/core/exceptions/base"
 import { ZodError } from "zod"
@@ -26,7 +27,7 @@ const TestDataSource = new DataSource({
     database: testDbName,
     synchronize: true,
     dropSchema: true,
-    entities: [User, Category],
+    entities: [User, Category, SubCategory],
     logging: false,
 })
 
