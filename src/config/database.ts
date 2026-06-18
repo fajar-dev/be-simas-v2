@@ -1,6 +1,7 @@
 import "reflect-metadata"
 import { DataSource } from "typeorm"
 import { User } from "../modules/user/entities/user.entity"
+import { Category } from "../modules/category/entities/category.entity"
 import { config } from "./config"
 
 /**
@@ -18,7 +19,7 @@ const defaultDataSource = new DataSource({
     password: config.database.pass,
     database: config.database.name,
     synchronize: config.database.sync,
-    entities: [User],
+    entities: [User, Category],
     migrations: [],
     subscribers: [],
 })

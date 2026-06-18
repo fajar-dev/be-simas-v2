@@ -5,6 +5,7 @@ import crypto from "crypto"
 // ── Validators ──────────────────────────────────────────────────────────────
 import { RegisterValidator, LoginValidator, ForgotPasswordValidator, ResetPasswordValidator, RefreshTokenValidator, GoogleLoginValidator, UpdateProfileValidator, UpdatePasswordValidator } from "../modules/auth/validators/auth.validator"
 import { CreateUserValidator, UpdateUserValidator } from "../modules/user/validators/user.validator"
+import { CreateCategoryValidator, UpdateCategoryValidator } from "../modules/category/validators/category.validator"
 
 // ── Middlewares ──────────────────────────────────────────────────────────────
 import { authMiddleware } from "../core/middlewares/auth.middleware"
@@ -14,6 +15,7 @@ import { BadRequestException } from "../core/exceptions/base"
 // ── Modules (controllers wired with their dependencies) ──────────────────────
 import { authController } from "../modules/auth/auth.module"
 import { userController } from "../modules/user/user.module"
+import { categoryController } from "../modules/category/category.module"
 
 // ── Routes ───────────────────────────────────────────────────────────────────
 const routes = new Hono()
@@ -37,6 +39,13 @@ routes.get("/user/:id", authMiddleware, (c) => userController.show(c))
 routes.post("/user", authMiddleware, zValidator("json", CreateUserValidator, validationHook), (c) => userController.store(c))
 routes.put("/user/:id", authMiddleware, zValidator("json", UpdateUserValidator, validationHook), (c) => userController.update(c))
 routes.delete("/user/:id", authMiddleware, (c) => userController.destroy(c))
+
+// Category
+routes.get("/category", authMiddleware, (c) => categoryController.index(c))
+routes.get("/category/:id", authMiddleware, (c) => categoryController.show(c))
+routes.post("/category", authMiddleware, zValidator("json", CreateCategoryValidator, validationHook), (c) => categoryController.store(c))
+routes.put("/category/:id", authMiddleware, zValidator("json", UpdateCategoryValidator, validationHook), (c) => categoryController.update(c))
+routes.delete("/category/:id", authMiddleware, (c) => categoryController.destroy(c))
 
 // Upload
 routes.post("/upload", authMiddleware, async (c) => {
