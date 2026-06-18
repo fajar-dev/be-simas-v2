@@ -242,6 +242,32 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
+    # --- Branch Schemas ---
+    CreateBranchRequest:
+      type: object
+      required: [code, name]
+      properties:
+        code: { type: string, example: "BR-001" }
+        name: { type: string, example: "Jakarta Branch" }
+        description: { type: string, nullable: true, example: "Main branch in Jakarta" }
+
+    UpdateBranchRequest:
+      type: object
+      properties:
+        code: { type: string, example: "BR-001" }
+        name: { type: string, example: "Jakarta Branch" }
+        description: { type: string, nullable: true, example: "Updated description" }
+
+    BranchResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        code: { type: string, example: "BR-001" }
+        name: { type: string, example: "Jakarta Branch" }
+        description: { type: string, nullable: true, example: "Main branch in Jakarta" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
 paths:
   # ── Register ──────────────────────────────────────────────────────────────
   /auth/register:
@@ -795,6 +821,139 @@ paths:
               schema: { $ref: "#/components/schemas/BaseResponse" }
         "401": { description: Unauthorized }
         "404": { description: Employee not found }
+
+  # ── Branch List / Create ──────────────────────────────────────────────────
+  /branch:
+    get:
+      tags: [Branch]
+      summary: Get all branches (paginated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+        - name: q
+          in: query
+          description: Search by name, code, or description
+          schema: { type: string }
+      responses:
+        "200":
+          description: Branches retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/BranchResponse" }
+                      meta: { $ref: "#/components/schemas/PaginationMeta" }
+        "401": { description: Unauthorized }
+
+    post:
+      tags: [Branch]
+      summary: Create a new branch
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateBranchRequest" }
+      responses:
+        "201":
+          description: Branch created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/BranchResponse" }
+        "401": { description: Unauthorized }
+        "422": { description: Validation error }
+
+  # ── Branch Detail / Update / Delete ──────────────────────────────────────
+  /branch/{id}:
+    get:
+      tags: [Branch]
+      summary: Get branch by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Branch retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/BranchResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Branch not found }
+
+    put:
+      tags: [Branch]
+      summary: Update a branch
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateBranchRequest" }
+      responses:
+        "200":
+          description: Branch updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/BranchResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Branch not found }
+        "422": { description: Validation error }
+
+    delete:
+      tags: [Branch]
+      summary: Delete a branch
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Branch deleted successfully
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BaseResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Branch not found }
 
   # ── Upload File ──────────────────────────────────────────────────────────
   /upload:

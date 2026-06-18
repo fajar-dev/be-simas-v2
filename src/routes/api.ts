@@ -8,6 +8,7 @@ import { CreateUserValidator, UpdateUserValidator } from "../modules/user/valida
 import { CreateCategoryValidator, UpdateCategoryValidator } from "../modules/category/validators/category.validator"
 import { CreateSubCategoryValidator, UpdateSubCategoryValidator } from "../modules/sub-category/validators/sub-category.validator"
 import { CreateEmployeeValidator, UpdateEmployeeValidator } from "../modules/employee/validators/employee.validator"
+import { CreateBranchValidator, UpdateBranchValidator } from "../modules/branch/validators/branch.validator"
 
 // ── Middlewares ──────────────────────────────────────────────────────────────
 import { authMiddleware } from "../core/middlewares/auth.middleware"
@@ -21,6 +22,7 @@ import { categoryController } from "../modules/category/category.module"
 import { subCategoryController } from "../modules/sub-category/sub-category.module"
 import { feedbackController } from "../modules/feedback/feedback.module"
 import { employeeController } from "../modules/employee/employee.module"
+import { branchController } from "../modules/branch/branch.module"
 import { StoreFeedbackValidator } from "../modules/feedback/validators/feedback.validator"
 
 // ── Routes ───────────────────────────────────────────────────────────────────
@@ -70,6 +72,13 @@ routes.get("/employee/:id", authMiddleware, (c) => employeeController.show(c))
 routes.post("/employee", authMiddleware, zValidator("json", CreateEmployeeValidator, validationHook), (c) => employeeController.store(c))
 routes.put("/employee/:id", authMiddleware, zValidator("json", UpdateEmployeeValidator, validationHook), (c) => employeeController.update(c))
 routes.delete("/employee/:id", authMiddleware, (c) => employeeController.destroy(c))
+
+// Branch
+routes.get("/branch", authMiddleware, (c) => branchController.index(c))
+routes.get("/branch/:id", authMiddleware, (c) => branchController.show(c))
+routes.post("/branch", authMiddleware, zValidator("json", CreateBranchValidator, validationHook), (c) => branchController.store(c))
+routes.put("/branch/:id", authMiddleware, zValidator("json", UpdateBranchValidator, validationHook), (c) => branchController.update(c))
+routes.delete("/branch/:id", authMiddleware, (c) => branchController.destroy(c))
 
 
 // Upload
