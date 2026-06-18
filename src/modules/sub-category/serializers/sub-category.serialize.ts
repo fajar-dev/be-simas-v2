@@ -6,7 +6,6 @@ export class SubCategorySerializer {
             id: subCategory.id,
             name: subCategory.name,
             description: subCategory.description || null,
-            categoryId: subCategory.categoryId,
             category: subCategory.category ? {
                 id: subCategory.category.id,
                 name: subCategory.category.name,
