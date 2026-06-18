@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: hono-be
+    container_name: simas-be
     restart: always
     ports:
       - "${PORT:-4000}:4000"
@@ -16,7 +16,7 @@ services:
       - DB_PORT=5432
       - DB_USER=${DB_USER:-postgres}
       - DB_PASS=${DB_PASS:-postgres}
-      - DB_NAME=${DB_NAME:-hono_be}
+      - DB_NAME=${DB_NAME:-simas}
       - DB_SYNC=${DB_SYNC:-false}
       - SMTP_HOST=${SMTP_HOST}
       - SMTP_PORT=${SMTP_PORT}
@@ -33,21 +33,21 @@ services:
       - MINIO_USE_SSL=${MINIO_USE_SSL:-false}
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
       - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
-      - MINIO_BUCKET=${MINIO_BUCKET:-hono-be}
+      - MINIO_BUCKET=${MINIO_BUCKET:-simas-be}
     depends_on:
       db:
         condition: service_healthy
     networks:
-      - hono-be-network
+      - simas-network
 
   db:
     image: postgres:16-alpine
-    container_name: hono-be-db
+    container_name: simas-be-db
     restart: always
     environment:
       - POSTGRES_USER=${DB_USER:-postgres}
       - POSTGRES_PASSWORD=${DB_PASS:-postgres}
-      - POSTGRES_DB=${DB_NAME:-hono_be}
+      - POSTGRES_DB=${DB_NAME:-simas}
     ports:
       - "${DB_PORT:-5432}:5432"
     volumes:
@@ -57,10 +57,10 @@ services:
       timeout: 10s
       retries: 5
     networks:
-      - hono-be-network
+      - simas-network
 
 networks:
-  hono-be-network:
+  simas-network:
     driver: bridge
 
 volumes:

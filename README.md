@@ -1,6 +1,6 @@
-# Hono BE — Backend Boilerplate
+# SIMAS Backend — Sistem Management Asset
 
-API Backend boilerplate dibangun dengan **Hono**, **Bun**, dan **TypeORM**.
+API Backend untuk **SIMAS** (Sistem Management Asset) dibangun dengan **Hono**, **Bun**, dan **TypeORM**.
 
 ---
 
@@ -58,7 +58,7 @@ routes/api.ts
 ## Struktur Proyek
 
 ```
-hono-be/
+simas-be/
 ├── src/
 │   ├── config/                        # Konfigurasi aplikasi
 │   │   ├── config.ts                  # Env variables (app, db, mail)
@@ -116,7 +116,7 @@ curl -fsSL https://bun.sh/install | bash
 ```bash
 # 1. Clone repository
 git clone <repository-url>
-cd hono-be
+cd simas-be
 
 # 2. Install dependencies
 bun install
@@ -150,8 +150,8 @@ docker compose up -d
 
 ```bash
 pm2 start ecosystem.config.js
-pm2 logs hono-be
-pm2 restart hono-be
+pm2 logs simas-be
+pm2 restart simas-be
 ```
 
 ---
@@ -169,7 +169,7 @@ Salin `.env.dist` menjadi `.env` lalu isi setiap nilai:
 | `DB_PORT`              | Port database                              | `3306`                  |
 | `DB_USER`              | Username database                          | `root`                  |
 | `DB_PASS`              | Password database                          | —                       |
-| `DB_NAME`              | Nama database                              | `hono_be`               |
+| `DB_NAME`              | Nama database                              | `simas`                 |
 | `DB_SYNC`              | Auto-sync schema TypeORM                   | `true`                  |
 | `JWT_SECRET`           | Secret untuk access token (15 menit)       | —                       |
 | `JWT_REFRESH_SECRET`   | Secret untuk refresh token (7 hari)        | —                       |
@@ -186,6 +186,6 @@ Salin `.env.dist` menjadi `.env` lalu isi setiap nilai:
 | `MINIO_USE_SSL`        | Gunakan SSL untuk MinIO                    | `false`                 |
 | `MINIO_ACCESS_KEY`     | MinIO access key                           | —                       |
 | `MINIO_SECRET_KEY`     | MinIO secret key                           | —                       |
-| `MINIO_BUCKET`         | MinIO bucket name                          | `hono-be`               |
+| `MINIO_BUCKET`         | MinIO bucket name                          | `simas-be`              |
 
 > **Catatan:** Jangan commit file `.env` ke repository. Pastikan sudah masuk `.gitignore`.

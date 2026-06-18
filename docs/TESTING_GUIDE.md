@@ -9,16 +9,16 @@ Dokumen ini menjelaskan cara menjalankan test, menulis test baru, dan konvensi t
 ### Prerequisites
 
 - Database **harus sudah berjalan** (PostgreSQL atau MySQL)
-- Database test `hono_be_test` sudah dibuat
+- Database test `simas_test` sudah dibuat
 
 ### Membuat Database Test
 
 ```bash
 # PostgreSQL
-psql -U postgres -c "CREATE DATABASE hono_be_test;"
+psql -U postgres -c "CREATE DATABASE simas_test;"
 
 # MySQL (via Docker)
-docker exec mysql-latest mysql -u root -proot -e "CREATE DATABASE IF NOT EXISTS hono_be_test;"
+docker exec mysql-latest mysql -u root -proot -e "CREATE DATABASE IF NOT EXISTS simas_test;"
 ```
 
 ### Menjalankan Test
@@ -32,7 +32,6 @@ bun test
 
 # Jalankan file test tertentu
 bun test test/auth.test.ts
-bun test test/contact.test.ts
 ```
 
 ### Environment Variables untuk Test
@@ -40,7 +39,7 @@ bun test test/contact.test.ts
 | Variable | Default | Deskripsi |
 |----------|---------|-----------|
 | `DB_TYPE` | dari `config.database.type` | Tipe database (`postgres` \| `mysql`) |
-| `DB_TEST_NAME` | `hono_be_test` | Nama database untuk test |
+| `DB_TEST_NAME` | `simas_test` | Nama database untuk test |
 | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS` | dari `.env` | Koneksi database (sama dengan development) |
 
 ---
@@ -50,7 +49,7 @@ bun test test/contact.test.ts
 ### Strategi
 
 - **True E2E Integration Test** — request dikirim ke Hono app, melewati middleware, validation, controller, service, repository, dan database nyata
-- **Database test terpisah** (`hono_be_test`) agar tidak mengganggu data development
+- **Database test terpisah** (`simas_test`) agar tidak mengganggu data development
 - **Auto-sync schema** — TypeORM `synchronize: true` + `dropSchema: true` otomatis membuat tabel saat test mulai
 - **Clean per test** — setiap `beforeEach` membersihkan semua data untuk isolasi
 
@@ -61,7 +60,6 @@ test/
 ├── setup.ts          # Test infrastructure (DB, app factory, helpers)
 ├── helpers.ts        # Data factories & assertion utilities
 ├── auth.test.ts      # Auth module E2E tests
-└── contact.test.ts   # Contact module E2E tests
 ```
 
 ### Dependency Flow
@@ -261,7 +259,7 @@ describe("Full CRUD Lifecycle", () => {
         const { headers } = await registerAndLogin(app)
 
         // Create → Read → Update → Read → Delete → Verify Deleted
-        // ... (lihat contact.test.ts sebagai referensi)
+        // ... (lihat auth.test.ts sebagai referensi)
     })
 })
 ```
@@ -290,7 +288,6 @@ export function createInvoiceData(overrides: Record<string, any> = {}) {
 // Jangan lupa reset di resetCounters():
 export function resetCounters() {
     userCounter = 0
-    contactCounter = 0
     invoiceCounter = 0  // ← Tambahkan
 }
 ```
@@ -315,9 +312,9 @@ export function resetCounters() {
 
 ```typescript
 // ✅ Format: "should {expected behavior}"
-test("should create a contact successfully", ...)
+test("should create a user successfully", ...)
 test("should fail validation without name", ...)
-test("should return 404 for non-existent contact", ...)
+test("should return 404 for non-existent user", ...)
 test("should fail without auth token", ...)
 
 // ❌ JANGAN format yang ambigu

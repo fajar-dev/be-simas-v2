@@ -1,5 +1,5 @@
 {
-  "name": "hono-boilerplate",
+  "name": "simas-be",
   "scripts": {
     "dev": "bun run --hot src/index.ts",
     "build": "bun build --minify --outfile dist/index.js --target bun src/index.ts",

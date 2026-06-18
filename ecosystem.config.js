@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: "hono-be",
+      name: "simas-be",
       script: "dist/index.js",
       interpreter: "bun",
       env: {

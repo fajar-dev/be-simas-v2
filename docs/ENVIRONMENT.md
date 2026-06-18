@@ -31,7 +31,7 @@ cp .env.dist .env
 | `DB_PORT` | number | `5432` | Port database (PostgreSQL: 5432, MySQL: 3306) |
 | `DB_USER` | string | `root` | Username database |
 | `DB_PASS` | string | _(kosong)_ | Password database |
-| `DB_NAME` | string | `hono_be` | Nama database |
+| `DB_NAME` | string | `simas` | Nama database |
 | `DB_SYNC` | boolean | `false` | Auto-sync schema TypeORM. **Otomatis `false` di production (hardcoded).** |
 
 #### Authentication
@@ -68,7 +68,7 @@ cp .env.dist .env
 | `MINIO_USE_SSL` | boolean | `false` | Gunakan SSL untuk koneksi MinIO |
 | `MINIO_ACCESS_KEY` | string | _(kosong)_ | MinIO access key |
 | `MINIO_SECRET_KEY` | string | _(kosong)_ | MinIO secret key |
-| `MINIO_BUCKET` | string | `hono-be` | Nama bucket default |
+| `MINIO_BUCKET` | string | `simas-be` | Nama bucket default |
 
 ---
 
@@ -168,17 +168,17 @@ docker compose up -d --build
 
 | Service | Container Name | Port | Deskripsi |
 |---------|---------------|------|-----------|
-| `app` | `hono-be` | 4000 | Aplikasi backend |
-| `db` | `hono-be-db` | 5432 | PostgreSQL 16 Alpine |
+| `app` | `simas-be` | 4000 | Aplikasi backend |
+| `db` | `simas-be-db` | 5432 | PostgreSQL 16 Alpine |
 
 ### Docker Build Manual
 
 ```bash
 # Build image
-docker build -t hono-be .
+docker build -t simas-be .
 
 # Run container
-docker run -p 4000:4000 --env-file .env hono-be
+docker run -p 4000:4000 --env-file .env simas-be
 ```
 
 ### Dockerfile Details
@@ -201,14 +201,14 @@ npm install -g pm2
 pm2 start ecosystem.config.js
 
 # Monitoring
-pm2 logs hono-be
+pm2 logs simas-be
 pm2 monit
 
 # Restart
-pm2 restart hono-be
+pm2 restart simas-be
 
 # Stop
-pm2 stop hono-be
+pm2 stop simas-be
 ```
 
 ### PM2 Configuration
@@ -216,7 +216,7 @@ pm2 stop hono-be
 ```javascript
 // ecosystem.config.js
 {
-    name: "hono-be",
+    name: "simas-be",
     script: "dist/index.js",
     interpreter: "bun",
     env: { NODE_ENV: "production" },
@@ -274,7 +274,7 @@ Stack: Error stack trace...
 - Setiap request dicatat ke stdout (console) dengan format:
 
 ```
-[2026-06-17T15:00:00.000Z] GET /api/contact → 200 (12ms)
+[2026-06-17T15:00:00.000Z] GET /api/user → 200 (12ms)
 [2026-06-17T15:00:01.000Z] POST /api/auth/login → 401 (156ms)
 ```
 

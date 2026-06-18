@@ -236,11 +236,11 @@ GET /api/resource?token=<jwt_token>
 
 | Operasi | Message Pattern | Contoh |
 |---------|----------------|--------|
-| List | `"{Resources} retrieved successfully"` | `"Contacts retrieved successfully"` |
-| Detail | `"{Resource} retrieved successfully"` | `"Contact retrieved successfully"` |
-| Create | `"{Resource} created successfully"` | `"Contact created successfully"` |
-| Update | `"{Resource} updated successfully"` | `"Contact updated successfully"` |
-| Delete | `"{Resource} deleted successfully"` | `"Contact deleted successfully"` |
+| List | `"{Resources} retrieved successfully"` | `"Users retrieved successfully"` |
+| Detail | `"{Resource} retrieved successfully"` | `"User retrieved successfully"` |
+| Create | `"{Resource} created successfully"` | `"User created successfully"` |
+| Update | `"{Resource} updated successfully"` | `"User updated successfully"` |
+| Delete | `"{Resource} deleted successfully"` | `"User deleted successfully"` |
 | Auth | Deskriptif | `"Logged in successfully"`, `"Token refreshed successfully"` |
 | Error | Deskriptif | `"Email already in use"`, `"Invalid credentials"` |
 
@@ -263,4 +263,4 @@ GET /api/resource?token=<jwt_token>
 - Setiap endpoint baru **harus** ditambahkan ke `swagger.yaml`
 - Gunakan `$ref` untuk reuse schema
 - Response selalu wrapped dalam `BaseResponse` via `allOf`
-- Tag per module (contoh: `Auth`, `Contact`)
+- Tag per module (contoh: `Auth`, `User`)

@@ -1,6 +1,6 @@
-# 📚 Hono BE — Dokumentasi Proyek
+# 📚 SIMAS Backend — Dokumentasi Proyek
 
-Dokumentasi lengkap untuk **Hono BE Backend Boilerplate** — panduan standarisasi, konvensi kode, dan referensi bagi developer maupun AI agent yang melanjutkan proyek ini.
+Dokumentasi lengkap untuk **SIMAS Backend — Sistem Management Asset** — panduan standarisasi, konvensi kode, dan referensi bagi developer maupun AI agent yang melanjutkan proyek ini.
 
 ---
 

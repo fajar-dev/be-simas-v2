@@ -37,12 +37,12 @@ src/
 
 | Jenis File | Pola Nama | Contoh |
 |------------|-----------|--------|
-| Entity | `{nama}.entity.ts` | `user.entity.ts`, `contact.entity.ts` |
+| Entity | `{nama}.entity.ts` | `user.entity.ts`, `asset.entity.ts` |
 | Repository Interface | `{nama}.repository.interface.ts` | `user.repository.interface.ts` |
 | Repository Implementation | `typeorm-{nama}.repository.ts` | `typeorm-user.repository.ts` |
 | Service | `{nama}.service.ts` | `user.service.ts` |
-| Controller | `{nama}.controller.ts` | `contact.controller.ts` |
-| Module (DI Wiring) | `{nama}.module.ts` | `contact.module.ts` |
+| Controller | `{nama}.controller.ts` | `user.controller.ts` |
+| Module (DI Wiring) | `{nama}.module.ts` | `user.module.ts` |
 | Validator | `{nama}.validator.ts` | `auth.validator.ts` |
 | Serializer | `{nama}.serialize.ts` | `user.serialize.ts` |
 | Middleware | `{nama}.middleware.ts` | `auth.middleware.ts` |
@@ -58,12 +58,12 @@ src/
 
 | Jenis | Pola | Contoh |
 |-------|------|--------|
-| Entity | `PascalCase` (singular) | `User`, `Contact` |
-| Repository Interface | `I{Nama}Repository` | `IUserRepository`, `IContactRepository` |
+| Entity | `PascalCase` (singular) | `User`, `Asset` |
+| Repository Interface | `I{Nama}Repository` | `IUserRepository`, `IAssetRepository` |
 | Repository Implementation | `TypeOrm{Nama}Repository` | `TypeOrmUserRepository` |
-| Service | `{Nama}Service` | `UserService`, `ContactService` |
-| Controller | `{Nama}Controller` | `AuthController`, `ContactController` |
-| Serializer | `{Nama}Serializer` | `UserSerializer`, `ContactSerializer` |
+| Service | `{Nama}Service` | `UserService`, `AssetService` |
+| Controller | `{Nama}Controller` | `AuthController`, `AssetController` |
+| Serializer | `{Nama}Serializer` | `UserSerializer`, `AssetSerializer` |
 | Exception | `{Nama}Exception` | `BaseException`, `NotFoundException` |
 | Helper (class) | `{Nama}Helper` atau `{Nama}` | `AuthHelper`, `MinioHelper` |
 
@@ -71,7 +71,7 @@ src/
 
 | Jenis | Pola | Contoh |
 |-------|------|--------|
-| Instance variables | `camelCase` | `userService`, `contactRepository` |
+| Instance variables | `camelCase` | `userService`, `assetRepository` |
 | Functions/Methods | `camelCase` | `getById`, `hashPassword` |
 | Constants | `camelCase` (config objects), `UPPER_SNAKE_CASE` (primitive) | `config`, `BUCKET` |
 | Exported singletons | `camelCase` | `mail`, `minio` |
@@ -80,10 +80,10 @@ src/
 
 ```typescript
 // Schema: PascalCase (sama dengan type name)
-export const CreateContactValidator = z.object({ ... })
+export const CreateAssetValidator = z.object({ ... })
 
 // Type: nama sama dengan schema (TypeScript type merging)
-export type CreateContactValidator = z.infer<typeof CreateContactValidator>
+export type CreateAssetValidator = z.infer<typeof CreateAssetValidator>
 ```
 
 > **Catatan**: Gunakan nama yang sama untuk Zod schema dan type-nya (TypeScript mendukung type merging).
@@ -124,7 +124,7 @@ export class EntityName {      // Nama class: PascalCase, singular
 
 | Aturan | Detail |
 |--------|--------|
-| Nama tabel | `snake_case`, **plural** (`users`, `contacts`) |
+| Nama tabel | `snake_case`, **plural** (`users`, `assets`) |
 | Nama kolom | `snake_case` (`is_active`, `created_at`) |
 | Property entity | `camelCase` (`isActive`, `createdAt`) |
 | Mapping | Gunakan `{ name: "snake_case" }` jika berbeda |

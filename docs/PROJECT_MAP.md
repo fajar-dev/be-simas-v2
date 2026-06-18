@@ -7,7 +7,7 @@ Dokumen ini berisi peta lengkap semua file dalam proyek, beserta fungsi dan depe
 ## Struktur Lengkap
 
 ```
-hono-be/
+simas-be/
 ├── docs/                                    # 📚 Dokumentasi proyek
 │   ├── README.md                            # Index dokumentasi
 │   ├── ARCHITECTURE.md                      # Arsitektur & prinsip desain
@@ -71,21 +71,6 @@ hono-be/
 │   │   │   └── serializers/
 │   │   │       ├── user.serialize.ts              # 📤 User detail shape
 │   │   │       └── user-list.serialize.ts         # 📤 User list shape
-│   │   │
-│   │   └── contact/
-│   │       ├── contact.module.ts            # 🔌 DI wiring
-│   │       ├── contact.controller.ts        # 🎮 Contact HTTP handlers
-│   │       ├── contact.service.ts           # 💼 Contact business logic
-│   │       ├── entities/
-│   │       │   └── contact.entity.ts        # 🗄️ Contact TypeORM entity
-│   │       ├── interfaces/
-│   │       │   └── contact.repository.interface.ts  # 📋 Contact repo contract
-│   │       ├── repositories/
-│   │       │   └── typeorm-contact.repository.ts    # 🗄️ Contact DB access
-│   │       ├── serializers/
-│   │       │   └── contact.serialize.ts             # 📤 Contact response shape
-│   │       └── validators/
-│   │           └── contact.validator.ts             # ✅ Contact Zod schemas
 │   │
 │   ├── routes/
 │   │   └── api.ts                           # 🛤️ Semua route definitions
@@ -133,11 +118,9 @@ src/index.ts
 ```
 src/routes/api.ts
     ├── src/modules/auth/validators/auth.validator.ts
-    ├── src/modules/contact/validators/contact.validator.ts
     ├── src/core/middlewares/auth.middleware.ts
     ├── src/core/helpers/validator.ts
     ├── src/modules/auth/auth.module.ts      → authController
-    ├── src/modules/contact/contact.module.ts → contactController
     └── src/core/helpers/minio.ts            → minio (lazy import for proxy)
 ```
 
@@ -186,24 +169,6 @@ src/modules/user/repositories/typeorm-user.repository.ts
     └── src/modules/user/interfaces/user.repository.interface.ts
 ```
 
-### Contact Module
-
-```
-src/modules/contact/contact.module.ts
-    ├── src/modules/contact/repositories/typeorm-contact.repository.ts
-    ├── src/modules/contact/contact.service.ts
-    └── src/modules/contact/contact.controller.ts
-
-src/modules/contact/contact.service.ts
-    ├── src/modules/contact/entities/contact.entity.ts
-    ├── src/modules/contact/interfaces/contact.repository.interface.ts → IContactRepository (injected)
-    └── src/core/exceptions/base.ts
-
-src/modules/contact/contact.controller.ts
-    ├── src/modules/contact/contact.service.ts   → ContactService (injected)
-    ├── src/modules/contact/serializers/contact.serialize.ts
-    └── src/core/helpers/response.ts             → ApiResponse
-```
 
 ### Core Helpers
 

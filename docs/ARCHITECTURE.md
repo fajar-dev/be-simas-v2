@@ -122,7 +122,6 @@ Error ditangani di `src/index.ts` → `app.onError()`:
 |--------|------|-----------|---------------------|
 | `auth` | `src/modules/auth/` | Register, login, Google OAuth, refresh token, reset password | ✅ |
 | `user` | `src/modules/user/` | User entity, repository, service (digunakan oleh auth) | ❌ (dipakai internal) |
-| `contact` | `src/modules/contact/` | CRUD contact dengan pagination & search | ✅ |
 
 ---
 

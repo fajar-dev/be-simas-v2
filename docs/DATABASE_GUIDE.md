@@ -32,7 +32,7 @@ export const AppDataSource = new DataSource({
     password: config.database.pass,
     database: config.database.name,
     synchronize: config.database.sync,  // true = auto-sync schema
-    entities: [User, Contact],          // ← Daftarkan semua entity di sini
+    entities: [User],                    // ← Daftarkan semua entity di sini
     migrations: [],
     subscribers: [],
 })
@@ -249,16 +249,6 @@ query.orderBy(finalSort, finalOrder)
 | `created_at` | timestamp | ❌ | auto | |
 | `updated_at` | timestamp | ❌ | auto | |
 
-### Contact Entity
-
-| Kolom | Tipe | Nullable | Default | Notes |
-|-------|------|----------|---------|-------|
-| `id` | int (PK, auto) | ❌ | auto | |
-| `name` | varchar | ❌ | - | |
-| `email` | varchar | ✅ | null | |
-| `phone` | varchar | ✅ | null | |
-| `created_at` | timestamp | ❌ | auto | |
-| `updated_at` | timestamp | ❌ | auto | |
 
 ---
 

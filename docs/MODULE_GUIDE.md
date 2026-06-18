@@ -397,7 +397,7 @@ import { Invoice } from "../modules/invoice/entities/invoice.entity"
 
 export const AppDataSource = new DataSource({
     // ... config
-    entities: [User, Contact, Invoice],  // ← Tambahkan di sini
+    entities: [User, Invoice],  // ← Tambahkan di sini
 })
 ```
 
@@ -441,7 +441,7 @@ Tambahkan definisi di `swagger.yaml`:
 
 1. Tambahkan schemas baru di `components.schemas`
 2. Tambahkan paths baru di `paths`
-3. Ikuti pola yang sudah ada (lihat Contact sebagai contoh CRUD)
+3. Ikuti pola yang sudah ada (lihat User sebagai contoh CRUD)
 
 ---
 

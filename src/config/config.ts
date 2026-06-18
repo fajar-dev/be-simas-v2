@@ -38,7 +38,7 @@ export const config = {
         port: Number(process.env.DB_PORT) || 5432,
         user: process.env.DB_USER || 'root',
         pass: process.env.DB_PASS || '',
-        name: process.env.DB_NAME || 'hono_be',
+        name: process.env.DB_NAME || 'simas',
         // SAFETY: synchronize SELALU false di production (gunakan migrations)
         sync: isProduction ? false : process.env.DB_SYNC === "true",
     },
@@ -47,7 +47,7 @@ export const config = {
         port: Number(process.env.SMTP_PORT) || 587,
         user: process.env.SMTP_USER || '',
         pass: process.env.SMTP_PASS || '',
-        from: process.env.SMTP_FROM || '"Hono BE" <noreply@example.com>',
+        from: process.env.SMTP_FROM || '"SIMAS" <noreply@example.com>',
     },
     google: {
         clientId: process.env.GOOGLE_CLIENT_ID || '',
@@ -59,6 +59,6 @@ export const config = {
         useSSL: process.env.MINIO_USE_SSL === 'true',
         accessKey: process.env.MINIO_ACCESS_KEY || '',
         secretKey: process.env.MINIO_SECRET_KEY || '',
-        bucket: process.env.MINIO_BUCKET || 'hono-be',
+        bucket: process.env.MINIO_BUCKET || 'simas-be',
     },
 }

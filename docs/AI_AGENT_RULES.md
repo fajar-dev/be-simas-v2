@@ -357,4 +357,4 @@ DB_TYPE=mysql bun test
 2. **SELALU** jalankan `bun test` sebelum commit dan pastikan **semua pass**
 3. Test file: `test/{module}.test.ts`
 4. Data factory: `test/helpers.ts`
-5. Test menggunakan database terpisah (`hono_be_test`)
+5. Test menggunakan database terpisah (`simas_test`)

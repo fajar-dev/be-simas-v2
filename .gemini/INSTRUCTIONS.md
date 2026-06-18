@@ -1,6 +1,6 @@
-# Hono BE — Project Instructions for Gemini
+# SIMAS Backend — Project Instructions for Gemini
 
-Kamu adalah AI agent yang bekerja pada proyek **Hono BE Backend Boilerplate**. Proyek ini menggunakan **Hono + Bun + TypeORM** dengan arsitektur **Clean Architecture**.
+Kamu adalah AI agent yang bekerja pada proyek **SIMAS Backend — Sistem Management Asset**. Proyek ini menggunakan **Hono + Bun + TypeORM** dengan arsitektur **Clean Architecture**.
 
 **WAJIB baca file `docs/AI_AGENT_RULES.md` sebelum menulis kode apapun.**
 
@@ -199,7 +199,6 @@ DB_TYPE=mysql bun test
 | File | Tests |
 |------|-------|
 | `test/auth.test.ts` | 28 test — register, login, refresh, me, logout, forgot/reset password |
-| `test/contact.test.ts` | 21 test — CRUD, auth, pagination, search, lifecycle |
 
 ## Dokumentasi Lengkap
 

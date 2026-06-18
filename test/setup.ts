@@ -3,7 +3,6 @@ import { Hono } from "hono"
 import { cors } from "hono/cors"
 import { DataSource } from "typeorm"
 import { User } from "../src/modules/user/entities/user.entity"
-import { Contact } from "../src/modules/contact/entities/contact.entity"
 import { ApiResponse } from "../src/core/helpers/response"
 import { BaseException, ValidationException } from "../src/core/exceptions/base"
 import { ZodError } from "zod"
@@ -14,7 +13,7 @@ import { setDataSource } from "../src/config/database"
 // Uses real database with a separate test database name
 // Ensure DB_TEST_NAME database exists before running tests
 
-const testDbName = process.env.DB_TEST_NAME || "hono_be_test"
+const testDbName = process.env.DB_TEST_NAME || "simas_test"
 const dbType = (process.env.DB_TYPE || config.database.type) as "postgres" | "mysql"
 
 const TestDataSource = new DataSource({
@@ -26,7 +25,7 @@ const TestDataSource = new DataSource({
     database: testDbName,
     synchronize: true,
     dropSchema: true,
-    entities: [User, Contact],
+    entities: [User],
     logging: false,
 })
 
