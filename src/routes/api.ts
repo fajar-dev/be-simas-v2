@@ -9,6 +9,7 @@ import { CreateCategoryValidator, UpdateCategoryValidator } from "../modules/cat
 import { CreateSubCategoryValidator, UpdateSubCategoryValidator } from "../modules/sub-category/validators/sub-category.validator"
 import { CreateEmployeeValidator, UpdateEmployeeValidator } from "../modules/employee/validators/employee.validator"
 import { CreateBranchValidator, UpdateBranchValidator } from "../modules/branch/validators/branch.validator"
+import { CreateLocationValidator, UpdateLocationValidator } from "../modules/location/validators/location.validator"
 
 // ── Middlewares ──────────────────────────────────────────────────────────────
 import { authMiddleware } from "../core/middlewares/auth.middleware"
@@ -23,6 +24,7 @@ import { subCategoryController } from "../modules/sub-category/sub-category.modu
 import { feedbackController } from "../modules/feedback/feedback.module"
 import { employeeController } from "../modules/employee/employee.module"
 import { branchController } from "../modules/branch/branch.module"
+import { locationController } from "../modules/location/location.module"
 import { StoreFeedbackValidator } from "../modules/feedback/validators/feedback.validator"
 
 // ── Routes ───────────────────────────────────────────────────────────────────
@@ -79,6 +81,14 @@ routes.get("/branch/:id", authMiddleware, (c) => branchController.show(c))
 routes.post("/branch", authMiddleware, zValidator("json", CreateBranchValidator, validationHook), (c) => branchController.store(c))
 routes.put("/branch/:id", authMiddleware, zValidator("json", UpdateBranchValidator, validationHook), (c) => branchController.update(c))
 routes.delete("/branch/:id", authMiddleware, (c) => branchController.destroy(c))
+
+// Location
+routes.get("/location", authMiddleware, (c) => locationController.index(c))
+routes.get("/location/:id", authMiddleware, (c) => locationController.show(c))
+routes.post("/location", authMiddleware, zValidator("json", CreateLocationValidator, validationHook), (c) => locationController.store(c))
+routes.put("/location/:id", authMiddleware, zValidator("json", UpdateLocationValidator, validationHook), (c) => locationController.update(c))
+routes.delete("/location/:id", authMiddleware, (c) => locationController.destroy(c))
+
 
 
 // Upload

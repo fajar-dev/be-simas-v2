@@ -268,6 +268,38 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
+    # --- Location Schemas ---
+    CreateLocationRequest:
+      type: object
+      required: [branchId, name]
+      properties:
+        branchId: { type: integer, example: 1 }
+        name: { type: string, example: "Server Room" }
+        description: { type: string, nullable: true, example: "Server and networking equipment room" }
+
+    UpdateLocationRequest:
+      type: object
+      properties:
+        branchId: { type: integer, example: 1 }
+        name: { type: string, example: "Server Room" }
+        description: { type: string, nullable: true, example: "Updated description" }
+
+    LocationResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        branchId: { type: integer, example: 1 }
+        name: { type: string, example: "Server Room" }
+        description: { type: string, nullable: true, example: "Server and networking equipment room" }
+        branch:
+          type: object
+          properties:
+            id: { type: integer, example: 1 }
+            code: { type: string, example: "BR-001" }
+            name: { type: string, example: "Jakarta Branch" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
 paths:
   # ── Register ──────────────────────────────────────────────────────────────
   /auth/register:
@@ -954,6 +986,139 @@ paths:
               schema: { $ref: "#/components/schemas/BaseResponse" }
         "401": { description: Unauthorized }
         "404": { description: Branch not found }
+
+  # ── Location List / Create ───────────────────────────────────────────────
+  /location:
+    get:
+      tags: [Location]
+      summary: Get all locations (paginated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+        - name: q
+          in: query
+          description: Search by location name, description, or branch name
+          schema: { type: string }
+      responses:
+        "200":
+          description: Locations retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/LocationResponse" }
+                      meta: { $ref: "#/components/schemas/PaginationMeta" }
+        "401": { description: Unauthorized }
+
+    post:
+      tags: [Location]
+      summary: Create a new location
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateLocationRequest" }
+      responses:
+        "201":
+          description: Location created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/LocationResponse" }
+        "401": { description: Unauthorized }
+        "422": { description: Validation error }
+
+  # ── Location Detail / Update / Delete ────────────────────────────────────
+  /location/{id}:
+    get:
+      tags: [Location]
+      summary: Get location by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Location retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/LocationResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Location not found }
+
+    put:
+      tags: [Location]
+      summary: Update a location
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateLocationRequest" }
+      responses:
+        "200":
+          description: Location updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/LocationResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Location not found }
+        "422": { description: Validation error }
+
+    delete:
+      tags: [Location]
+      summary: Delete a location
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Location deleted successfully
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BaseResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Location not found }
 
   # ── Upload File ──────────────────────────────────────────────────────────
   /upload:
