@@ -7,6 +7,7 @@ import { RegisterValidator, LoginValidator, ForgotPasswordValidator, ResetPasswo
 import { CreateUserValidator, UpdateUserValidator } from "../modules/user/validators/user.validator"
 import { CreateCategoryValidator, UpdateCategoryValidator } from "../modules/category/validators/category.validator"
 import { CreateSubCategoryValidator, UpdateSubCategoryValidator } from "../modules/sub-category/validators/sub-category.validator"
+import { CreateEmployeeValidator, UpdateEmployeeValidator } from "../modules/employee/validators/employee.validator"
 
 // ── Middlewares ──────────────────────────────────────────────────────────────
 import { authMiddleware } from "../core/middlewares/auth.middleware"
@@ -19,6 +20,7 @@ import { userController } from "../modules/user/user.module"
 import { categoryController } from "../modules/category/category.module"
 import { subCategoryController } from "../modules/sub-category/sub-category.module"
 import { feedbackController } from "../modules/feedback/feedback.module"
+import { employeeController } from "../modules/employee/employee.module"
 import { StoreFeedbackValidator } from "../modules/feedback/validators/feedback.validator"
 
 // ── Routes ───────────────────────────────────────────────────────────────────
@@ -61,6 +63,13 @@ routes.delete("/sub-category/:id", authMiddleware, (c) => subCategoryController.
 // Feedback
 routes.get("/feedback", authMiddleware, (c) => feedbackController.index(c))
 routes.post("/feedback", authMiddleware, zValidator("form", StoreFeedbackValidator, validationHook), (c) => feedbackController.store(c))
+
+// Employee
+routes.get("/employee", authMiddleware, (c) => employeeController.index(c))
+routes.get("/employee/:id", authMiddleware, (c) => employeeController.show(c))
+routes.post("/employee", authMiddleware, zValidator("json", CreateEmployeeValidator, validationHook), (c) => employeeController.store(c))
+routes.put("/employee/:id", authMiddleware, zValidator("json", UpdateEmployeeValidator, validationHook), (c) => employeeController.update(c))
+routes.delete("/employee/:id", authMiddleware, (c) => employeeController.destroy(c))
 
 
 // Upload
