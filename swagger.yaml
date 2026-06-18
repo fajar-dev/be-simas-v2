@@ -147,6 +147,66 @@ components:
         oldPassword: { type: string, example: "oldSecret123" }
         newPassword: { type: string, minLength: 6, example: "newSecret123" }
 
+    # --- Feedback Schemas ---
+    StoreFeedbackRequest:
+      type: object
+      required: [message, type, "images[]"]
+      properties:
+        message:
+          type: string
+          description: Feedback message content
+          example: "Button tidak berfungsi di halaman dashboard"
+        type:
+          type: string
+          description: Feedback type/category
+          example: "bug"
+        url:
+          type: string
+          description: URL of the page where the issue occurred (optional)
+          example: "https://simas.nusa.net.id/dashboard"
+        "images[]":
+          type: array
+          items:
+            type: string
+            format: binary
+          description: Screenshot images (1-5 files, image/* only)
+          minItems: 1
+          maxItems: 5
+
+    FeedbackItem:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          example: "2026-06-18T10:30:00Z"
+        userId:
+          type: string
+          example: "1"
+        name:
+          type: string
+          example: "Budi Santoso"
+        images:
+          type: array
+          items:
+            type: string
+            nullable: true
+          example: ["https://cdn.example.com/feedback/1_123456_0.jpg"]
+        url:
+          type: string
+          example: "https://simas.nusa.net.id/dashboard"
+        category:
+          type: string
+          example: "bug"
+        message:
+          type: string
+          example: "Button tidak berfungsi di halaman dashboard"
+        type:
+          type: string
+          example: "bug"
+        reply:
+          type: string
+          example: ""
+
 paths:
   # ── Register ──────────────────────────────────────────────────────────────
   /auth/register:
@@ -519,6 +579,54 @@ paths:
               schema: { $ref: "#/components/schemas/BaseResponse" }
         "401": { description: Unauthorized }
         "404": { description: User not found }
+
+  # ── Feedback List ──────────────────────────────────────────────────────────
+  /feedback:
+    get:
+      tags: [Feedback]
+      summary: Get feedback list for current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Feedback retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/FeedbackItem" }
+        "401": { description: Unauthorized }
+
+    post:
+      tags: [Feedback]
+      summary: Submit new feedback with screenshots
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: "#/components/schemas/StoreFeedbackRequest" }
+      responses:
+        "201":
+          description: Feedback submitted successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: "null"
+                        example: null
+        "401": { description: Unauthorized }
+        "422": { description: Validation error, content: { application/json: { schema: { $ref: "#/components/schemas/ValidationError" } } } }
 
   # ── Upload File ──────────────────────────────────────────────────────────
   /upload:

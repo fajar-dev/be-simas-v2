@@ -18,6 +18,8 @@ import { authController } from "../modules/auth/auth.module"
 import { userController } from "../modules/user/user.module"
 import { categoryController } from "../modules/category/category.module"
 import { subCategoryController } from "../modules/sub-category/sub-category.module"
+import { feedbackController } from "../modules/feedback/feedback.module"
+import { StoreFeedbackValidator } from "../modules/feedback/validators/feedback.validator"
 
 // ── Routes ───────────────────────────────────────────────────────────────────
 const routes = new Hono()
@@ -55,6 +57,11 @@ routes.get("/sub-category/:id", authMiddleware, (c) => subCategoryController.sho
 routes.post("/sub-category", authMiddleware, zValidator("json", CreateSubCategoryValidator, validationHook), (c) => subCategoryController.store(c))
 routes.put("/sub-category/:id", authMiddleware, zValidator("json", UpdateSubCategoryValidator, validationHook), (c) => subCategoryController.update(c))
 routes.delete("/sub-category/:id", authMiddleware, (c) => subCategoryController.destroy(c))
+
+// Feedback
+routes.get("/feedback", authMiddleware, (c) => feedbackController.index(c))
+routes.post("/feedback", authMiddleware, zValidator("form", StoreFeedbackValidator, validationHook), (c) => feedbackController.store(c))
+
 
 // Upload
 routes.post("/upload", authMiddleware, async (c) => {

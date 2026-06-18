@@ -61,4 +61,7 @@ export const config = {
         secretKey: process.env.MINIO_SECRET_KEY || '',
         bucket: process.env.MINIO_BUCKET || 'simas-be',
     },
+    feedback: {
+        scriptUrl: process.env.FEEDBACK_URL || '',
+    },
 }

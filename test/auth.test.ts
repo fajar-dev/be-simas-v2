@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeAll, afterAll, beforeEach } from "bun:test"
+import { describe, test, expect, beforeAll, afterAll, beforeEach, mock } from "bun:test"
 import { Hono } from "hono"
 import {
     initTestDatabase,
@@ -9,6 +9,42 @@ import {
     registerAndLogin,
 } from "./setup"
 import { createUserData, resetCounters } from "./helpers"
+
+// ── Mock MinIO to prevent real connections ──────────────────────────────────
+
+mock.module("../src/core/helpers/minio", () => {
+    const sanitizePath = (urlOrPath: string | null | undefined, bucket: string = "stock"): string | null => {
+        if (!urlOrPath) return null
+        let decoded = urlOrPath
+        try {
+            while (decoded && decoded.includes('%')) {
+                const next = decodeURIComponent(decoded)
+                if (next === decoded) break
+                decoded = next
+            }
+        } catch { /* ignore */ }
+        const marker = `/${bucket}/`
+        if (decoded.includes(marker)) {
+            const parts = decoded.split(marker)
+            decoded = parts[parts.length - 1]
+        }
+        if (decoded.includes('?')) decoded = decoded.split('?')[0]
+        decoded = decoded.replace(/^\/+|\/+$/g, '')
+        return decoded || null
+    }
+
+    const helper = {
+        upload: async () => {},
+        getProxyUrl: (objectName: string) => `http://cdn.test.com/stock/${objectName}`,
+        getPresignedUrl: async (path: string) => `http://cdn.test.com/stock/${path}`,
+        getPublicUrl: (objectName: string) => `http://cdn.test.com/stock/${objectName}`,
+        sanitizePath,
+        ensureBucket: async () => {},
+        proxyHandler: async () => new Response("ok"),
+    }
+
+    return { minio: helper, default: helper }
+})
 
 // ── Setup ───────────────────────────────────────────────────────────────────
 
