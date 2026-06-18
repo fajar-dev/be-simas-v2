@@ -74,7 +74,6 @@ function createAssetData(subCategoryId: number, overrides: Record<string, any> =
         code: `AST-${String(assetCounter).padStart(3, "0")}`,
         name: `Asset ${assetCounter}`,
         description: `Description for asset ${assetCounter}`,
-        modal: 10000000 + assetCounter,
         price: 15000000 + assetCounter,
         purchaseDate: "2026-06-18",
         brand: "Brand A",
@@ -175,7 +174,6 @@ describe("POST /api/asset", () => {
         expect(body.data.code).toBe(assetData.code)
         expect(body.data.name).toBe(assetData.name)
         expect(body.data.description).toBe(assetData.description)
-        expect(body.data.modal).toBe(assetData.modal)
         expect(body.data.price).toBe(assetData.price)
         expect(body.data.purchaseDate).toBe(assetData.purchaseDate)
         expect(body.data.brand).toBe(assetData.brand)
@@ -206,7 +204,6 @@ describe("POST /api/asset", () => {
         expect(status).toBe(201)
         expect(body.success).toBe(true)
         expect(body.data.description).toBeNull()
-        expect(body.data.modal).toBeNull()
         expect(body.data.price).toBeNull()
         expect(body.data.purchaseDate).toBeNull()
         expect(body.data.brand).toBeNull()

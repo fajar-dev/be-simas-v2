@@ -13,7 +13,6 @@ export class AssetSerializer {
             code: asset.code,
             name: asset.name,
             description: asset.description || null,
-            modal: asset.modal ?? null,
             price: asset.price ?? null,
             purchaseDate: asset.purchaseDate || null,
             brand: asset.brand || null,

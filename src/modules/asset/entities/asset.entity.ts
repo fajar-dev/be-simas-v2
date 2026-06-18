@@ -15,8 +15,6 @@ export class Asset {
     @Column({ nullable: true })
     description?: string
 
-    @Column({ type: "integer", nullable: true })
-    modal?: number
 
     @Column({ type: "integer", nullable: true })
     price?: number

@@ -308,7 +308,6 @@ components:
         code: { type: string, example: "AST-001" }
         name: { type: string, example: "MacBook Pro M3" }
         description: { type: string, nullable: true, example: "Company laptop" }
-        modal: { type: integer, example: 15000000 }
         price: { type: integer, example: 20000000 }
         purchaseDate: { type: string, format: date, example: "2026-06-18" }
         brand: { type: string, example: "Apple" }
@@ -322,7 +321,6 @@ components:
         code: { type: string, example: "AST-001" }
         name: { type: string, example: "MacBook Pro M3" }
         description: { type: string, nullable: true, example: "Company laptop" }
-        modal: { type: integer, example: 15000000 }
         price: { type: integer, example: 20000000 }
         purchaseDate: { type: string, format: date, example: "2026-06-18" }
         brand: { type: string, example: "Apple" }
@@ -337,7 +335,6 @@ components:
         code: { type: string, example: "AST-001" }
         name: { type: string, example: "MacBook Pro M3" }
         description: { type: string, nullable: true, example: "Company laptop" }
-        modal: { type: integer, nullable: true, example: 15000000 }
         price: { type: integer, nullable: true, example: 20000000 }
         purchaseDate: { type: string, format: date, nullable: true, example: "2026-06-18" }
         brand: { type: string, nullable: true, example: "Apple" }
