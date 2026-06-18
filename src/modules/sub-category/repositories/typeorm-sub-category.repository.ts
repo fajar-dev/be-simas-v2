@@ -10,7 +10,7 @@ export class TypeOrmSubCategoryRepository implements ISubCategoryRepository {
         this.repository = AppDataSource.getRepository(SubCategory)
     }
 
-    async findAll(page: number, limit: number, q: string): Promise<{ data: SubCategory[]; total: number }> {
+    async findAll(page: number, limit: number, q: string, categoryId?: number): Promise<{ data: SubCategory[]; total: number }> {
         const offset = (page - 1) * limit
 
         const query = this.repository.createQueryBuilder("sub_category")
@@ -21,6 +21,10 @@ export class TypeOrmSubCategoryRepository implements ISubCategoryRepository {
                 "(sub_category.name LIKE :q OR sub_category.description LIKE :q)",
                 { q: `%${q}%` }
             )
+        }
+
+        if (categoryId) {
+            query.andWhere("sub_category.categoryId = :categoryId", { categoryId })
         }
 
         const total = await query.getCount()

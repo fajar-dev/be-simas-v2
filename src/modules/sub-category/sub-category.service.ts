@@ -6,8 +6,8 @@ import { ISubCategoryRepository } from "./interfaces/sub-category.repository.int
 export class SubCategoryService {
     constructor(private readonly repository: ISubCategoryRepository) {}
 
-    async getAll(page: number, limit: number, q: string): Promise<{ data: SubCategory[]; total: number }> {
-        return await this.repository.findAll(page, limit, q)
+    async getAll(page: number, limit: number, q: string, categoryId?: number): Promise<{ data: SubCategory[]; total: number }> {
+        return await this.repository.findAll(page, limit, q, categoryId)
     }
 
     async getById(id: number): Promise<SubCategory> {
