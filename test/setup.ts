@@ -8,6 +8,7 @@ import { SubCategory } from "../src/modules/sub-category/entities/sub-category.e
 import { Employee } from "../src/modules/employee/entities/employee.entity"
 import { Branch } from "../src/modules/branch/entities/branch.entity"
 import { Location } from "../src/modules/location/entities/location.entity"
+import { Asset } from "../src/modules/asset/entities/asset.entity"
 import { ApiResponse } from "../src/core/helpers/response"
 import { BaseException, ValidationException } from "../src/core/exceptions/base"
 import { ZodError } from "zod"
@@ -30,7 +31,7 @@ const TestDataSource = new DataSource({
     database: testDbName,
     synchronize: true,
     dropSchema: true,
-    entities: [User, Category, SubCategory, Employee, Branch, Location],
+    entities: [User, Category, SubCategory, Employee, Branch, Location, Asset],
     logging: false,
 })
 

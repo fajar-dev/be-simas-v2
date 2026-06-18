@@ -6,6 +6,7 @@ import { SubCategory } from "../modules/sub-category/entities/sub-category.entit
 import { Employee } from "../modules/employee/entities/employee.entity"
 import { Branch } from "../modules/branch/entities/branch.entity"
 import { Location } from "../modules/location/entities/location.entity"
+import { Asset } from "../modules/asset/entities/asset.entity"
 import { config } from "./config"
 
 /**
@@ -23,7 +24,7 @@ const defaultDataSource = new DataSource({
     password: config.database.pass,
     database: config.database.name,
     synchronize: config.database.sync,
-    entities: [User, Category, SubCategory, Employee, Branch, Location],
+    entities: [User, Category, SubCategory, Employee, Branch, Location, Asset],
     migrations: [],
     subscribers: [],
 })
