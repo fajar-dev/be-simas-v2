@@ -310,6 +310,40 @@ describe("GET /api/branch", () => {
         expect(body.meta.currentPage).toBe(1)
         expect(body.meta.lastPage).toBe(2)
     })
+
+    test("should sort branches by name or code", async () => {
+        const { headers } = await registerAndLogin(app)
+
+        await request(app, "/api/branch", {
+            method: "POST",
+            headers,
+            body: createBranchData({ name: "Surabaya", code: "SBY-001" }),
+        })
+        await request(app, "/api/branch", {
+            method: "POST",
+            headers,
+            body: createBranchData({ name: "Jakarta", code: "JKT-001" }),
+        })
+        await request(app, "/api/branch", {
+            method: "POST",
+            headers,
+            body: createBranchData({ name: "Medan", code: "MDN-001" }),
+        })
+
+        // Sort by name ASC
+        const resNameAsc = await request(app, "/api/branch?sortBy=name&order=ASC", { method: "GET", headers })
+        expect(resNameAsc.status).toBe(200)
+        expect(resNameAsc.body.data[0].name).toBe("Jakarta")
+        expect(resNameAsc.body.data[1].name).toBe("Medan")
+        expect(resNameAsc.body.data[2].name).toBe("Surabaya")
+
+        // Sort by code DESC
+        const resCodeDesc = await request(app, "/api/branch?sortBy=code&order=DESC", { method: "GET", headers })
+        expect(resCodeDesc.status).toBe(200)
+        expect(resCodeDesc.body.data[0].code).toBe("SBY-001")
+        expect(resCodeDesc.body.data[1].code).toBe("MDN-001")
+        expect(resCodeDesc.body.data[2].code).toBe("JKT-001")
+    })
 })
 
 // ═══════════════════════════════════════════════════════════════════════════

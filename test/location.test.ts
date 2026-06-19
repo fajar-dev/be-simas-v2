@@ -375,6 +375,47 @@ describe("GET /api/location", () => {
         expect(body.meta.currentPage).toBe(1)
         expect(body.meta.lastPage).toBe(2)
     })
+
+    test("should sort locations by name or branch name", async () => {
+        const { headers } = await registerAndLogin(app)
+        
+        const branchRes1 = await request(app, "/api/branch", {
+            method: "POST",
+            headers,
+            body: { code: "BR-A", name: "A Branch" }
+        })
+        const branch1 = branchRes1.body.data
+
+        const branchRes2 = await request(app, "/api/branch", {
+            method: "POST",
+            headers,
+            body: { code: "BR-B", name: "B Branch" }
+        })
+        const branch2 = branchRes2.body.data
+
+        await request(app, "/api/location", {
+            method: "POST",
+            headers,
+            body: createLocationData(branch2.id, { name: "Z Location" }), // B Branch
+        })
+        await request(app, "/api/location", {
+            method: "POST",
+            headers,
+            body: createLocationData(branch1.id, { name: "Y Location" }), // A Branch
+        })
+
+        // Sort by name ASC
+        const resNameAsc = await request(app, "/api/location?sortBy=name&order=ASC", { method: "GET", headers })
+        expect(resNameAsc.status).toBe(200)
+        expect(resNameAsc.body.data[0].name).toBe("Y Location")
+        expect(resNameAsc.body.data[1].name).toBe("Z Location")
+
+        // Sort by branch name ASC
+        const resBranchAsc = await request(app, "/api/location?sortBy=branch&order=ASC", { method: "GET", headers })
+        expect(resBranchAsc.status).toBe(200)
+        expect(resBranchAsc.body.data[0].branch.name).toBe("A Branch")
+        expect(resBranchAsc.body.data[1].branch.name).toBe("B Branch")
+    })
 })
 
 // ═══════════════════════════════════════════════════════════════════════════

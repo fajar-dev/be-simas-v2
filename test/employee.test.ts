@@ -340,6 +340,40 @@ describe("GET /api/employee", () => {
         expect(body.meta.currentPage).toBe(1)
         expect(body.meta.lastPage).toBe(2)
     })
+
+    test("should sort employees by name or employeeId", async () => {
+        const { headers } = await registerAndLogin(app)
+
+        await request(app, "/api/employee", {
+            method: "POST",
+            headers,
+            body: createEmployeeData({ name: "Charlie", employeeId: "EMP-003" }),
+        })
+        await request(app, "/api/employee", {
+            method: "POST",
+            headers,
+            body: createEmployeeData({ name: "Bob", employeeId: "EMP-002" }),
+        })
+        await request(app, "/api/employee", {
+            method: "POST",
+            headers,
+            body: createEmployeeData({ name: "Alice", employeeId: "EMP-001" }),
+        })
+
+        // Sort by name ASC
+        const resNameAsc = await request(app, "/api/employee?sortBy=name&order=ASC", { method: "GET", headers })
+        expect(resNameAsc.status).toBe(200)
+        expect(resNameAsc.body.data[0].name).toBe("Alice")
+        expect(resNameAsc.body.data[1].name).toBe("Bob")
+        expect(resNameAsc.body.data[2].name).toBe("Charlie")
+
+        // Sort by employeeId DESC
+        const resIdDesc = await request(app, "/api/employee?sortBy=employeeId&order=DESC", { method: "GET", headers })
+        expect(resIdDesc.status).toBe(200)
+        expect(resIdDesc.body.data[0].employeeId).toBe("EMP-003")
+        expect(resIdDesc.body.data[1].employeeId).toBe("EMP-002")
+        expect(resIdDesc.body.data[2].employeeId).toBe("EMP-001")
+    })
 })
 
 // ═══════════════════════════════════════════════════════════════════════════

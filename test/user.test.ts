@@ -214,6 +214,40 @@ describe("GET /api/user", () => {
         expect(body.data.length).toBe(1)
         expect(body.data[0].name).toBe("Alice Cooper")
     })
+
+    test("should sort users by name", async () => {
+        const { headers } = await registerAndLogin(app) // creates first user (Test User 1)
+
+        await request(app, "/api/user", {
+            method: "POST",
+            headers,
+            body: { name: "Charlie", email: "charlie@example.com", password: "password123" },
+        })
+        await request(app, "/api/user", {
+            method: "POST",
+            headers,
+            body: { name: "Bob", email: "bob@example.com", password: "password123" },
+        })
+
+        // Sort by name ASC
+        const resAsc = await request(app, "/api/user?sortBy=name&order=ASC", {
+            method: "GET",
+            headers,
+        })
+        const namesAsc = resAsc.body.data.map((u: any) => u.name)
+        expect(namesAsc[0]).toBe("Bob")
+        expect(namesAsc[1]).toBe("Charlie")
+
+        // Sort by name DESC
+        const resDesc = await request(app, "/api/user?sortBy=name&order=DESC", {
+            method: "GET",
+            headers,
+        })
+        const namesDesc = resDesc.body.data.map((u: any) => u.name)
+        expect(namesDesc[0]).toBe("Test User")
+        expect(namesDesc[1]).toBe("Charlie")
+        expect(namesDesc[2]).toBe("Bob")
+    })
 })
 
 // ═══════════════════════════════════════════════════════════════════════════

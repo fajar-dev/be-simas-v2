@@ -328,6 +328,48 @@ describe("GET /api/asset", () => {
         expect(res2.body.data[0].code).toBe("MAC-01" ? "DELL-01" : "DELL-01") // check code
         expect(res2.body.data[0].name).toBe("Dell XPS")
     })
+
+    test("should sort assets by name or price", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, { name: "B Asset", price: 20000, code: "AST-B" }),
+        })
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, { name: "A Asset", price: 30000, code: "AST-A" }),
+        })
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, { name: "C Asset", price: 10000, code: "AST-C" }),
+        })
+
+        // Sort by name ASC
+        const resNameAsc = await request(app, "/api/asset?sortBy=name&order=ASC", { method: "GET", headers })
+        expect(resNameAsc.status).toBe(200)
+        expect(resNameAsc.body.data[0].name).toBe("A Asset")
+        expect(resNameAsc.body.data[1].name).toBe("B Asset")
+        expect(resNameAsc.body.data[2].name).toBe("C Asset")
+
+        // Sort by name DESC
+        const resNameDesc = await request(app, "/api/asset?sortBy=name&order=DESC", { method: "GET", headers })
+        expect(resNameDesc.status).toBe(200)
+        expect(resNameDesc.body.data[0].name).toBe("C Asset")
+        expect(resNameDesc.body.data[1].name).toBe("B Asset")
+        expect(resNameDesc.body.data[2].name).toBe("A Asset")
+
+        // Sort by price ASC
+        const resPriceAsc = await request(app, "/api/asset?sortBy=price&order=ASC", { method: "GET", headers })
+        expect(resPriceAsc.status).toBe(200)
+        expect(resPriceAsc.body.data[0].price).toBe(10000)
+        expect(resPriceAsc.body.data[1].price).toBe(20000)
+        expect(resPriceAsc.body.data[2].price).toBe(30000)
+    })
 })
 
 // ═══════════════════════════════════════════════════════════════════════════

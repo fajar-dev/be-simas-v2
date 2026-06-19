@@ -611,6 +611,14 @@ paths:
           in: query
           description: Filter by status (1 = active, 0 = inactive)
           schema: { type: string }
+        - name: sortBy
+          in: query
+          description: Field to sort by
+          schema: { type: string, enum: [name, email, isActive, createdAt] }
+        - name: order
+          in: query
+          description: Sort order
+          schema: { type: string, enum: [ASC, DESC], default: DESC }
       responses:
         "200":
           description: Users retrieved successfully
@@ -794,6 +802,14 @@ paths:
           in: query
           description: Search by name, employee ID, email, or job position
           schema: { type: string }
+        - name: sortBy
+          in: query
+          description: Field to sort by
+          schema: { type: string, enum: [name, employeeId, jobPosition, email, phone] }
+        - name: order
+          in: query
+          description: Sort order
+          schema: { type: string, enum: [ASC, DESC], default: DESC }
       responses:
         "200":
           description: Employees retrieved successfully
@@ -927,6 +943,14 @@ paths:
           in: query
           description: Search by name, code, or description
           schema: { type: string }
+        - name: sortBy
+          in: query
+          description: Field to sort by
+          schema: { type: string, enum: [code, name, description] }
+        - name: order
+          in: query
+          description: Sort order
+          schema: { type: string, enum: [ASC, DESC], default: DESC }
       responses:
         "200":
           description: Branches retrieved successfully
@@ -1060,6 +1084,14 @@ paths:
           in: query
           description: Search by location name, description, or branch name
           schema: { type: string }
+        - name: sortBy
+          in: query
+          description: Field to sort by
+          schema: { type: string, enum: [name, branch, description] }
+        - name: order
+          in: query
+          description: Sort order
+          schema: { type: string, enum: [ASC, DESC], default: DESC }
       responses:
         "200":
           description: Locations retrieved successfully
@@ -1193,6 +1225,14 @@ paths:
           in: query
           description: Search by name, code, brand, model, subcategory name, or category name
           schema: { type: string }
+        - name: sortBy
+          in: query
+          description: Field to sort by
+          schema: { type: string, enum: [name, code, brand, model, price, purchaseDate, createdAt, category, subCategory] }
+        - name: order
+          in: query
+          description: Sort order
+          schema: { type: string, enum: [ASC, DESC], default: DESC }
       responses:
         "200":
           description: Assets retrieved successfully
