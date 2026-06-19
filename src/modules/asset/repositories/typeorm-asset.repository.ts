@@ -3,6 +3,10 @@ import { AppDataSource } from "../../../config/database"
 import { Asset } from "../entities/asset.entity"
 import { AssetLabel } from "../entities/asset-label.entity"
 import { IAssetRepository } from "../interfaces/asset.repository.interface"
+import { AssetHolder } from "../../asset-holder/entities/asset-holder.entity"
+import { AssetLocation } from "../../asset-location/entities/asset-location.entity"
+import { Employee } from "../../employee/entities/employee.entity"
+import { Location } from "../../location/entities/location.entity"
 
 export class TypeOrmAssetRepository implements IAssetRepository {
     private readonly repository: Repository<Asset>
@@ -18,6 +22,10 @@ export class TypeOrmAssetRepository implements IAssetRepository {
             .leftJoinAndSelect("asset.subCategory", "subCategory")
             .leftJoinAndSelect("subCategory.category", "category")
             .leftJoinAndSelect("asset.labels", "labels")
+            .leftJoin(AssetHolder, "activeHolder", "activeHolder.assetId = asset.id AND activeHolder.returnedDate IS NULL")
+            .leftJoin(Employee, "activeEmployee", "activeEmployee.id = activeHolder.employeeId")
+            .leftJoin(AssetLocation, "lastAssetLocation", "lastAssetLocation.id = (SELECT MAX(sub_al.id) FROM asset_locations sub_al WHERE sub_al.asset_id = asset.id)")
+            .leftJoin(Location, "lastLoc", "lastLoc.id = lastAssetLocation.locationId")
 
         if (q) {
             query.where(
@@ -39,6 +47,8 @@ export class TypeOrmAssetRepository implements IAssetRepository {
             createdAt: "asset.createdAt",
             category: "category.name",
             subCategory: "subCategory.name",
+            location: "lastLoc.name",
+            holder: "activeEmployee.name",
         }
 
         const sortColumn = sortColumnMap[sortBy || ''] || "asset.id"
