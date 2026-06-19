@@ -355,6 +355,62 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
+    AttachmentResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        originalName: { type: string, example: "report.pdf" }
+        filename: { type: string, example: "attachments/xyz.pdf" }
+        mimeType: { type: string, example: "application/pdf" }
+        size: { type: integer, example: 1048576 }
+        url: { type: string, example: "https://cdn.example.com/stock/attachments/xyz.pdf" }
+        entityType: { type: string, nullable: true, example: "AssetMaintenance" }
+        entityId: { type: integer, nullable: true, example: 1 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    CreateAssetMaintenanceRequest:
+      type: object
+      required: [assetId, date]
+      properties:
+        assetId: { type: integer, example: 1 }
+        date: { type: string, format: date, example: "2026-06-19" }
+        note: { type: string, example: "Routine hardware checkup" }
+        attachmentIds:
+          type: array
+          items: { type: integer }
+          example: [1, 2]
+
+    UpdateAssetMaintenanceRequest:
+      type: object
+      properties:
+        assetId: { type: integer, example: 1 }
+        date: { type: string, format: date, example: "2026-06-19" }
+        note: { type: string, example: "Routine hardware checkup" }
+        attachmentIds:
+          type: array
+          items: { type: integer }
+          example: [1, 2]
+
+    AssetMaintenanceResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        assetId: { type: integer, example: 1 }
+        date: { type: string, format: date, example: "2026-06-19" }
+        note: { type: string, nullable: true, example: "Routine hardware checkup" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        asset:
+          type: object
+          properties:
+            id: { type: integer, example: 1 }
+            name: { type: string, example: "MacBook Pro M3" }
+            code: { type: string, example: "AST-001" }
+        attachments:
+          type: array
+          items: { $ref: "#/components/schemas/AttachmentResponse" }
+
 paths:
   # ── Register ──────────────────────────────────────────────────────────────
   /auth/register:
@@ -1385,4 +1441,197 @@ paths:
                           path: { type: string, example: "users/abc-123.png" }
         "400": { description: No file uploaded or invalid file }
         "401": { description: Unauthorized }
+
+  # ── Attachment ────────────────────────────────────────────────────────────
+  /attachment:
+    post:
+      tags: [Attachment]
+      summary: Upload an attachment (generic file upload)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The file to upload
+      responses:
+        "201":
+          description: Attachment uploaded successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/AttachmentResponse" }
+        "400": { description: Invalid file }
+        "401": { description: Unauthorized }
+
+  /attachment/{id}:
+    delete:
+      tags: [Attachment]
+      summary: Delete an attachment
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Attachment deleted successfully
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BaseResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Attachment not found }
+
+  # ── Asset Maintenance ─────────────────────────────────────────────────────
+  /asset-maintenance:
+    get:
+      tags: [Asset Maintenance]
+      summary: Get list of asset maintenance events
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+        - name: q
+          in: query
+          schema: { type: string }
+        - name: sortBy
+          in: query
+          schema: { type: string, enum: [date, asset, createdAt] }
+        - name: order
+          in: query
+          schema: { type: string, enum: [ASC, DESC] }
+        - name: assetId
+          in: query
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Asset maintenance events retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/AssetMaintenanceResponse" }
+        "401": { description: Unauthorized }
+
+    post:
+      tags: [Asset Maintenance]
+      summary: Create a new asset maintenance record
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateAssetMaintenanceRequest" }
+      responses:
+        "201":
+          description: Asset maintenance record created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/AssetMaintenanceResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Asset not found }
+        "422": { description: Validation error }
+
+  /asset-maintenance/{id}:
+    get:
+      tags: [Asset Maintenance]
+      summary: Get asset maintenance details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Asset maintenance record retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/AssetMaintenanceResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Maintenance record not found }
+
+    put:
+      tags: [Asset Maintenance]
+      summary: Update an asset maintenance record
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateAssetMaintenanceRequest" }
+      responses:
+        "200":
+          description: Asset maintenance record updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/AssetMaintenanceResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Maintenance record not found }
+        "422": { description: Validation error }
+
+    delete:
+      tags: [Asset Maintenance]
+      summary: Delete an asset maintenance record
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Asset maintenance record deleted successfully
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BaseResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Maintenance record not found }
 

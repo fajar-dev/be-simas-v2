@@ -11,6 +11,7 @@ import { CreateEmployeeValidator, UpdateEmployeeValidator } from "../modules/emp
 import { CreateBranchValidator, UpdateBranchValidator } from "../modules/branch/validators/branch.validator"
 import { CreateLocationValidator, UpdateLocationValidator } from "../modules/location/validators/location.validator"
 import { CreateAssetValidator, UpdateAssetValidator } from "../modules/asset/validators/asset.validator"
+import { CreateAssetMaintenanceValidator, UpdateAssetMaintenanceValidator } from "../modules/asset-maintenance/validators/asset-maintenance.validator"
 
 // ── Middlewares ──────────────────────────────────────────────────────────────
 import { authMiddleware } from "../core/middlewares/auth.middleware"
@@ -27,6 +28,8 @@ import { employeeController } from "../modules/employee/employee.module"
 import { branchController } from "../modules/branch/branch.module"
 import { locationController } from "../modules/location/location.module"
 import { assetController } from "../modules/asset/asset.module"
+import { attachmentController } from "../modules/attachment/attachment.module"
+import { assetMaintenanceController } from "../modules/asset-maintenance/asset-maintenance.module"
 import { StoreFeedbackValidator } from "../modules/feedback/validators/feedback.validator"
 
 // ── Routes ───────────────────────────────────────────────────────────────────
@@ -99,6 +102,17 @@ routes.get("/asset/:id", authMiddleware, (c) => assetController.show(c))
 routes.post("/asset", authMiddleware, zValidator("json", CreateAssetValidator, validationHook), (c) => assetController.store(c))
 routes.put("/asset/:id", authMiddleware, zValidator("json", UpdateAssetValidator, validationHook), (c) => assetController.update(c))
 routes.delete("/asset/:id", authMiddleware, (c) => assetController.destroy(c))
+
+// Attachment
+routes.post("/attachment", authMiddleware, (c) => attachmentController.upload(c))
+routes.delete("/attachment/:id", authMiddleware, (c) => attachmentController.destroy(c))
+
+// Asset Maintenance
+routes.get("/asset-maintenance", authMiddleware, (c) => assetMaintenanceController.index(c))
+routes.get("/asset-maintenance/:id", authMiddleware, (c) => assetMaintenanceController.show(c))
+routes.post("/asset-maintenance", authMiddleware, zValidator("json", CreateAssetMaintenanceValidator, validationHook), (c) => assetMaintenanceController.store(c))
+routes.put("/asset-maintenance/:id", authMiddleware, zValidator("json", UpdateAssetMaintenanceValidator, validationHook), (c) => assetMaintenanceController.update(c))
+routes.delete("/asset-maintenance/:id", authMiddleware, (c) => assetMaintenanceController.destroy(c))
 
 
 // Upload

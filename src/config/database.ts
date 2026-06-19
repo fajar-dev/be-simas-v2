@@ -8,6 +8,8 @@ import { Branch } from "../modules/branch/entities/branch.entity"
 import { Location } from "../modules/location/entities/location.entity"
 import { Asset } from "../modules/asset/entities/asset.entity"
 import { AssetLabel } from "../modules/asset/entities/asset-label.entity"
+import { Attachment } from "../modules/attachment/entities/attachment.entity"
+import { AssetMaintenance } from "../modules/asset-maintenance/entities/asset-maintenance.entity"
 import { config } from "./config"
 
 /**
@@ -25,7 +27,7 @@ const defaultDataSource = new DataSource({
     password: config.database.pass,
     database: config.database.name,
     synchronize: config.database.sync,
-    entities: [User, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel],
+    entities: [User, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance],
     migrations: [],
     subscribers: [],
 })

@@ -10,6 +10,8 @@ import { Branch } from "../src/modules/branch/entities/branch.entity"
 import { Location } from "../src/modules/location/entities/location.entity"
 import { Asset } from "../src/modules/asset/entities/asset.entity"
 import { AssetLabel } from "../src/modules/asset/entities/asset-label.entity"
+import { Attachment } from "../src/modules/attachment/entities/attachment.entity"
+import { AssetMaintenance } from "../src/modules/asset-maintenance/entities/asset-maintenance.entity"
 import { ApiResponse } from "../src/core/helpers/response"
 import { BaseException, ValidationException } from "../src/core/exceptions/base"
 import { ZodError } from "zod"
@@ -32,7 +34,7 @@ const TestDataSource = new DataSource({
     database: testDbName,
     synchronize: true,
     dropSchema: true,
-    entities: [User, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel],
+    entities: [User, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance],
     logging: false,
 })
 
