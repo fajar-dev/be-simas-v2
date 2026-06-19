@@ -43,6 +43,8 @@ export class TypeOrmAssetLocationRepository implements IAssetLocationRepository 
             date: "log.date",
             location: "location.name",
             createdAt: "log.createdAt",
+            note: "log.note",
+            createdBy: "createdBy.name",
         }
 
         const sortColumn = sortColumnMap[sortBy || ''] || "log.id"

@@ -416,6 +416,55 @@ describe("GET /api/location", () => {
         expect(resBranchAsc.body.data[0].branch.name).toBe("A Branch")
         expect(resBranchAsc.body.data[1].branch.name).toBe("B Branch")
     })
+
+    test("should filter locations by branchId", async () => {
+        const { headers } = await registerAndLogin(app)
+        
+        const branchRes1 = await request(app, "/api/branch", {
+            method: "POST",
+            headers,
+            body: { code: "BR-A", name: "Branch A" }
+        })
+        const branch1 = branchRes1.body.data
+
+        const branchRes2 = await request(app, "/api/branch", {
+            method: "POST",
+            headers,
+            body: { code: "BR-B", name: "Branch B" }
+        })
+        const branch2 = branchRes2.body.data
+
+        await request(app, "/api/location", {
+            method: "POST",
+            headers,
+            body: createLocationData(branch1.id, { name: "Location A1" }),
+        })
+        await request(app, "/api/location", {
+            method: "POST",
+            headers,
+            body: createLocationData(branch1.id, { name: "Location A2" }),
+        })
+        await request(app, "/api/location", {
+            method: "POST",
+            headers,
+            body: createLocationData(branch2.id, { name: "Location B1" }),
+        })
+
+        // Test filtering by query param
+        const resQuery = await request(app, `/api/location?branchId=${branch1.id}`, { method: "GET", headers })
+        expect(resQuery.status).toBe(200)
+        expect(resQuery.body.data.length).toBe(2)
+        expect(resQuery.body.data.every((loc: any) => loc.branch.id === branch1.id)).toBe(true)
+
+        // Test filtering by custom route /location/by-branch/:branchId
+        const resRoute = await request(app, `/api/location/by-branch/${branch1.id}`, { method: "GET", headers })
+        expect(resRoute.status).toBe(200)
+        expect(resRoute.body.success).toBe(true)
+        expect(resRoute.body.data.length).toBe(2)
+        expect(resRoute.body.data[0].name).toBe("Location A1")
+        expect(resRoute.body.data[1].name).toBe("Location A2")
+        expect(resRoute.body.data.every((loc: any) => loc.branch.id === branch1.id)).toBe(true)
+    })
 })
 
 // ═══════════════════════════════════════════════════════════════════════════

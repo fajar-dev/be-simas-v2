@@ -10,7 +10,7 @@ export class TypeOrmLocationRepository implements ILocationRepository {
         this.repository = AppDataSource.getRepository(Location)
     }
 
-    async findAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: Location[]; total: number }> {
+    async findAll(page: number, limit: number, q: string, branchId?: number, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: Location[]; total: number }> {
         const offset = (page - 1) * limit
 
         const query = this.repository.createQueryBuilder("location")
@@ -21,6 +21,10 @@ export class TypeOrmLocationRepository implements ILocationRepository {
                 "(location.name LIKE :q OR location.description LIKE :q OR branch.name LIKE :q)",
                 { q: `%${q}%` }
             )
+        }
+
+        if (branchId) {
+            query.andWhere("location.branchId = :branchId", { branchId })
         }
 
         const total = await query.getCount()
@@ -42,6 +46,14 @@ export class TypeOrmLocationRepository implements ILocationRepository {
             .getMany()
 
         return { data, total }
+    }
+
+    async findByBranchId(branchId: number): Promise<Location[]> {
+        return await this.repository.find({
+            where: { branchId },
+            relations: ["branch"],
+            order: { name: "ASC" }
+        })
     }
 
     async findById(id: number): Promise<Location | null> {

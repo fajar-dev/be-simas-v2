@@ -92,6 +92,7 @@ routes.delete("/branch/:id", authMiddleware, (c) => branchController.destroy(c))
 
 // Location
 routes.get("/location", authMiddleware, (c) => locationController.index(c))
+routes.get("/location/by-branch/:branchId", authMiddleware, (c) => locationController.byBranch(c))
 routes.get("/location/:id", authMiddleware, (c) => locationController.show(c))
 routes.post("/location", authMiddleware, zValidator("json", CreateLocationValidator, validationHook), (c) => locationController.store(c))
 routes.put("/location/:id", authMiddleware, zValidator("json", UpdateLocationValidator, validationHook), (c) => locationController.update(c))

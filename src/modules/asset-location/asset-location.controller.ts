@@ -34,8 +34,8 @@ export class AssetLocationController {
             throw new BadRequestException("Invalid ID")
         }
 
-        const log = await this.service.getById(id)
-        const data = await AssetLocationSerializer.single(log)
+        const { log, attachments } = await this.service.getById(id)
+        const data = await AssetLocationSerializer.single(log, attachments)
 
         return ApiResponse.success(c, data, "Asset location record retrieved successfully")
     }
@@ -48,7 +48,8 @@ export class AssetLocationController {
             createdByUserId: user?.id,
         })
 
-        const data = await AssetLocationSerializer.single(log)
+        const { log: reloaded, attachments } = await this.service.getById(log.id)
+        const data = await AssetLocationSerializer.single(reloaded, attachments)
         return ApiResponse.success(c, data, "Asset relocated successfully", 201)
     }
 }

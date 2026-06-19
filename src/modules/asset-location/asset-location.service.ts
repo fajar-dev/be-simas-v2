@@ -4,9 +4,14 @@ import { Asset } from "../asset/entities/asset.entity"
 import { Location } from "../location/entities/location.entity"
 import { AppDataSource } from "../../config/database"
 import { NotFoundException } from "../../core/exceptions/base"
+import { AttachmentService } from "../attachment/attachment.service"
+import { Attachment } from "../attachment/entities/attachment.entity"
 
 export class AssetLocationService {
-    constructor(private readonly repository: IAssetLocationRepository) {}
+    constructor(
+        private readonly repository: IAssetLocationRepository,
+        private readonly attachmentService: AttachmentService
+    ) {}
 
     async getAll(
         page: number,
@@ -15,19 +20,27 @@ export class AssetLocationService {
         sortBy?: string,
         order?: 'ASC' | 'DESC',
         assetId?: number
-    ): Promise<{ data: AssetLocation[]; total: number }> {
-        return await this.repository.findAll(page, limit, q, sortBy, order, assetId)
+    ): Promise<{ data: { log: AssetLocation; attachments: Attachment[] }[]; total: number }> {
+        const { data, total } = await this.repository.findAll(page, limit, q, sortBy, order, assetId)
+
+        const mapped = await Promise.all(data.map(async (log) => {
+            const attachments = await this.attachmentService.getForEntity("AssetLocation", log.id)
+            return { log, attachments }
+        }))
+
+        return { data: mapped, total }
     }
 
-    async getById(id: number): Promise<AssetLocation> {
+    async getById(id: number): Promise<{ log: AssetLocation; attachments: Attachment[] }> {
         const log = await this.repository.findById(id)
         if (!log) {
             throw new NotFoundException("Asset location record not found")
         }
-        return log
+        const attachments = await this.attachmentService.getForEntity("AssetLocation", id)
+        return { log, attachments }
     }
 
-    async create(data: Partial<AssetLocation>): Promise<AssetLocation> {
+    async create(data: Partial<AssetLocation> & { attachmentIds?: number[] }): Promise<AssetLocation> {
         // Validate asset exists
         const assetRepo = AppDataSource.getRepository(Asset)
         const assetExists = await assetRepo.findOneBy({ id: data.assetId })
@@ -54,6 +67,10 @@ export class AssetLocationService {
                 note: data.note,
                 createdByUserId: data.createdByUserId,
             }, queryRunner.manager)
+
+            if (data.attachmentIds && data.attachmentIds.length > 0) {
+                await this.attachmentService.associate(data.attachmentIds, "AssetLocation", log.id, queryRunner.manager)
+            }
 
             await queryRunner.commitTransaction()
 

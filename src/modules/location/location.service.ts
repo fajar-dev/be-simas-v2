@@ -6,8 +6,12 @@ import { ILocationRepository } from "./interfaces/location.repository.interface"
 export class LocationService {
     constructor(private readonly repository: ILocationRepository) {}
 
-    async getAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: Location[]; total: number }> {
-        return await this.repository.findAll(page, limit, q, sortBy, order)
+    async getAll(page: number, limit: number, q: string, branchId?: number, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: Location[]; total: number }> {
+        return await this.repository.findAll(page, limit, q, branchId, sortBy, order)
+    }
+
+    async getByBranchId(branchId: number): Promise<Location[]> {
+        return await this.repository.findByBranchId(branchId)
     }
 
     async getById(id: number): Promise<Location> {

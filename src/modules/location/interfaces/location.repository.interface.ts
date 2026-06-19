@@ -2,7 +2,8 @@ import { EntityManager } from "typeorm"
 import { Location } from "../entities/location.entity"
 
 export interface ILocationRepository {
-    findAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: Location[]; total: number }>
+    findAll(page: number, limit: number, q: string, branchId?: number, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: Location[]; total: number }>
+    findByBranchId(branchId: number): Promise<Location[]>
     findById(id: number): Promise<Location | null>
     save(data: Partial<Location>, manager?: EntityManager): Promise<Location>
     merge(entity: Location, data: Partial<Location>): Location

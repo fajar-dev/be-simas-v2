@@ -5,6 +5,7 @@ export const CreateAssetLocationValidator = z.object({
     locationId: z.number({ required_error: "Location ID is required" }),
     date: z.string().min(1, "Date is required"),
     note: z.string().optional().nullable(),
+    attachmentIds: z.array(z.number()).optional(),
 })
 
 export type CreateAssetLocationValidator = z.infer<typeof CreateAssetLocationValidator>

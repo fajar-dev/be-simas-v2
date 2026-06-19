@@ -1,5 +1,7 @@
 import { AssetLocation } from "../entities/asset-location.entity"
 import { minio } from "../../../core/helpers/minio"
+import { Attachment } from "../../attachment/entities/attachment.entity"
+import { AttachmentSerializer } from "../../attachment/serializers/attachment.serialize"
 
 export class AssetLocationSerializer {
     private static async resolvePhotoUrl(photo?: string | null): Promise<string | null> {
@@ -7,7 +9,7 @@ export class AssetLocationSerializer {
         return await minio.getPresignedUrl(photo)
     }
 
-    static async single(log: AssetLocation) {
+    static async single(log: AssetLocation, attachments: Attachment[] = []) {
         return {
             id: log.id,
             assetId: log.assetId,
@@ -31,10 +33,11 @@ export class AssetLocationSerializer {
                 name: log.createdBy.name,
                 photo: await this.resolvePhotoUrl(log.createdBy.photo),
             } : null,
+            attachments: await AttachmentSerializer.collection(attachments),
         }
     }
 
-    static async collection(items: AssetLocation[]) {
-        return Promise.all(items.map(item => this.single(item)))
+    static async collection(items: { log: AssetLocation; attachments: Attachment[] }[]) {
+        return Promise.all(items.map(item => this.single(item.log, item.attachments)))
     }
 }

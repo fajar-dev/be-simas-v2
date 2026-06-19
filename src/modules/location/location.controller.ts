@@ -10,12 +10,19 @@ export class LocationController {
         const page = Number(c.req.query("page") || 1)
         const limit = Number(c.req.query("limit") || 10)
         const q = c.req.query("q") || ""
+        const branchId = c.req.query("branchId") ? Number(c.req.query("branchId")) : undefined
         const sortBy = c.req.query("sortBy") || undefined
         const order = (c.req.query("order") || "DESC").toUpperCase() as 'ASC' | 'DESC'
 
-        const { data, total } = await this.service.getAll(page, limit, q, sortBy, order)
+        const { data, total } = await this.service.getAll(page, limit, q, branchId, sortBy, order)
 
         return ApiResponse.paginate(c, LocationSerializer.collection(data), total, page, limit, "Locations retrieved successfully")
+    }
+
+    async byBranch(c: Context) {
+        const branchId = Number(c.req.param("branchId"))
+        const data = await this.service.getByBranchId(branchId)
+        return ApiResponse.success(c, LocationSerializer.collection(data), "Locations retrieved successfully")
     }
 
     async show(c: Context) {

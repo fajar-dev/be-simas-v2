@@ -137,6 +137,35 @@ describe("Asset Location API Tests", () => {
         expect(res.body.data[0].createdBy.name).toBe("Test User")
     })
 
+    test("GET /api/asset-location - sort results by note and createdBy", async () => {
+        // Create two relocation logs with different notes
+        await request(app, "/api/asset-location", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, locationId, date: "2026-06-19", note: "B Note" },
+        })
+        await request(app, "/api/asset-location", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, locationId, date: "2026-06-20", note: "A Note" },
+        })
+
+        // Sort by note ASC
+        const resNoteAsc = await request(app, `/api/asset-location?assetId=${assetId}&sortBy=note&order=ASC`, {
+            headers: authHeaders,
+        })
+        expect(resNoteAsc.status).toBe(200)
+        expect(resNoteAsc.body.data[0].note).toBe("A Note")
+        expect(resNoteAsc.body.data[1].note).toBe("B Note")
+
+        // Sort by createdBy ASC
+        const resCreatedByAsc = await request(app, `/api/asset-location?assetId=${assetId}&sortBy=createdBy&order=ASC`, {
+            headers: authHeaders,
+        })
+        expect(resCreatedByAsc.status).toBe(200)
+        expect(resCreatedByAsc.body.data[0].createdBy.name).toBe("Test User")
+    })
+
     test("GET /api/asset-location/:id - retrieve single log details", async () => {
         // Create relocation log
         const createRes = await request(app, "/api/asset-location", {
@@ -160,5 +189,58 @@ describe("Asset Location API Tests", () => {
             headers: authHeaders,
         })
         expect(res.status).toBe(404)
+    })
+
+    test("POST /api/asset-location - relocate with attachments", async () => {
+        // Upload a file first
+        const formData = new FormData()
+        formData.append("file", new File(["test relocation doc"], "invoice.pdf", { type: "application/pdf" }))
+
+        const uploadRes = await app.request("/api/attachment", {
+            method: "POST",
+            headers: {
+                Authorization: authHeaders.Authorization,
+            },
+            body: formData,
+        })
+        const uploadBody = await uploadRes.json() as any
+        const attachmentId = uploadBody.data.id
+
+        // Perform relocation with attachments
+        const payload = {
+            assetId,
+            locationId,
+            date: "2026-06-19",
+            note: "Relocating with invoice attachment",
+            attachmentIds: [attachmentId],
+        }
+
+        const res = await request(app, "/api/asset-location", {
+            method: "POST",
+            headers: authHeaders,
+            body: payload,
+        })
+
+        expect(res.status).toBe(201)
+        expect(res.body.success).toBe(true)
+        expect(res.body.data.attachments).toHaveLength(1)
+        expect(res.body.data.attachments[0].id).toBe(attachmentId)
+        expect(res.body.data.attachments[0].originalName).toBe("invoice.pdf")
+
+        // Retrieve single details to verify attachments
+        const showRes = await request(app, `/api/asset-location/${res.body.data.id}`, {
+            headers: authHeaders,
+        })
+        expect(showRes.status).toBe(200)
+        expect(showRes.body.data.attachments).toHaveLength(1)
+        expect(showRes.body.data.attachments[0].originalName).toBe("invoice.pdf")
+
+        // Retrieve list to verify attachments
+        const listRes = await request(app, `/api/asset-location?assetId=${assetId}`, {
+            headers: authHeaders,
+        })
+        expect(listRes.status).toBe(200)
+        expect(listRes.body.data[0].attachments).toHaveLength(1)
+        expect(listRes.body.data[0].attachments[0].originalName).toBe("invoice.pdf")
     })
 })
