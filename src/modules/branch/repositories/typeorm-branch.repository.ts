@@ -10,7 +10,7 @@ export class TypeOrmBranchRepository implements IBranchRepository {
         this.repository = AppDataSource.getRepository(Branch)
     }
 
-    async findAll(page: number, limit: number, q: string): Promise<{ data: Branch[]; total: number }> {
+    async findAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: Branch[]; total: number }> {
         const offset = (page - 1) * limit
 
         const query = this.repository.createQueryBuilder("branch")
@@ -24,8 +24,18 @@ export class TypeOrmBranchRepository implements IBranchRepository {
 
         const total = await query.getCount()
 
+        // Whitelist of allowed sort columns
+        const sortColumnMap: Record<string, string> = {
+            code: "branch.code",
+            name: "branch.name",
+            description: "branch.description",
+        }
+
+        const sortColumn = sortColumnMap[sortBy || ''] || "branch.id"
+        const sortOrder = order === 'ASC' ? 'ASC' : 'DESC'
+
         const data = await query
-            .orderBy("branch.id", "DESC")
+            .orderBy(sortColumn, sortOrder)
             .skip(offset)
             .take(limit)
             .getMany()

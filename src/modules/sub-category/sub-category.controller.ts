@@ -11,8 +11,10 @@ export class SubCategoryController {
         const limit = Number(c.req.query("limit") || 10)
         const q = c.req.query("q") || ""
         const categoryId = c.req.query("categoryId") ? Number(c.req.query("categoryId")) : undefined
+        const sortBy = c.req.query("sortBy") || undefined
+        const order = (c.req.query("order") || "DESC").toUpperCase() as 'ASC' | 'DESC'
 
-        const { data, total } = await this.service.getAll(page, limit, q, categoryId)
+        const { data, total } = await this.service.getAll(page, limit, q, categoryId, sortBy, order)
 
         return ApiResponse.paginate(c, SubCategorySerializer.collection(data), total, page, limit, "Sub categories retrieved successfully")
     }

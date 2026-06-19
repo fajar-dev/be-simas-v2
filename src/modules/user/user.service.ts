@@ -8,8 +8,8 @@ import { minio } from "../../core/helpers/minio"
 export class UserService {
     constructor(private readonly repository: IUserRepository) {}
 
-    async getAll(page: number, limit: number, q: string, filters: UserListFilters = {}): Promise<{ data: any[]; total: number }> {
-        return await this.repository.findAll(page, limit, q, filters)
+    async getAll(page: number, limit: number, q: string, filters: UserListFilters = {}, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: any[]; total: number }> {
+        return await this.repository.findAll(page, limit, q, filters, sortBy, order)
     }
 
     async getById(id: number): Promise<User> {

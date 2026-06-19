@@ -10,7 +10,7 @@ export class TypeOrmSubCategoryRepository implements ISubCategoryRepository {
         this.repository = AppDataSource.getRepository(SubCategory)
     }
 
-    async findAll(page: number, limit: number, q: string, categoryId?: number): Promise<{ data: SubCategory[]; total: number }> {
+    async findAll(page: number, limit: number, q: string, categoryId?: number, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: SubCategory[]; total: number }> {
         const offset = (page - 1) * limit
 
         const query = this.repository.createQueryBuilder("sub_category")
@@ -29,8 +29,18 @@ export class TypeOrmSubCategoryRepository implements ISubCategoryRepository {
 
         const total = await query.getCount()
 
+        // Whitelist of allowed sort columns
+        const sortColumnMap: Record<string, string> = {
+            name: "sub_category.name",
+            category: "category.name",
+            description: "sub_category.description",
+        }
+
+        const sortColumn = sortColumnMap[sortBy || ''] || "sub_category.id"
+        const sortOrder = order === 'ASC' ? 'ASC' : 'DESC'
+
         const data = await query
-            .orderBy("sub_category.id", "DESC")
+            .orderBy(sortColumn, sortOrder)
             .skip(offset)
             .take(limit)
             .getMany()

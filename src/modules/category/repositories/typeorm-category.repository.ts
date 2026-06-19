@@ -10,7 +10,7 @@ export class TypeOrmCategoryRepository implements ICategoryRepository {
         this.repository = AppDataSource.getRepository(Category)
     }
 
-    async findAll(page: number, limit: number, q: string): Promise<{ data: Category[]; total: number }> {
+    async findAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: Category[]; total: number }> {
         const offset = (page - 1) * limit
 
         const query = this.repository.createQueryBuilder("category")
@@ -24,8 +24,17 @@ export class TypeOrmCategoryRepository implements ICategoryRepository {
 
         const total = await query.getCount()
 
+        // Whitelist of allowed sort columns
+        const sortColumnMap: Record<string, string> = {
+            name: "category.name",
+            description: "category.description",
+        }
+
+        const sortColumn = sortColumnMap[sortBy || ''] || "category.id"
+        const sortOrder = order === 'ASC' ? 'ASC' : 'DESC'
+
         const data = await query
-            .orderBy("category.id", "DESC")
+            .orderBy(sortColumn, sortOrder)
             .skip(offset)
             .take(limit)
             .getMany()

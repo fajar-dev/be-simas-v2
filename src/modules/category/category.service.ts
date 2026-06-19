@@ -6,8 +6,8 @@ import { ICategoryRepository } from "./interfaces/category.repository.interface"
 export class CategoryService {
     constructor(private readonly repository: ICategoryRepository) {}
 
-    async getAll(page: number, limit: number, q: string): Promise<{ data: Category[]; total: number }> {
-        return await this.repository.findAll(page, limit, q)
+    async getAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: Category[]; total: number }> {
+        return await this.repository.findAll(page, limit, q, sortBy, order)
     }
 
     async getById(id: number): Promise<Category> {

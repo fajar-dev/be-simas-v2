@@ -10,7 +10,7 @@ export class TypeOrmUserRepository implements IUserRepository {
         this.repository = AppDataSource.getRepository(User)
     }
 
-    async findAll(page: number, limit: number, q: string, filters: UserListFilters = {}): Promise<{ data: any[]; total: number }> {
+    async findAll(page: number, limit: number, q: string, filters: UserListFilters = {}, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: any[]; total: number }> {
         const offset = (page - 1) * limit
 
         const query = this.repository.createQueryBuilder("user")
@@ -37,9 +37,20 @@ export class TypeOrmUserRepository implements IUserRepository {
         // Get total count (efficient)
         const total = await query.clone().getCount()
 
+        // Whitelist of allowed sort columns
+        const sortColumnMap: Record<string, string> = {
+            name: "user.name",
+            email: "user.email",
+            isActive: "user.is_active",
+            createdAt: "user.created_at",
+        }
+
+        const sortColumn = sortColumnMap[sortBy || ''] || "user.id"
+        const sortOrder = order === 'ASC' ? 'ASC' : 'DESC'
+
         // Get paginated data
         const data = await query
-            .orderBy("user.id", "DESC")
+            .orderBy(sortColumn, sortOrder)
             .limit(limit)
             .offset(offset)
             .getRawMany()

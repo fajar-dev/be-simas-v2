@@ -10,8 +10,10 @@ export class BranchController {
         const page = Number(c.req.query("page") || 1)
         const limit = Number(c.req.query("limit") || 10)
         const q = c.req.query("q") || ""
+        const sortBy = c.req.query("sortBy") || undefined
+        const order = (c.req.query("order") || "DESC").toUpperCase() as 'ASC' | 'DESC'
 
-        const { data, total } = await this.service.getAll(page, limit, q)
+        const { data, total } = await this.service.getAll(page, limit, q, sortBy, order)
 
         return ApiResponse.paginate(c, BranchSerializer.collection(data), total, page, limit, "Branches retrieved successfully")
     }

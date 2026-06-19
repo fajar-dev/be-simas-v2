@@ -6,8 +6,8 @@ import { IBranchRepository } from "./interfaces/branch.repository.interface"
 export class BranchService {
     constructor(private readonly repository: IBranchRepository) {}
 
-    async getAll(page: number, limit: number, q: string): Promise<{ data: Branch[]; total: number }> {
-        return await this.repository.findAll(page, limit, q)
+    async getAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: Branch[]; total: number }> {
+        return await this.repository.findAll(page, limit, q, sortBy, order)
     }
 
     async getById(id: number): Promise<Branch> {

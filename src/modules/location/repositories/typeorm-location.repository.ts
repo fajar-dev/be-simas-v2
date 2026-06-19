@@ -10,7 +10,7 @@ export class TypeOrmLocationRepository implements ILocationRepository {
         this.repository = AppDataSource.getRepository(Location)
     }
 
-    async findAll(page: number, limit: number, q: string): Promise<{ data: Location[]; total: number }> {
+    async findAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: Location[]; total: number }> {
         const offset = (page - 1) * limit
 
         const query = this.repository.createQueryBuilder("location")
@@ -25,8 +25,18 @@ export class TypeOrmLocationRepository implements ILocationRepository {
 
         const total = await query.getCount()
 
+        // Whitelist of allowed sort columns mapped to entity properties
+        const sortColumnMap: Record<string, string> = {
+            name: "location.name",
+            branch: "branch.name",
+            description: "location.description",
+        }
+
+        const sortColumn = sortColumnMap[sortBy || ''] || "location.id"
+        const sortOrder = order === 'ASC' ? 'ASC' : 'DESC'
+
         const data = await query
-            .orderBy("location.id", "DESC")
+            .orderBy(sortColumn, sortOrder)
             .skip(offset)
             .take(limit)
             .getMany()

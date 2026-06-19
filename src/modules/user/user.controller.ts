@@ -11,9 +11,11 @@ export class UserController {
         const limit = Number(c.req.query("limit") || 10)
         const q = c.req.query("q") || ""
         const isActive = c.req.query("isActive")
+        const sortBy = c.req.query("sortBy") || undefined
+        const order = (c.req.query("order") || "DESC").toUpperCase() as 'ASC' | 'DESC'
 
         const filters = { isActive }
-        const { data, total } = await this.service.getAll(page, limit, q, filters)
+        const { data, total } = await this.service.getAll(page, limit, q, filters, sortBy, order)
 
         const serialized = await UserSerializer.collection(data)
         return ApiResponse.paginate(c, serialized, total, page, limit, 'Users retrieved successfully')

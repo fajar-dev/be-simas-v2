@@ -10,7 +10,7 @@ export class TypeOrmEmployeeRepository implements IEmployeeRepository {
         this.repository = AppDataSource.getRepository(Employee)
     }
 
-    async findAll(page: number, limit: number, q: string): Promise<{ data: Employee[]; total: number }> {
+    async findAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: Employee[]; total: number }> {
         const offset = (page - 1) * limit
 
         const query = this.repository.createQueryBuilder("employee")
@@ -24,8 +24,20 @@ export class TypeOrmEmployeeRepository implements IEmployeeRepository {
 
         const total = await query.getCount()
 
+        // Whitelist of allowed sort columns mapped to entity properties
+        const sortColumnMap: Record<string, string> = {
+            name: "employee.name",
+            employeeId: "employee.employeeId",
+            jobPosition: "employee.jobPosition",
+            email: "employee.email",
+            phone: "employee.phone",
+        }
+
+        const sortColumn = sortColumnMap[sortBy || ''] || "employee.id"
+        const sortOrder = order === 'ASC' ? 'ASC' : 'DESC'
+
         const data = await query
-            .orderBy("employee.id", "DESC")
+            .orderBy(sortColumn, sortOrder)
             .skip(offset)
             .take(limit)
             .getMany()
