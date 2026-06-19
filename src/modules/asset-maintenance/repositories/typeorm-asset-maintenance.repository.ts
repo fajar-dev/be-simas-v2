@@ -41,6 +41,8 @@ export class TypeOrmAssetMaintenanceRepository implements IAssetMaintenanceRepos
         const sortColumnMap: Record<string, string> = {
             date: "maintenance.date",
             asset: "asset.name",
+            note: "maintenance.note",
+            createdBy: "createdBy.name",
             createdAt: "maintenance.createdAt",
         }
 

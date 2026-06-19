@@ -27,6 +27,11 @@ export class AssetLocationSerializer {
                 id: log.location.id,
                 name: log.location.name,
                 description: log.location.description || null,
+                branch: log.location.branch ? {
+                    id: log.location.branch.id,
+                    name: log.location.branch.name,
+                    code: log.location.branch.code,
+                } : null,
             } : null,
             createdBy: log.createdBy ? {
                 id: log.createdBy.id,

@@ -23,6 +23,7 @@ export class TypeOrmAssetLocationRepository implements IAssetLocationRepository 
         const query = this.repository.createQueryBuilder("log")
             .leftJoinAndSelect("log.asset", "asset")
             .leftJoinAndSelect("log.location", "location")
+            .leftJoinAndSelect("location.branch", "branch")
             .leftJoinAndSelect("log.createdBy", "createdBy")
 
         if (q) {
@@ -62,7 +63,7 @@ export class TypeOrmAssetLocationRepository implements IAssetLocationRepository 
     async findById(id: number): Promise<AssetLocation | null> {
         return await this.repository.findOne({
             where: { id },
-            relations: ["asset", "location", "createdBy"],
+            relations: ["asset", "location", "location.branch", "createdBy"],
         })
     }
 
