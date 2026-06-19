@@ -49,6 +49,8 @@ export class TypeOrmAssetRepository implements IAssetRepository {
             subCategory: "subCategory.name",
             location: "lastLoc.name",
             holder: "activeEmployee.name",
+            lastLocation: "lastLoc.name",
+            activeHolder: "activeEmployee.name",
         }
 
         const sortColumn = sortColumnMap[sortBy || ''] || "asset.id"
