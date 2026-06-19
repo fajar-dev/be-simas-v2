@@ -457,6 +457,83 @@ components:
             name: { type: string, example: "John Doe" }
             photo: { type: string, nullable: true, example: "users/avatar.png" }
 
+    AssignAssetRequest:
+      type: object
+      required: [assetId, employeeId, assignedDate]
+      properties:
+        assetId: { type: integer, example: 1 }
+        employeeId: { type: integer, example: 1 }
+        assignedDate: { type: string, format: date, example: "2026-06-19" }
+        assignNote: { type: string, example: "Assigned for development work" }
+        attachmentIds:
+          type: array
+          items: { type: integer }
+          example: [1, 2]
+
+    ReturnAssetRequest:
+      type: object
+      required: [returnedDate]
+      properties:
+        returnedDate: { type: string, format: date, example: "2026-06-25" }
+        returnNote: { type: string, example: "Returned in good condition" }
+        attachmentIds:
+          type: array
+          items: { type: integer }
+          example: [3]
+
+    AssetHolderResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        assetId: { type: integer, example: 1 }
+        employeeId: { type: integer, example: 1 }
+        assignedDate: { type: string, format: date, example: "2026-06-19" }
+        returnedDate: { type: string, format: date, nullable: true, example: "2026-06-25" }
+        assignNote: { type: string, nullable: true, example: "Assigned for development work" }
+        returnNote: { type: string, nullable: true, example: "Returned in good condition" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        asset:
+          type: object
+          properties:
+            id: { type: integer, example: 1 }
+            name: { type: string, example: "MacBook Pro M3" }
+            code: { type: string, example: "AST-001" }
+        employee:
+          type: object
+          properties:
+            id: { type: integer, example: 1 }
+            name: { type: string, example: "Alice Smith" }
+            employeeId: { type: string, example: "EMP001" }
+            jobPosition: { type: string, example: "Software Engineer" }
+            email: { type: string, example: "alice@example.com" }
+            phone: { type: string, example: "08123456789" }
+            photo: { type: string, nullable: true, example: "employees/photo.png" }
+        createdBy:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer, example: 1 }
+            name: { type: string, example: "John Doe" }
+            photo: { type: string, nullable: true, example: "users/avatar.png" }
+        returnedBy:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer, example: 1 }
+            name: { type: string, example: "John Doe" }
+            photo: { type: string, nullable: true, example: "users/avatar.png" }
+        attachments:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer, example: 1 }
+              originalName: { type: string, example: "hello.txt" }
+              mimeType: { type: string, example: "text/plain" }
+              size: { type: integer, example: 1234 }
+              url: { type: string, example: "http://cdn.test.com/stock/hello.txt" }
+
 paths:
   # ── Register ──────────────────────────────────────────────────────────────
   /auth/register:
@@ -1771,4 +1848,155 @@ paths:
                       data: { $ref: "#/components/schemas/AssetLocationResponse" }
         "401": { description: Unauthorized }
         "404": { description: Asset location record not found }
+
+  # ── Asset Holder ──────────────────────────────────────────────────────────
+  /asset-holder:
+    get:
+      tags: [Asset Holder]
+      summary: Get list of asset holder logs
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+        - name: q
+          in: query
+          schema: { type: string }
+        - name: sortBy
+          in: query
+          schema: { type: string, enum: [assignedDate, returnedDate, employee, asset, createdAt] }
+        - name: order
+          in: query
+          schema: { type: string, enum: [ASC, DESC] }
+        - name: assetId
+          in: query
+          schema: { type: integer }
+        - name: employeeId
+          in: query
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Asset holder logs retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/AssetHolderResponse" }
+        "401": { description: Unauthorized }
+
+    post:
+      tags: [Asset Holder]
+      summary: Assign an asset to an employee
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AssignAssetRequest" }
+      responses:
+        "201":
+          description: Asset assigned successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/AssetHolderResponse" }
+        "400": { description: Asset is currently assigned and must be returned first }
+        "401": { description: Unauthorized }
+        "404": { description: Asset or Employee not found }
+        "422": { description: Validation error }
+
+  /asset-holder/active/{assetId}:
+    get:
+      tags: [Asset Holder]
+      summary: Get active holder of an asset
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: assetId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Active holder retrieved successfully (or null if not assigned)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/AssetHolderResponse", nullable: true }
+        "401": { description: Unauthorized }
+
+  /asset-holder/{id}:
+    get:
+      tags: [Asset Holder]
+      summary: Get asset holder log details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Asset holder log retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/AssetHolderResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Asset assignment record not found }
+
+  /asset-holder/{id}/return:
+    post:
+      tags: [Asset Holder]
+      summary: Return an assigned asset
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReturnAssetRequest" }
+      responses:
+        "200":
+          description: Asset returned successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/AssetHolderResponse" }
+        "400": { description: Asset has already been returned }
+        "401": { description: Unauthorized }
+        "404": { description: Asset assignment record not found }
+        "422": { description: Validation error }
 
