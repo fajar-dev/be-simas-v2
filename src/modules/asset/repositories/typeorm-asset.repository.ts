@@ -26,6 +26,8 @@ export class TypeOrmAssetRepository implements IAssetRepository {
             .leftJoin(Employee, "activeEmployee", "activeEmployee.id = activeHolder.employeeId")
             .leftJoin(AssetLocation, "lastAssetLocation", "lastAssetLocation.id = (SELECT MAX(sub_al.id) FROM asset_locations sub_al WHERE sub_al.asset_id = asset.id)")
             .leftJoin(Location, "lastLoc", "lastLoc.id = lastAssetLocation.locationId")
+            .addSelect("activeEmployee.name")
+            .addSelect("lastLoc.name")
 
         if (q) {
             query.where(
