@@ -22,6 +22,7 @@ export class TypeOrmAssetMaintenanceRepository implements IAssetMaintenanceRepos
 
         const query = this.repository.createQueryBuilder("maintenance")
             .leftJoinAndSelect("maintenance.asset", "asset")
+            .leftJoinAndSelect("maintenance.createdBy", "createdBy")
 
         if (q) {
             query.where(
@@ -58,7 +59,7 @@ export class TypeOrmAssetMaintenanceRepository implements IAssetMaintenanceRepos
     async findById(id: number): Promise<AssetMaintenance | null> {
         return await this.repository.findOne({
             where: { id },
-            relations: ["asset"],
+            relations: ["asset", "createdBy"],
         })
     }
 

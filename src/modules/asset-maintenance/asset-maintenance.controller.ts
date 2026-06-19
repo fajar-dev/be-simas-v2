@@ -41,8 +41,12 @@ export class AssetMaintenanceController {
     }
 
     async store(c: Context) {
+        const user = c.get("user")
         const body = c.req.valid("json" as any)
-        const maintenance = await this.service.create(body)
+        const maintenance = await this.service.create({
+            ...body,
+            createdByUserId: user?.id,
+        })
         
         // Fetch fresh associated attachments to serialize
         const { attachments } = await this.service.getById(maintenance.id)

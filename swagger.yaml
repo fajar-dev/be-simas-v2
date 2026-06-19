@@ -407,6 +407,13 @@ components:
             id: { type: integer, example: 1 }
             name: { type: string, example: "MacBook Pro M3" }
             code: { type: string, example: "AST-001" }
+        createdBy:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer, example: 1 }
+            name: { type: string, example: "John Doe" }
+            photo: { type: string, nullable: true, example: "users/avatar.png" }
         attachments:
           type: array
           items: { $ref: "#/components/schemas/AttachmentResponse" }

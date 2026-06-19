@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from "typeorm"
 import { Asset } from "../../asset/entities/asset.entity"
+import { User } from "../../user/entities/user.entity"
 
 @Entity("asset_maintenances")
 export class AssetMaintenance {
@@ -12,6 +13,13 @@ export class AssetMaintenance {
     @ManyToOne(() => Asset, { onDelete: "CASCADE" })
     @JoinColumn({ name: "asset_id" })
     asset!: Asset
+
+    @Column({ name: "created_by", nullable: true })
+    createdByUserId?: number | null
+
+    @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
+    @JoinColumn({ name: "created_by" })
+    createdBy?: User | null
 
     @Column({ type: "varchar" })
     date!: string

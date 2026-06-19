@@ -57,6 +57,7 @@ export class AssetMaintenanceService {
                 assetId: data.assetId,
                 date: data.date,
                 note: data.note,
+                createdByUserId: data.createdByUserId,
             }, queryRunner.manager)
 
             if (data.attachmentIds && data.attachmentIds.length > 0) {

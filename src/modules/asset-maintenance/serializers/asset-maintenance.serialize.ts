@@ -1,8 +1,14 @@
 import { AssetMaintenance } from "../entities/asset-maintenance.entity"
 import { Attachment } from "../../attachment/entities/attachment.entity"
 import { AttachmentSerializer } from "../../attachment/serializers/attachment.serialize"
+import { minio } from "../../../core/helpers/minio"
 
 export class AssetMaintenanceSerializer {
+    private static async resolvePhotoUrl(photo?: string | null): Promise<string | null> {
+        if (!photo) return null
+        return await minio.getPresignedUrl(photo)
+    }
+
     static async single(maintenance: AssetMaintenance, attachments: Attachment[] = []) {
         return {
             id: maintenance.id,
@@ -15,6 +21,11 @@ export class AssetMaintenanceSerializer {
                 id: maintenance.asset.id,
                 name: maintenance.asset.name,
                 code: maintenance.asset.code,
+            } : null,
+            createdBy: maintenance.createdBy ? {
+                id: maintenance.createdBy.id,
+                name: maintenance.createdBy.name,
+                photo: await this.resolvePhotoUrl(maintenance.createdBy.photo),
             } : null,
             attachments: await AttachmentSerializer.collection(attachments),
         }

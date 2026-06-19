@@ -80,6 +80,8 @@ describe("Asset Maintenance API Tests", () => {
         expect(res.body.data.date).toBe("2026-06-19")
         expect(res.body.data.note).toBe(payload.note)
         expect(res.body.data.asset.name).toBe("Laptop HP")
+        expect(res.body.data.createdBy.name).toBe("Test User")
+        expect(res.body.data.createdBy.photo).toBeNull()
         expect(res.body.data.attachments).toHaveLength(0)
     })
 
@@ -148,6 +150,8 @@ describe("Asset Maintenance API Tests", () => {
         expect(res.status).toBe(200)
         expect(res.body.data).toHaveLength(1)
         expect(res.body.data[0].note).toBe("Periodic test")
+        expect(res.body.data[0].createdBy.name).toBe("Test User")
+        expect(res.body.data[0].createdBy.photo).toBeNull()
     })
 
     test("PUT /api/asset-maintenance/:id - update record and attachments", async () => {
