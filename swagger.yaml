@@ -354,6 +354,39 @@ components:
                 name: { type: string, example: "Electronics" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+        activeHolder:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer, example: 1 }
+            employeeId: { type: integer, example: 1 }
+            assignedDate: { type: string, format: date, example: "2026-06-19" }
+            employee:
+              type: object
+              nullable: true
+              properties:
+                id: { type: integer, example: 1 }
+                name: { type: string, example: "Alice Smith" }
+                employeeId: { type: string, example: "EMP001" }
+                jobPosition: { type: string, example: "Software Engineer" }
+        lastLocation:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer, example: 1 }
+            date: { type: string, format: date, example: "2026-06-19" }
+            location:
+              type: object
+              nullable: true
+              properties:
+                id: { type: integer, example: 1 }
+                name: { type: string, example: "IT Room" }
+                branch:
+                  type: object
+                  nullable: true
+                  properties:
+                    id: { type: integer, example: 1 }
+                    name: { type: string, example: "Medan Branch" }
 
     AttachmentResponse:
       type: object
@@ -449,6 +482,13 @@ components:
             id: { type: integer, example: 1 }
             name: { type: string, example: "IT Room" }
             description: { type: string, nullable: true, example: "Server room, 2nd floor" }
+            branch:
+              type: object
+              nullable: true
+              properties:
+                id: { type: integer, example: 1 }
+                name: { type: string, example: "Medan Branch" }
+                code: { type: string, example: "MDN" }
         createdBy:
           type: object
           nullable: true
@@ -1407,7 +1447,7 @@ paths:
         - name: sortBy
           in: query
           description: Field to sort by
-          schema: { type: string, enum: [name, code, brand, model, price, purchaseDate, createdAt, category, subCategory] }
+          schema: { type: string, enum: [name, code, brand, model, price, purchaseDate, createdAt, category, subCategory, location, holder, lastLocation, activeHolder] }
         - name: order
           in: query
           description: Sort order
@@ -1637,7 +1677,7 @@ paths:
           schema: { type: string }
         - name: sortBy
           in: query
-          schema: { type: string, enum: [date, asset, createdAt] }
+          schema: { type: string, enum: [date, asset, note, createdBy, createdAt] }
         - name: order
           in: query
           schema: { type: string, enum: [ASC, DESC] }
