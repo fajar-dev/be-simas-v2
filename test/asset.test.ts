@@ -288,7 +288,12 @@ describe("GET /api/asset", () => {
         await request(app, "/api/asset", {
             method: "POST",
             headers,
-            body: createAssetData(subCategory.id),
+            body: createAssetData(subCategory.id, {
+                labels: [
+                    { key: "Color", value: "Space Gray" },
+                    { key: "Storage", value: "512GB" }
+                ]
+            }),
         })
 
         const { status, body } = await request(app, "/api/asset", {
@@ -300,6 +305,12 @@ describe("GET /api/asset", () => {
         expect(body.data.length).toBe(1)
         expect(body.meta.total).toBe(1)
         expect(body.data[0].subCategory.id).toBe(subCategory.id)
+        expect(body.data[0].labels).toBeDefined()
+        expect(body.data[0].labels.length).toBe(2)
+        expect(body.data[0].labels[0].key).toBe("Color")
+        expect(body.data[0].labels[0].value).toBe("Space Gray")
+        expect(body.data[0].labels[1].key).toBe("Storage")
+        expect(body.data[0].labels[1].value).toBe("512GB")
     })
 
     test("should search assets by name or code", async () => {

@@ -17,6 +17,7 @@ export class TypeOrmAssetRepository implements IAssetRepository {
         const query = this.repository.createQueryBuilder("asset")
             .leftJoinAndSelect("asset.subCategory", "subCategory")
             .leftJoinAndSelect("subCategory.category", "category")
+            .leftJoinAndSelect("asset.labels", "labels")
 
         if (q) {
             query.where(
