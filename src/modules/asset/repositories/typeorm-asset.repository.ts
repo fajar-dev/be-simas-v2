@@ -11,7 +11,7 @@ export class TypeOrmAssetRepository implements IAssetRepository {
         this.repository = AppDataSource.getRepository(Asset)
     }
 
-    async findAll(page: number, limit: number, q: string): Promise<{ data: Asset[]; total: number }> {
+    async findAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: Asset[]; total: number }> {
         const offset = (page - 1) * limit
 
         const query = this.repository.createQueryBuilder("asset")
@@ -27,8 +27,24 @@ export class TypeOrmAssetRepository implements IAssetRepository {
 
         const total = await query.getCount()
 
+        // Whitelist of allowed sort columns
+        const sortColumnMap: Record<string, string> = {
+            name: "asset.name",
+            code: "asset.code",
+            brand: "asset.brand",
+            model: "asset.model",
+            price: "asset.price",
+            purchaseDate: "asset.purchaseDate",
+            createdAt: "asset.createdAt",
+            category: "category.name",
+            subCategory: "subCategory.name",
+        }
+
+        const sortColumn = sortColumnMap[sortBy || ''] || "asset.id"
+        const sortOrder = order === 'ASC' ? 'ASC' : 'DESC'
+
         const data = await query
-            .orderBy("asset.id", "DESC")
+            .orderBy(sortColumn, sortOrder)
             .skip(offset)
             .take(limit)
             .getMany()

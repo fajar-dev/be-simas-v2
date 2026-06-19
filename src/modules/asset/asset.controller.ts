@@ -10,8 +10,10 @@ export class AssetController {
         const page = Number(c.req.query("page") || 1)
         const limit = Number(c.req.query("limit") || 10)
         const q = c.req.query("q") || ""
+        const sortBy = c.req.query("sortBy") || undefined
+        const order = (c.req.query("order") || "DESC").toUpperCase() as 'ASC' | 'DESC'
 
-        const { data, total } = await this.service.getAll(page, limit, q)
+        const { data, total } = await this.service.getAll(page, limit, q, sortBy, order)
 
         const serialized = await AssetSerializer.collection(data)
         return ApiResponse.paginate(c, serialized, total, page, limit, "Assets retrieved successfully")

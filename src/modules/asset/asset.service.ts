@@ -7,8 +7,8 @@ import { minio } from "../../core/helpers/minio"
 export class AssetService {
     constructor(private readonly repository: IAssetRepository) {}
 
-    async getAll(page: number, limit: number, q: string): Promise<{ data: Asset[]; total: number }> {
-        return await this.repository.findAll(page, limit, q)
+    async getAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: Asset[]; total: number }> {
+        return await this.repository.findAll(page, limit, q, sortBy, order)
     }
 
     async getById(id: number): Promise<Asset> {
