@@ -12,6 +12,7 @@ import { CreateBranchValidator, UpdateBranchValidator } from "../modules/branch/
 import { CreateLocationValidator, UpdateLocationValidator } from "../modules/location/validators/location.validator"
 import { CreateAssetValidator, UpdateAssetValidator } from "../modules/asset/validators/asset.validator"
 import { CreateAssetMaintenanceValidator, UpdateAssetMaintenanceValidator } from "../modules/asset-maintenance/validators/asset-maintenance.validator"
+import { CreateAssetLocationValidator } from "../modules/asset-location/validators/asset-location.validator"
 
 // ── Middlewares ──────────────────────────────────────────────────────────────
 import { authMiddleware } from "../core/middlewares/auth.middleware"
@@ -30,6 +31,7 @@ import { locationController } from "../modules/location/location.module"
 import { assetController } from "../modules/asset/asset.module"
 import { attachmentController } from "../modules/attachment/attachment.module"
 import { assetMaintenanceController } from "../modules/asset-maintenance/asset-maintenance.module"
+import { assetLocationController } from "../modules/asset-location/asset-location.module"
 import { StoreFeedbackValidator } from "../modules/feedback/validators/feedback.validator"
 
 // ── Routes ───────────────────────────────────────────────────────────────────
@@ -113,6 +115,11 @@ routes.get("/asset-maintenance/:id", authMiddleware, (c) => assetMaintenanceCont
 routes.post("/asset-maintenance", authMiddleware, zValidator("json", CreateAssetMaintenanceValidator, validationHook), (c) => assetMaintenanceController.store(c))
 routes.put("/asset-maintenance/:id", authMiddleware, zValidator("json", UpdateAssetMaintenanceValidator, validationHook), (c) => assetMaintenanceController.update(c))
 routes.delete("/asset-maintenance/:id", authMiddleware, (c) => assetMaintenanceController.destroy(c))
+
+// Asset Location
+routes.get("/asset-location", authMiddleware, (c) => assetLocationController.index(c))
+routes.get("/asset-location/:id", authMiddleware, (c) => assetLocationController.show(c))
+routes.post("/asset-location", authMiddleware, zValidator("json", CreateAssetLocationValidator, validationHook), (c) => assetLocationController.store(c))
 
 
 // Upload

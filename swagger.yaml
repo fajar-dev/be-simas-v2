@@ -418,6 +418,45 @@ components:
           type: array
           items: { $ref: "#/components/schemas/AttachmentResponse" }
 
+    CreateAssetLocationRequest:
+      type: object
+      required: [assetId, locationId, date]
+      properties:
+        assetId: { type: integer, example: 1 }
+        locationId: { type: integer, example: 1 }
+        date: { type: string, format: date, example: "2026-06-19" }
+        note: { type: string, example: "Relocated to Main Office IT Room" }
+
+    AssetLocationResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        assetId: { type: integer, example: 1 }
+        locationId: { type: integer, example: 1 }
+        date: { type: string, format: date, example: "2026-06-19" }
+        note: { type: string, nullable: true, example: "Relocated to Main Office IT Room" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        asset:
+          type: object
+          properties:
+            id: { type: integer, example: 1 }
+            name: { type: string, example: "MacBook Pro M3" }
+            code: { type: string, example: "AST-001" }
+        location:
+          type: object
+          properties:
+            id: { type: integer, example: 1 }
+            name: { type: string, example: "IT Room" }
+            description: { type: string, nullable: true, example: "Server room, 2nd floor" }
+        createdBy:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer, example: 1 }
+            name: { type: string, example: "John Doe" }
+            photo: { type: string, nullable: true, example: "users/avatar.png" }
+
 paths:
   # ── Register ──────────────────────────────────────────────────────────────
   /auth/register:
@@ -1641,4 +1680,95 @@ paths:
               schema: { $ref: "#/components/schemas/BaseResponse" }
         "401": { description: Unauthorized }
         "404": { description: Maintenance record not found }
+
+  # ── Asset Location ────────────────────────────────────────────────────────
+  /asset-location:
+    get:
+      tags: [Asset Location]
+      summary: Get list of asset location logs
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+        - name: q
+          in: query
+          schema: { type: string }
+        - name: sortBy
+          in: query
+          schema: { type: string, enum: [date, location, createdAt] }
+        - name: order
+          in: query
+          schema: { type: string, enum: [ASC, DESC] }
+        - name: assetId
+          in: query
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Asset location logs retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/AssetLocationResponse" }
+        "401": { description: Unauthorized }
+
+    post:
+      tags: [Asset Location]
+      summary: Relocate an asset
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateAssetLocationRequest" }
+      responses:
+        "201":
+          description: Asset relocated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/AssetLocationResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Asset or Location not found }
+        "422": { description: Validation error }
+
+  /asset-location/{id}:
+    get:
+      tags: [Asset Location]
+      summary: Get asset location log details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Asset location log retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/AssetLocationResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Asset location record not found }
 
