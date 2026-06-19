@@ -1,5 +1,9 @@
 import { Asset } from "../entities/asset.entity"
 import { minio } from "../../../core/helpers/minio"
+import { AppDataSource } from "../../../config/database"
+import { AssetHolder } from "../../asset-holder/entities/asset-holder.entity"
+import { AssetLocation } from "../../asset-location/entities/asset-location.entity"
+import { IsNull } from "typeorm"
 
 export class AssetSerializer {
     private static async resolveImageUrl(image?: string | null): Promise<string | null> {
@@ -35,6 +39,21 @@ export class AssetSerializer {
     }
 
     static async single(asset: Asset) {
+        // Load activeHolder
+        const holderRepo = AppDataSource.getRepository(AssetHolder)
+        const activeHolderRecord = await holderRepo.findOne({
+            where: { assetId: asset.id, returnedDate: IsNull() },
+            relations: ["employee"],
+        })
+
+        // Load lastLocation
+        const locationRepo = AppDataSource.getRepository(AssetLocation)
+        const lastLocationRecord = await locationRepo.findOne({
+            where: { assetId: asset.id },
+            order: { date: "DESC", id: "DESC" },
+            relations: ["location", "location.branch"],
+        })
+
         return {
             id: asset.id,
             code: asset.code,
@@ -61,6 +80,29 @@ export class AssetSerializer {
                 key: l.key,
                 value: l.value,
             })),
+            activeHolder: activeHolderRecord ? {
+                id: activeHolderRecord.id,
+                employeeId: activeHolderRecord.employeeId,
+                assignedDate: activeHolderRecord.assignedDate,
+                employee: activeHolderRecord.employee ? {
+                    id: activeHolderRecord.employee.id,
+                    name: activeHolderRecord.employee.name,
+                    employeeId: activeHolderRecord.employee.employeeId,
+                    jobPosition: activeHolderRecord.employee.jobPosition,
+                } : null,
+            } : null,
+            lastLocation: lastLocationRecord ? {
+                id: lastLocationRecord.id,
+                date: lastLocationRecord.date,
+                location: lastLocationRecord.location ? {
+                    id: lastLocationRecord.location.id,
+                    name: lastLocationRecord.location.name,
+                    branch: lastLocationRecord.location.branch ? {
+                        id: lastLocationRecord.location.branch.id,
+                        name: lastLocationRecord.location.branch.name,
+                    } : null,
+                } : null,
+            } : null,
         }
     }
 
