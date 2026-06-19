@@ -1,6 +1,7 @@
 import { EntityManager, Repository } from "typeorm"
 import { AppDataSource } from "../../../config/database"
 import { Asset } from "../entities/asset.entity"
+import { AssetLabel } from "../entities/asset-label.entity"
 import { IAssetRepository } from "../interfaces/asset.repository.interface"
 
 export class TypeOrmAssetRepository implements IAssetRepository {
@@ -38,7 +39,7 @@ export class TypeOrmAssetRepository implements IAssetRepository {
     async findById(id: number): Promise<Asset | null> {
         return await this.repository.findOne({
             where: { id },
-            relations: ["subCategory", "subCategory.category"]
+            relations: ["subCategory", "subCategory.category", "labels"]
         })
     }
 
@@ -57,5 +58,15 @@ export class TypeOrmAssetRepository implements IAssetRepository {
 
     async delete(id: number): Promise<void> {
         await this.repository.delete(id)
+    }
+
+    async deleteLabels(assetId: number): Promise<void> {
+        await AppDataSource.getRepository(AssetLabel).delete({ assetId })
+    }
+
+    async saveLabels(assetId: number, labels: { key: string; value: string }[]): Promise<void> {
+        const repo = AppDataSource.getRepository(AssetLabel)
+        const entities = labels.map(l => repo.create({ key: l.key, value: l.value, assetId }))
+        await repo.save(entities)
     }
 }

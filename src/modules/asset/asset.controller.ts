@@ -29,7 +29,8 @@ export class AssetController {
         if (!code) {
             return ApiResponse.success(c, { exists: false }, "Code is empty")
         }
-        const exists = await this.service.checkCode(code)
+        const excludeId = c.req.query("excludeId") ? Number(c.req.query("excludeId")) : undefined
+        const exists = await this.service.checkCode(code, excludeId)
         return ApiResponse.success(c, { exists }, exists ? "Code already exists" : "Code is available")
     }
 

@@ -19,8 +19,9 @@ export class AssetService {
         return asset
     }
 
-    async checkCode(code: string): Promise<boolean> {
+    async checkCode(code: string, excludeId?: number): Promise<boolean> {
         const asset = await this.repository.findByCode(code)
+        if (asset && excludeId && asset.id === excludeId) return false
         return !!asset
     }
 
@@ -43,14 +44,21 @@ export class AssetService {
         if (data.image !== undefined) {
             data.image = minio.sanitizePath(data.image) ?? undefined
         }
-        // Handle labels replacement
-        if (data.labels !== undefined) {
-            asset.labels = (data.labels || []) as any
-            delete data.labels
-        }
+        // Extract labels before merge
+        const newLabels = data.labels
+        delete data.labels
+
         this.repository.merge(asset, data)
         try {
-            return await this.repository.save(asset)
+            const saved = await this.repository.save(asset)
+            // Handle labels: delete old, insert new
+            if (newLabels !== undefined) {
+                await this.repository.deleteLabels(id)
+                if (newLabels && newLabels.length > 0) {
+                    await this.repository.saveLabels(id, newLabels as any)
+                }
+            }
+            return await this.getById(id)
         } catch (error: any) {
             if (error?.message?.includes("UNIQUE") || error?.message?.includes("Duplicate entry")) {
                 throw new BadRequestException("Asset code must be unique")

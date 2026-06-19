@@ -45,6 +45,6 @@ export class Asset {
     @UpdateDateColumn({ name: "updated_at" })
     updatedAt!: Date
 
-    @OneToMany(() => AssetLabel, (label) => label.asset, { cascade: true, eager: true })
+    @OneToMany(() => AssetLabel, (label) => label.asset, { cascade: true, eager: true, orphanedRowAction: 'delete' })
     labels!: Relation<AssetLabel[]>
 }
