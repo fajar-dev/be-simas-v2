@@ -205,4 +205,8 @@ export class AssetService {
     async save(data: Partial<Asset>, manager?: EntityManager): Promise<Asset> {
         return await this.repository.save(data, manager)
     }
+
+    async getUniqueLabelKeys(): Promise<string[]> {
+        return await this.repository.getUniqueLabelKeys()
+    }
 }

@@ -90,11 +90,18 @@ export class AssetRepository implements IAssetRepository {
             activeHolder: "activeEmployee.name",
         }
 
-        const sortColumn = sortColumnMap[sortBy || ''] || "asset.id"
         const sortOrder = order === 'ASC' ? 'ASC' : 'DESC'
+        if (sortBy && sortBy.startsWith("label:")) {
+            const labelKey = sortBy.substring(6)
+            query.leftJoin(AssetLabel, "sortByLabel", "sortByLabel.assetId = asset.id AND sortByLabel.key = :sortByLabelKey", { sortByLabelKey: labelKey })
+            query.addSelect("sortByLabel.value")
+            query.orderBy("sortByLabel.value", sortOrder)
+        } else {
+            const sortColumn = sortColumnMap[sortBy || ''] || "asset.id"
+            query.orderBy(sortColumn, sortOrder)
+        }
 
         const data = await query
-            .orderBy(sortColumn, sortOrder)
             .skip(offset)
             .take(limit)
             .getMany()
@@ -134,5 +141,14 @@ export class AssetRepository implements IAssetRepository {
         const repo = AppDataSource.getRepository(AssetLabel)
         const entities = labels.map(l => repo.create({ key: l.key, value: l.value, assetId }))
         await repo.save(entities)
+    }
+
+    async getUniqueLabelKeys(): Promise<string[]> {
+        const result = await AppDataSource.getRepository(AssetLabel).createQueryBuilder("label")
+            .select("DISTINCT label.key", "key")
+            .where("label.key IS NOT NULL AND label.key != ''")
+            .orderBy("label.key", "ASC")
+            .getRawMany()
+        return result.map(r => r.key)
     }
 }

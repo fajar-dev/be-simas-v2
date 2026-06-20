@@ -741,3 +741,75 @@ describe("GET /api/asset - filtering", () => {
     })
 })
 
+describe("Asset Custom Labels - Keys & Sorting", () => {
+    test("should fetch unique label keys and sort assets by custom label values", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+
+        // Create asset 1 with Color Space Gray
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, {
+                name: "Asset C",
+                code: "AST-LC",
+                labels: [
+                    { key: "Color", value: "Space Gray" },
+                    { key: "Storage", value: "256GB" }
+                ]
+            }),
+        })
+
+        // Create asset 2 with Color Silver
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, {
+                name: "Asset A",
+                code: "AST-LA",
+                labels: [
+                    { key: "Color", value: "Silver" },
+                    { key: "Storage", value: "512GB" }
+                ]
+            }),
+        })
+
+        // Create asset 3 with Color Gold
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, {
+                name: "Asset B",
+                code: "AST-LB",
+                labels: [
+                    { key: "Color", value: "Gold" }
+                ]
+            }),
+        })
+
+        // 1. Verify unique label keys endpoint
+        const keysRes = await request(app, "/api/asset/label-keys", { method: "GET", headers })
+        expect(keysRes.status).toBe(200)
+        expect(keysRes.body.success).toBe(true)
+        expect(keysRes.body.data).toContain("Color")
+        expect(keysRes.body.data).toContain("Storage")
+
+        // 2. Sort by label:Color ASC (Gold, Silver, Space Gray)
+        const resAsc = await request(app, "/api/asset?sortBy=label:Color&order=ASC", { method: "GET", headers })
+        expect(resAsc.status).toBe(200)
+        expect(resAsc.body.data.length).toBe(3)
+        expect(resAsc.body.data[0].name).toBe("Asset B") // Gold
+        expect(resAsc.body.data[1].name).toBe("Asset A") // Silver
+        expect(resAsc.body.data[2].name).toBe("Asset C") // Space Gray
+
+        // 3. Sort by label:Color DESC (Space Gray, Silver, Gold)
+        const resDesc = await request(app, "/api/asset?sortBy=label:Color&order=DESC", { method: "GET", headers })
+        expect(resDesc.status).toBe(200)
+        expect(resDesc.body.data.length).toBe(3)
+        expect(resDesc.body.data[0].name).toBe("Asset C") // Space Gray
+        expect(resDesc.body.data[1].name).toBe("Asset A") // Silver
+        expect(resDesc.body.data[2].name).toBe("Asset B") // Gold
+    })
+})
+
+

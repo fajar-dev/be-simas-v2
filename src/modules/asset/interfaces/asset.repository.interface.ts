@@ -23,4 +23,5 @@ export interface IAssetRepository {
     delete(id: number): Promise<void>
     deleteLabels(assetId: number): Promise<void>
     saveLabels(assetId: number, labels: { key: string; value: string }[]): Promise<void>
+    getUniqueLabelKeys(): Promise<string[]>
 }

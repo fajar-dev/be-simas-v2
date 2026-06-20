@@ -51,6 +51,11 @@ export class AssetController {
         return ApiResponse.success(c, { exists }, exists ? "Code already exists" : "Code is available")
     }
 
+    async getLabelKeys(c: Context) {
+        const keys = await this.service.getUniqueLabelKeys()
+        return ApiResponse.success(c, keys, "Label keys retrieved successfully")
+    }
+
     async store(c: Context) {
         const user = c.get("user")
         const data = c.req.valid("json" as never) as any
