@@ -23,7 +23,12 @@ export class SubCategoryService {
     }
 
     async create(data: Partial<SubCategory>): Promise<SubCategory> {
-        return await this.repository.save(data)
+        const saved = await this.repository.save(data)
+        if (!data.code) {
+            saved.code = String(saved.id)
+            return await this.repository.save(saved)
+        }
+        return saved
     }
 
     async update(id: number, data: Partial<SubCategory>): Promise<SubCategory> {

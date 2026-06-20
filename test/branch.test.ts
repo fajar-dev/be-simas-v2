@@ -170,7 +170,7 @@ describe("POST /api/branch", () => {
         expect(body.data.description).toBeNull()
     })
 
-    test("should fail validation without code", async () => {
+    test("should create a branch without code (auto-fill from ID)", async () => {
         const { headers } = await registerAndLogin(app)
 
         const { status, body } = await request(app, "/api/branch", {
@@ -179,8 +179,9 @@ describe("POST /api/branch", () => {
             body: { name: "Test Branch" },
         })
 
-        expect(status).toBe(422)
-        expect(body.success).toBe(false)
+        expect(status).toBe(201)
+        expect(body.success).toBe(true)
+        expect(body.data.code).toBe(String(body.data.id))
     })
 
     test("should fail validation without name", async () => {

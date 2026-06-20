@@ -4,6 +4,7 @@ export class SubCategorySerializer {
     static single(subCategory: SubCategory) {
         return {
             id: subCategory.id,
+            code: subCategory.code,
             name: subCategory.name,
             description: subCategory.description || null,
             category: subCategory.category ? {

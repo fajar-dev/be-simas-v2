@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 export const CreateCategoryValidator = z.object({
+    code: z.string().optional(),
     name: z.string().min(1, "Name is required"),
     description: z.string().optional(),
 })
@@ -8,6 +9,7 @@ export const CreateCategoryValidator = z.object({
 export type CreateCategoryValidator = z.infer<typeof CreateCategoryValidator>
 
 export const UpdateCategoryValidator = z.object({
+    code: z.string().optional(),
     name: z.string().min(1, "Name is required").optional(),
     description: z.string().optional(),
 })

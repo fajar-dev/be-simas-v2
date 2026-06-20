@@ -4,6 +4,7 @@ export class CategorySerializer {
     static single(category: Category) {
         return {
             id: category.id,
+            code: category.code,
             name: category.name,
             description: category.description || null,
             createdAt: category.createdAt,

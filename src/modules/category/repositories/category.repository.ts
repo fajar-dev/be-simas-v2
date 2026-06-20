@@ -17,7 +17,7 @@ export class CategoryRepository implements ICategoryRepository {
 
         if (q) {
             query.where(
-                "(category.name LIKE :q OR category.description LIKE :q)",
+                "(category.code LIKE :q OR category.name LIKE :q OR category.description LIKE :q)",
                 { q: `%${q}%` }
             )
         }
@@ -26,6 +26,7 @@ export class CategoryRepository implements ICategoryRepository {
 
         // Whitelist of allowed sort columns
         const sortColumnMap: Record<string, string> = {
+            code: "category.code",
             name: "category.name",
             description: "category.description",
         }

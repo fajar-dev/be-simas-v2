@@ -242,10 +242,70 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
+    # --- Category Schemas ---
+    CreateCategoryRequest:
+      type: object
+      required: [name]
+      properties:
+        code: { type: string, example: "CAT-001" }
+        name: { type: string, example: "Electronics" }
+        description: { type: string, nullable: true, example: "Electronic devices and accessories" }
+
+    UpdateCategoryRequest:
+      type: object
+      properties:
+        code: { type: string, example: "CAT-001" }
+        name: { type: string, example: "Electronics" }
+        description: { type: string, nullable: true, example: "Updated description" }
+
+    CategoryResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        code: { type: string, example: "CAT-001" }
+        name: { type: string, example: "Electronics" }
+        description: { type: string, nullable: true, example: "Electronic devices and accessories" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    # --- SubCategory Schemas ---
+    CreateSubCategoryRequest:
+      type: object
+      required: [name, categoryId]
+      properties:
+        code: { type: string, example: "SC-001" }
+        name: { type: string, example: "Laptops" }
+        description: { type: string, nullable: true, example: "Laptop computers" }
+        categoryId: { type: integer, example: 1 }
+
+    UpdateSubCategoryRequest:
+      type: object
+      properties:
+        code: { type: string, example: "SC-001" }
+        name: { type: string, example: "Laptops" }
+        description: { type: string, nullable: true, example: "Updated description" }
+        categoryId: { type: integer, example: 1 }
+
+    SubCategoryResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        code: { type: string, example: "SC-001" }
+        name: { type: string, example: "Laptops" }
+        description: { type: string, nullable: true, example: "Laptop computers" }
+        category:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer, example: 1 }
+            name: { type: string, example: "Electronics" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
     # --- Branch Schemas ---
     CreateBranchRequest:
       type: object
-      required: [code, name]
+      required: [name]
       properties:
         code: { type: string, example: "BR-001" }
         name: { type: string, example: "Jakarta Branch" }

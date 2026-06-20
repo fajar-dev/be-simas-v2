@@ -19,7 +19,12 @@ export class BranchService {
     }
 
     async create(data: Partial<Branch>): Promise<Branch> {
-        return await this.repository.save(data)
+        const saved = await this.repository.save(data)
+        if (!data.code) {
+            saved.code = String(saved.id)
+            return await this.repository.save(saved)
+        }
+        return saved
     }
 
     async update(id: number, data: Partial<Branch>): Promise<Branch> {

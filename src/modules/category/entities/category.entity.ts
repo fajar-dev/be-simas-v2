@@ -5,6 +5,9 @@ export class Category {
     @PrimaryGeneratedColumn()
     id!: number
 
+    @Column({ unique: true })
+    code!: string
+
     @Column()
     name!: string
 

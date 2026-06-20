@@ -18,7 +18,7 @@ export class SubCategoryRepository implements ISubCategoryRepository {
 
         if (q) {
             query.where(
-                "(sub_category.name LIKE :q OR sub_category.description LIKE :q)",
+                "(sub_category.code LIKE :q OR sub_category.name LIKE :q OR sub_category.description LIKE :q)",
                 { q: `%${q}%` }
             )
         }
@@ -31,6 +31,7 @@ export class SubCategoryRepository implements ISubCategoryRepository {
 
         // Whitelist of allowed sort columns
         const sortColumnMap: Record<string, string> = {
+            code: "sub_category.code",
             name: "sub_category.name",
             category: "category.name",
             description: "sub_category.description",
