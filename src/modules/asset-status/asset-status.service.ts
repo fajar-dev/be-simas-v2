@@ -24,7 +24,6 @@ export class AssetStatusService {
             assetId: data.assetId,
             status: data.status,
             note: data.note || null,
-            date: new Date().toISOString().split('T')[0],
             createdByUserId: data.createdByUserId,
         })
 

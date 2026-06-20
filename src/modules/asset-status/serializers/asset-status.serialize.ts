@@ -13,9 +13,7 @@ export class AssetStatusSerializer {
             assetId: record.assetId,
             status: record.status,
             note: record.note || null,
-            date: record.date,
             createdAt: record.createdAt,
-            updatedAt: record.updatedAt,
             createdBy: record.createdBy ? {
                 id: record.createdBy.id,
                 name: record.createdBy.name,

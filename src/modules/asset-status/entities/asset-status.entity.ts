@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from "typeorm"
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from "typeorm"
 import { Asset } from "../../asset/entities/asset.entity"
 import { User } from "../../user/entities/user.entity"
 
@@ -20,9 +20,6 @@ export class AssetStatus {
     @Column({ type: "text", nullable: true })
     note?: string | null
 
-    @Column({ type: "varchar" })
-    date!: string
-
     @Column({ name: "created_by", nullable: true })
     createdByUserId?: number | null
 
@@ -32,7 +29,4 @@ export class AssetStatus {
 
     @CreateDateColumn({ name: "created_at" })
     createdAt!: Date
-
-    @UpdateDateColumn({ name: "updated_at" })
-    updatedAt!: Date
 }
