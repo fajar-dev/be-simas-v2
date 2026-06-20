@@ -1,19 +1,6 @@
 import { Asset } from "../entities/asset.entity"
 import { minio } from "../../../core/helpers/minio"
 
-interface DepreciationResult {
-    method: string
-    usefulLife: number | null
-    residualValue: number | null
-    startDate: string | null
-    monthlyAmount: number | null
-    monthsElapsed: number
-    accumulated: number
-    bookValue: number
-    percentage: number
-    isFullyDepreciated: boolean
-}
-
 export class AssetSerializer {
     private static async resolveImageUrl(image?: string | null): Promise<string | null> {
         if (!image) return null
@@ -47,95 +34,6 @@ export class AssetSerializer {
         return parts.length > 0 ? parts.join(' ') : '0 days'
     }
 
-    private static getMonthsElapsed(startDate: string): number {
-        const start = new Date(startDate)
-        const now = new Date()
-        const months = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth())
-        // Include partial current month if past the start day
-        const dayAdjust = now.getDate() >= start.getDate() ? 0 : -1
-        return Math.max(0, months + dayAdjust)
-    }
-
-    private static calculateDepreciation(asset: Asset): DepreciationResult | null {
-        if (!asset.depreciationMethod || asset.depreciationMethod === 'none') return null
-
-        const price = asset.price ?? 0
-        const residualValue = asset.residualValue ?? 0
-        const usefulLife = asset.usefulLife ?? 0
-        const startDate = asset.depreciationStartDate || asset.purchaseDate
-
-        if (!startDate || price <= 0 || usefulLife <= 0) {
-            return {
-                method: asset.depreciationMethod,
-                usefulLife: asset.usefulLife ?? null,
-                residualValue: asset.residualValue ?? null,
-                startDate: startDate || null,
-                monthlyAmount: null,
-                monthsElapsed: 0,
-                accumulated: 0,
-                bookValue: price,
-                percentage: 0,
-                isFullyDepreciated: false,
-            }
-        }
-
-        const depreciableAmount = Math.max(0, price - residualValue)
-        const monthsElapsed = this.getMonthsElapsed(startDate)
-
-        let accumulated = 0
-        let monthlyAmount = 0
-
-        if (asset.depreciationMethod === 'straight_line') {
-            monthlyAmount = Math.round(depreciableAmount / usefulLife)
-            accumulated = Math.min(depreciableAmount, monthlyAmount * monthsElapsed)
-        } else if (asset.depreciationMethod === 'declining_balance') {
-            // Annual rate = 1 / (usefulLife in years)
-            const usefulLifeYears = usefulLife / 12
-            const annualRate = 1 / usefulLifeYears
-            let bookValue = price
-
-            // Calculate year by year up to current elapsed months
-            const totalMonthsToCalc = Math.min(monthsElapsed, usefulLife)
-            let remainingMonths = totalMonthsToCalc
-
-            while (remainingMonths > 0 && bookValue > residualValue) {
-                const monthsInPeriod = Math.min(12, remainingMonths)
-                const yearDepreciation = Math.round(bookValue * annualRate)
-                // Pro-rate if partial year
-                const periodDepreciation = Math.round(yearDepreciation * (monthsInPeriod / 12))
-                const cappedDepreciation = Math.min(periodDepreciation, bookValue - residualValue)
-
-                if (cappedDepreciation <= 0) break
-
-                accumulated += cappedDepreciation
-                bookValue -= cappedDepreciation
-                remainingMonths -= monthsInPeriod
-            }
-
-            // monthlyAmount = approximate current month's depreciation
-            const currentBookValue = price - accumulated
-            if (currentBookValue > residualValue) {
-                monthlyAmount = Math.round((currentBookValue * annualRate) / 12)
-            }
-        }
-
-        const bookValue = Math.max(residualValue, price - accumulated)
-        const percentage = depreciableAmount > 0 ? Math.min(100, Math.round((accumulated / depreciableAmount) * 100)) : 0
-
-        return {
-            method: asset.depreciationMethod,
-            usefulLife: asset.usefulLife ?? null,
-            residualValue: asset.residualValue ?? null,
-            startDate,
-            monthlyAmount: monthlyAmount || null,
-            monthsElapsed,
-            accumulated,
-            bookValue,
-            percentage,
-            isFullyDepreciated: percentage >= 100,
-        }
-    }
-
     static async single(asset: Asset) {
         return {
             id: asset.id,
@@ -151,11 +49,6 @@ export class AssetSerializer {
             hasHolder: asset.hasHolder,
             hasMaintenance: asset.hasMaintenance,
             hasLocation: asset.hasLocation,
-            depreciationMethod: asset.depreciationMethod || 'none',
-            usefulLife: asset.usefulLife ?? null,
-            residualValue: asset.residualValue ?? null,
-            depreciationStartDate: asset.depreciationStartDate || null,
-            depreciation: this.calculateDepreciation(asset),
             subCategory: asset.subCategory ? {
                 id: asset.subCategory.id,
                 name: asset.subCategory.name,
