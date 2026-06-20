@@ -64,4 +64,8 @@ export class Asset {
 
     @OneToMany(() => AssetLabel, (label) => label.asset, { cascade: true, eager: true, orphanedRowAction: 'delete' })
     labels!: Relation<AssetLabel[]>
+
+    // Transient/virtual fields populated at service layer
+    activeHolder?: any
+    lastLocation?: any
 }

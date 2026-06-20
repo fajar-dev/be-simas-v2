@@ -1,9 +1,5 @@
 import { Asset } from "../entities/asset.entity"
 import { minio } from "../../../core/helpers/minio"
-import { AppDataSource } from "../../../config/database"
-import { AssetHolder } from "../../asset-holder/entities/asset-holder.entity"
-import { AssetLocation } from "../../asset-location/entities/asset-location.entity"
-import { IsNull } from "typeorm"
 
 export class AssetSerializer {
     private static async resolveImageUrl(image?: string | null): Promise<string | null> {
@@ -39,27 +35,6 @@ export class AssetSerializer {
     }
 
     static async single(asset: Asset) {
-        // Load activeHolder
-        let activeHolderRecord = null
-        if (asset.hasHolder) {
-            const holderRepo = AppDataSource.getRepository(AssetHolder)
-            activeHolderRecord = await holderRepo.findOne({
-                where: { assetId: asset.id, returnedDate: IsNull() },
-                relations: ["employee"],
-            })
-        }
-
-        // Load lastLocation
-        let lastLocationRecord = null
-        if (asset.hasLocation) {
-            const locationRepo = AppDataSource.getRepository(AssetLocation)
-            lastLocationRecord = await locationRepo.findOne({
-                where: { assetId: asset.id },
-                order: { date: "DESC", id: "DESC" },
-                relations: ["location", "location.branch"],
-            })
-        }
-
         return {
             id: asset.id,
             code: asset.code,
@@ -94,26 +69,26 @@ export class AssetSerializer {
                 key: l.key,
                 value: l.value,
             })),
-            activeHolder: activeHolderRecord ? {
-                id: activeHolderRecord.id,
-                employeeId: activeHolderRecord.employeeId,
-                assignedDate: activeHolderRecord.assignedDate,
-                employee: activeHolderRecord.employee ? {
-                    id: activeHolderRecord.employee.id,
-                    name: activeHolderRecord.employee.name,
-                    employeeId: activeHolderRecord.employee.employeeId,
-                    jobPosition: activeHolderRecord.employee.jobPosition,
+            activeHolder: asset.activeHolder ? {
+                id: asset.activeHolder.id,
+                employeeId: asset.activeHolder.employeeId,
+                assignedDate: asset.activeHolder.assignedDate,
+                employee: asset.activeHolder.employee ? {
+                    id: asset.activeHolder.employee.id,
+                    name: asset.activeHolder.employee.name,
+                    employeeId: asset.activeHolder.employee.employeeId,
+                    jobPosition: asset.activeHolder.employee.jobPosition,
                 } : null,
             } : null,
-            lastLocation: lastLocationRecord ? {
-                id: lastLocationRecord.id,
-                date: lastLocationRecord.date,
-                location: lastLocationRecord.location ? {
-                    id: lastLocationRecord.location.id,
-                    name: lastLocationRecord.location.name,
-                    branch: lastLocationRecord.location.branch ? {
-                        id: lastLocationRecord.location.branch.id,
-                        name: lastLocationRecord.location.branch.name,
+            lastLocation: asset.lastLocation ? {
+                id: asset.lastLocation.id,
+                date: asset.lastLocation.date,
+                location: asset.lastLocation.location ? {
+                    id: asset.lastLocation.location.id,
+                    name: asset.lastLocation.location.name,
+                    branch: asset.lastLocation.location.branch ? {
+                        id: asset.lastLocation.location.branch.id,
+                        name: asset.lastLocation.location.branch.name,
                     } : null,
                 } : null,
             } : null,

@@ -1,6 +1,6 @@
 import { Asset } from "./entities/asset.entity"
 import { NotFoundException, BadRequestException } from "../../core/exceptions/base"
-import { EntityManager } from "typeorm"
+import { EntityManager, IsNull } from "typeorm"
 import { IAssetRepository } from "./interfaces/asset.repository.interface"
 import { minio } from "../../core/helpers/minio"
 import { AppDataSource } from "../../config/database"
@@ -14,7 +14,9 @@ export class AssetService {
     constructor(private readonly repository: IAssetRepository) {}
 
     async getAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: Asset[]; total: number }> {
-        return await this.repository.findAll(page, limit, q, sortBy, order)
+        const { data, total } = await this.repository.findAll(page, limit, q, sortBy, order)
+        await Promise.all(data.map(asset => this.populateRelations(asset)))
+        return { data, total }
     }
 
     async getById(id: number): Promise<Asset> {
@@ -22,7 +24,33 @@ export class AssetService {
         if (!asset) {
             throw new NotFoundException("Asset not found")
         }
+        await this.populateRelations(asset)
         return asset
+    }
+
+    private async populateRelations(asset: Asset): Promise<void> {
+        // Load activeHolder
+        if (asset.hasHolder) {
+            const holderRepo = AppDataSource.getRepository(AssetHolder)
+            asset.activeHolder = await holderRepo.findOne({
+                where: { assetId: asset.id, returnedDate: IsNull() },
+                relations: ["employee"],
+            })
+        } else {
+            asset.activeHolder = null
+        }
+
+        // Load lastLocation
+        if (asset.hasLocation) {
+            const locationRepo = AppDataSource.getRepository(AssetLocation)
+            asset.lastLocation = await locationRepo.findOne({
+                where: { assetId: asset.id },
+                order: { date: "DESC", id: "DESC" },
+                relations: ["location", "location.branch"],
+            })
+        } else {
+            asset.lastLocation = null
+        }
     }
 
     async checkCode(code: string, excludeId?: number): Promise<boolean> {
@@ -105,8 +133,7 @@ export class AssetService {
             await queryRunner.commitTransaction()
 
             // Fetch the fully loaded asset (with category, branch, etc.)
-            const full = await this.repository.findById(asset.id)
-            if (!full) throw new NotFoundException("Asset not found after creation")
+            const full = await this.getById(asset.id)
             return full
         } catch (error: any) {
             await queryRunner.rollbackTransaction()
