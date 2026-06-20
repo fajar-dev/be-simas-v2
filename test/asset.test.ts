@@ -618,7 +618,7 @@ describe("DELETE /api/asset/:id", () => {
 })
 
 describe("GET /api/asset - filtering", () => {
-    test("should filter assets by categoryId and subCategoryId", async () => {
+    test("should filter assets by categoryIds and subCategoryIds", async () => {
         const { headers } = await registerAndLogin(app)
         const subCategory = await createTestSubCategory(app, headers) // has Category "Electronics" and SubCategory "Laptops"
         
@@ -649,13 +649,13 @@ describe("GET /api/asset - filtering", () => {
             body: createAssetData(subCategory2.id, { name: "Chair 1", price: 5000 }),
         })
 
-        // Filter by categoryId of subCategory 1
-        const resCat1 = await request(app, `/api/asset?categoryId=${subCategory.category.id}`, { method: "GET", headers })
+        // Filter by categoryIds of subCategory 1
+        const resCat1 = await request(app, `/api/asset?categoryIds=${subCategory.category.id}`, { method: "GET", headers })
         expect(resCat1.body.data.length).toBe(1)
         expect(resCat1.body.data[0].name).toBe("Laptop 1")
 
-        // Filter by subCategoryId of subCategory 2
-        const resSub2 = await request(app, `/api/asset?subCategoryId=${subCategory2.id}`, { method: "GET", headers })
+        // Filter by subCategoryIds of subCategory 2
+        const resSub2 = await request(app, `/api/asset?subCategoryIds=${subCategory2.id}`, { method: "GET", headers })
         expect(resSub2.body.data.length).toBe(1)
         expect(resSub2.body.data[0].name).toBe("Chair 1")
     })
