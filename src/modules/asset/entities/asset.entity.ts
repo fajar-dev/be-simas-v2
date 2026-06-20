@@ -59,6 +59,18 @@ export class Asset {
     @Column({ name: "has_location", type: "boolean", default: true })
     hasLocation!: boolean
 
+    @Column({ name: "depreciation_method", type: "varchar", default: "none" })
+    depreciationMethod!: string
+
+    @Column({ name: "useful_life", type: "integer", nullable: true })
+    usefulLife?: number | null
+
+    @Column({ name: "residual_value", type: "integer", nullable: true })
+    residualValue?: number | null
+
+    @Column({ name: "depreciation_start_date", nullable: true })
+    depreciationStartDate?: string | null
+
     @CreateDateColumn({ name: "created_at" })
     createdAt!: Date
 

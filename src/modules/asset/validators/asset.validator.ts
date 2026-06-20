@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+const DEPRECIATION_METHODS = ["none", "straight_line", "declining_balance"] as const
+
 const LabelSchema = z.object({
     key: z.string().min(1, "Label key is required"),
     value: z.string().min(1, "Label value is required"),
@@ -20,6 +22,12 @@ export const CreateAssetValidator = z.object({
     hasMaintenance: z.boolean().default(true).optional(),
     hasLocation: z.boolean().default(true).optional(),
 
+    // Depreciation fields
+    depreciationMethod: z.enum(DEPRECIATION_METHODS).default("none").optional(),
+    usefulLife: z.number().int().positive("Useful life must be positive").optional().nullable(),
+    residualValue: z.number().int().min(0, "Residual value cannot be negative").optional().nullable(),
+    depreciationStartDate: z.string().optional().nullable(),
+
     // Optional immediate assign fields
     employeeId: z.number().int().positive().optional().nullable(),
     assignedDate: z.string().optional().nullable(),
@@ -31,7 +39,15 @@ export const CreateAssetValidator = z.object({
     locationDate: z.string().optional().nullable(),
     locationNote: z.string().optional().nullable(),
     locationAttachmentIds: z.array(z.number()).optional().nullable(),
-})
+}).refine(
+    (data) => {
+        if (data.depreciationMethod && data.depreciationMethod !== "none") {
+            return data.usefulLife !== undefined && data.usefulLife !== null && data.usefulLife > 0
+        }
+        return true
+    },
+    { message: "Useful life is required when depreciation method is set", path: ["usefulLife"] }
+)
 
 export type CreateAssetValidator = z.infer<typeof CreateAssetValidator>
 
@@ -49,6 +65,20 @@ export const UpdateAssetValidator = z.object({
     hasHolder: z.boolean().optional(),
     hasMaintenance: z.boolean().optional(),
     hasLocation: z.boolean().optional(),
-})
+
+    // Depreciation fields
+    depreciationMethod: z.enum(DEPRECIATION_METHODS).optional(),
+    usefulLife: z.number().int().positive("Useful life must be positive").optional().nullable(),
+    residualValue: z.number().int().min(0, "Residual value cannot be negative").optional().nullable(),
+    depreciationStartDate: z.string().optional().nullable(),
+}).refine(
+    (data) => {
+        if (data.depreciationMethod && data.depreciationMethod !== "none") {
+            return data.usefulLife !== undefined && data.usefulLife !== null && data.usefulLife > 0
+        }
+        return true
+    },
+    { message: "Useful life is required when depreciation method is set", path: ["usefulLife"] }
+)
 
 export type UpdateAssetValidator = z.infer<typeof UpdateAssetValidator>
