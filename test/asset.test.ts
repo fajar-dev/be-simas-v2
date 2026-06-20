@@ -515,6 +515,76 @@ describe("PUT /api/asset/:id", () => {
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Asset Settings Flags
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("Asset Settings Flags", () => {
+    test("should serialize activeHolder and lastLocation as null if hasHolder or hasLocation is set to false", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+
+        // Create Employee for assign
+        const empRes = await request(app, "/api/employee", {
+            method: "POST",
+            headers,
+            body: {
+                employeeId: "EMP-X",
+                name: "Test Employee",
+                jobPosition: "Engineer",
+                email: "test@emp.com",
+                phone: "08123456781"
+            }
+        })
+        const employeeId = empRes.body.data.id
+
+        // Create Branch & Location
+        const branchRes = await request(app, "/api/branch", {
+            method: "POST",
+            headers,
+            body: { code: "BR-Y", name: "Branch Y" }
+        })
+        const locRes = await request(app, "/api/location", {
+            method: "POST",
+            headers,
+            body: { name: "Location Y", branchId: branchRes.body.data.id }
+        })
+        const locationId = locRes.body.data.id
+
+        // Create asset with hasHolder=false, hasLocation=false, but supplying employeeId/locationId
+        const { status, body } = await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: {
+                code: "AST-FLAGS",
+                name: "Flags Asset",
+                subCategoryId: subCategory.id,
+                hasHolder: false,
+                hasLocation: false,
+                employeeId,
+                locationId
+            },
+        })
+
+        expect(status).toBe(201)
+        expect(body.success).toBe(true)
+        expect(body.data.hasHolder).toBe(false)
+        expect(body.data.hasLocation).toBe(false)
+        expect(body.data.activeHolder).toBeNull()
+        expect(body.data.lastLocation).toBeNull()
+
+        // Fetch details to ensure it stays null
+        const getRes = await request(app, `/api/asset/${body.data.id}`, {
+            method: "GET",
+            headers
+        })
+        expect(getRes.status).toBe(200)
+        expect(getRes.body.data.activeHolder).toBeNull()
+        expect(getRes.body.data.lastLocation).toBeNull()
+    })
+})
+
+
+// ═══════════════════════════════════════════════════════════════════════════
 // DELETE /api/asset/:id — Destroy
 // ═══════════════════════════════════════════════════════════════════════════
 
