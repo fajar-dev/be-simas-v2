@@ -264,6 +264,63 @@ describe("POST /api/asset", () => {
         expect(body.success).toBe(false)
         expect(body.message).toBe("Asset code must be unique")
     })
+
+    test("should create an asset with immediate assignment and relocation successfully", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+
+        // 1. Create Employee
+        const empRes = await request(app, "/api/employee", {
+            method: "POST",
+            headers,
+            body: {
+                employeeId: "EMP-IMMEDIATE",
+                name: "Immediate Employee",
+                jobPosition: "Developer",
+                email: "immediate@example.com",
+                phone: "08123456789"
+            }
+        })
+        const employeeId = empRes.body.data.id
+
+        // 2. Create Branch & Location
+        const branchRes = await request(app, "/api/branch", {
+            method: "POST",
+            headers,
+            body: { code: "BR-IMMEDIATE", name: "Immediate Branch", description: "Immediate Branch Desc" },
+        })
+        const locRes = await request(app, "/api/location", {
+            method: "POST",
+            headers,
+            body: { name: "Immediate Room", description: "Immediate Room Desc", branchId: branchRes.body.data.id },
+        })
+        const locationId = locRes.body.data.id
+
+        // 3. Create Asset with immediate assignment & relocation
+        const assetData = createAssetData(subCategory.id, {
+            code: "IMMEDIATE-AST",
+            employeeId,
+            assignedDate: "2026-06-20 07:23:00",
+            assignNote: "Immediate Assign Note",
+            locationId,
+            locationDate: "2026-06-20 07:24:00",
+            locationNote: "Immediate Relocate Note",
+        })
+
+        const { status, body } = await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: assetData,
+        })
+
+        expect(status).toBe(201)
+        expect(body.success).toBe(true)
+        expect(body.data.activeHolder).toBeDefined()
+        expect(body.data.activeHolder.employee.name).toBe("Immediate Employee")
+        expect(body.data.lastLocation).toBeDefined()
+        expect(body.data.lastLocation.location.name).toBe("Immediate Room")
+        expect(body.data.lastLocation.location.branch.name).toBe("Immediate Branch")
+    })
 })
 
 // ═══════════════════════════════════════════════════════════════════════════

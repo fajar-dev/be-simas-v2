@@ -16,6 +16,16 @@ export const CreateAssetValidator = z.object({
     image: z.string().optional().nullable(),
     subCategoryId: z.number().int().positive("Sub category is required"),
     labels: z.array(LabelSchema).optional(),
+    
+    // Immediate assignment
+    employeeId: z.number().int().optional().nullable(),
+    assignedDate: z.string().optional().nullable(),
+    assignNote: z.string().optional().nullable(),
+
+    // Immediate relocation
+    locationId: z.number().int().optional().nullable(),
+    locationDate: z.string().optional().nullable(),
+    locationNote: z.string().optional().nullable(),
 })
 
 export type CreateAssetValidator = z.infer<typeof CreateAssetValidator>
