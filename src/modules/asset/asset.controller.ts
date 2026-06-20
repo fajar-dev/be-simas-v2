@@ -38,7 +38,7 @@ export class AssetController {
 
     async store(c: Context) {
         const user = c.get("user")
-        const data = c.req.valid("json" as never)
+        const data = c.req.valid("json" as never) as any
         const asset = await this.service.create({
             ...data,
             createdByUserId: user?.id,

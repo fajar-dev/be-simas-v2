@@ -59,7 +59,7 @@ export class AssetHolderController {
 
     async store(c: Context) {
         const user = c.get("user")
-        const body = c.req.valid("json" as any)
+        const body = c.req.valid("json" as never) as any
         const log = await this.service.create({
             ...body,
             createdByUserId: user?.id,
@@ -77,7 +77,7 @@ export class AssetHolderController {
         }
 
         const user = c.get("user")
-        const body = c.req.valid("json" as any)
+        const body = c.req.valid("json" as never) as any
         const log = await this.service.returnAsset(id, {
             ...body,
             returnedByUserId: user?.id,

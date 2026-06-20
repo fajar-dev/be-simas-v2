@@ -42,7 +42,7 @@ export class AssetMaintenanceController {
 
     async store(c: Context) {
         const user = c.get("user")
-        const body = c.req.valid("json" as any)
+        const body = c.req.valid("json" as never) as any
         const maintenance = await this.service.create({
             ...body,
             createdByUserId: user?.id,
@@ -61,7 +61,7 @@ export class AssetMaintenanceController {
             throw new BadRequestException("Invalid ID")
         }
 
-        const body = c.req.valid("json" as any)
+        const body = c.req.valid("json" as never) as any
         const maintenance = await this.service.update(id, body)
 
         // Fetch fresh associated attachments to serialize
