@@ -3,7 +3,7 @@ import { AppDataSource } from "../../../config/database"
 import { User } from "../entities/user.entity"
 import { IUserRepository, UserListFilters } from "../interfaces/user.repository.interface"
 
-export class TypeOrmUserRepository implements IUserRepository {
+export class UserRepository implements IUserRepository {
     private readonly repository: Repository<User>
 
     constructor() {

@@ -3,7 +3,7 @@ import { AppDataSource } from "../../../config/database"
 import { Employee } from "../entities/employee.entity"
 import { IEmployeeRepository } from "../interfaces/employee.repository.interface"
 
-export class TypeOrmEmployeeRepository implements IEmployeeRepository {
+export class EmployeeRepository implements IEmployeeRepository {
     private readonly repository: Repository<Employee>
 
     constructor() {

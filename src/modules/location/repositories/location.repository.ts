@@ -3,7 +3,7 @@ import { AppDataSource } from "../../../config/database"
 import { Location } from "../entities/location.entity"
 import { ILocationRepository } from "../interfaces/location.repository.interface"
 
-export class TypeOrmLocationRepository implements ILocationRepository {
+export class LocationRepository implements ILocationRepository {
     private readonly repository: Repository<Location>
 
     constructor() {

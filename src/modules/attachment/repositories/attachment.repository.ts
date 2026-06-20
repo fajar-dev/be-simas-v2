@@ -3,7 +3,7 @@ import { AppDataSource } from "../../../config/database"
 import { Attachment } from "../entities/attachment.entity"
 import { IAttachmentRepository } from "../interfaces/attachment.repository.interface"
 
-export class TypeOrmAttachmentRepository implements IAttachmentRepository {
+export class AttachmentRepository implements IAttachmentRepository {
     private readonly repository: Repository<Attachment>
 
     constructor() {

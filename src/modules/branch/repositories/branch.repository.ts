@@ -3,7 +3,7 @@ import { AppDataSource } from "../../../config/database"
 import { Branch } from "../entities/branch.entity"
 import { IBranchRepository } from "../interfaces/branch.repository.interface"
 
-export class TypeOrmBranchRepository implements IBranchRepository {
+export class BranchRepository implements IBranchRepository {
     private readonly repository: Repository<Branch>
 
     constructor() {

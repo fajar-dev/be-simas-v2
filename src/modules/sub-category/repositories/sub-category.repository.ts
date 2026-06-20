@@ -3,7 +3,7 @@ import { AppDataSource } from "../../../config/database"
 import { SubCategory } from "../entities/sub-category.entity"
 import { ISubCategoryRepository } from "../interfaces/sub-category.repository.interface"
 
-export class TypeOrmSubCategoryRepository implements ISubCategoryRepository {
+export class SubCategoryRepository implements ISubCategoryRepository {
     private readonly repository: Repository<SubCategory>
 
     constructor() {

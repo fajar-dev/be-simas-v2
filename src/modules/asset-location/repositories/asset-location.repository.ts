@@ -3,7 +3,7 @@ import { AppDataSource } from "../../../config/database"
 import { AssetLocation } from "../entities/asset-location.entity"
 import { IAssetLocationRepository } from "../interfaces/asset-location.repository.interface"
 
-export class TypeOrmAssetLocationRepository implements IAssetLocationRepository {
+export class AssetLocationRepository implements IAssetLocationRepository {
     private readonly repository: Repository<AssetLocation>
 
     constructor() {

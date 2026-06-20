@@ -3,7 +3,7 @@ import { AppDataSource } from "../../../config/database"
 import { AssetHolder } from "../entities/asset-holder.entity"
 import { IAssetHolderRepository } from "../interfaces/asset-holder.repository.interface"
 
-export class TypeOrmAssetHolderRepository implements IAssetHolderRepository {
+export class AssetHolderRepository implements IAssetHolderRepository {
     private readonly repository: Repository<AssetHolder>
 
     constructor() {

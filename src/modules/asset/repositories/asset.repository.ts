@@ -8,7 +8,7 @@ import { AssetLocation } from "../../asset-location/entities/asset-location.enti
 import { Employee } from "../../employee/entities/employee.entity"
 import { Location } from "../../location/entities/location.entity"
 
-export class TypeOrmAssetRepository implements IAssetRepository {
+export class AssetRepository implements IAssetRepository {
     private readonly repository: Repository<Asset>
 
     constructor() {
