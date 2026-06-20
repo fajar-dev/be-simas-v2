@@ -40,19 +40,25 @@ export class AssetSerializer {
 
     static async single(asset: Asset) {
         // Load activeHolder
-        const holderRepo = AppDataSource.getRepository(AssetHolder)
-        const activeHolderRecord = await holderRepo.findOne({
-            where: { assetId: asset.id, returnedDate: IsNull() },
-            relations: ["employee"],
-        })
+        let activeHolderRecord = null
+        if (asset.hasHolder) {
+            const holderRepo = AppDataSource.getRepository(AssetHolder)
+            activeHolderRecord = await holderRepo.findOne({
+                where: { assetId: asset.id, returnedDate: IsNull() },
+                relations: ["employee"],
+            })
+        }
 
         // Load lastLocation
-        const locationRepo = AppDataSource.getRepository(AssetLocation)
-        const lastLocationRecord = await locationRepo.findOne({
-            where: { assetId: asset.id },
-            order: { date: "DESC", id: "DESC" },
-            relations: ["location", "location.branch"],
-        })
+        let lastLocationRecord = null
+        if (asset.hasLocation) {
+            const locationRepo = AppDataSource.getRepository(AssetLocation)
+            lastLocationRecord = await locationRepo.findOne({
+                where: { assetId: asset.id },
+                order: { date: "DESC", id: "DESC" },
+                relations: ["location", "location.branch"],
+            })
+        }
 
         return {
             id: asset.id,
