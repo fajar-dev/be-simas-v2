@@ -21,7 +21,16 @@ export class AssetLogService {
         action: string
         description: string
         createdByUserId?: number | null
+        oldValue?: Record<string, any> | null
+        newValue?: Record<string, any> | null
     }, manager?: EntityManager): Promise<AssetLog> {
-        return await this.repository.save(data, manager)
+        return await this.repository.save({
+            assetId: data.assetId,
+            action: data.action,
+            description: data.description,
+            createdByUserId: data.createdByUserId,
+            oldValue: data.oldValue ? JSON.stringify(data.oldValue) : null,
+            newValue: data.newValue ? JSON.stringify(data.newValue) : null,
+        }, manager)
     }
 }

@@ -71,6 +71,7 @@ export class AssetMaintenanceService {
                 action: "maintenance_create",
                 description: `Maintenance recorded: ${data.note || "No notes"}.`,
                 createdByUserId: data.createdByUserId,
+                newValue: data,
             }, queryRunner.manager)
 
             await queryRunner.commitTransaction()
@@ -124,6 +125,8 @@ export class AssetMaintenanceService {
                 action: "maintenance_update",
                 description: `Maintenance record updated: ${data.note || maintenance.note || "No notes"}.`,
                 createdByUserId: operatorId,
+                oldValue: { ...maintenance },
+                newValue: data,
             }, queryRunner.manager)
 
             await queryRunner.commitTransaction()
@@ -159,6 +162,7 @@ export class AssetMaintenanceService {
                 action: "maintenance_delete",
                 description: `Maintenance record was deleted (Note: "${maintenance.note || 'No notes'}").`,
                 createdByUserId: operatorId,
+                oldValue: { ...maintenance },
             }, queryRunner.manager)
 
             await queryRunner.commitTransaction()

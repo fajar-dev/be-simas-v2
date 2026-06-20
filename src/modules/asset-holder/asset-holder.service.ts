@@ -93,6 +93,7 @@ export class AssetHolderService {
                 action: "assign",
                 description: `Asset assigned to employee "${employeeExists.name}".`,
                 createdByUserId: data.createdByUserId,
+                newValue: data,
             }, queryRunner.manager)
 
             await queryRunner.commitTransaction()
@@ -136,6 +137,8 @@ export class AssetHolderService {
                 action: "return",
                 description: `Asset returned from employee "${log.employee.name}".`,
                 createdByUserId: data.returnedByUserId,
+                oldValue: { ...log },
+                newValue: data,
             }, queryRunner.manager)
 
             await queryRunner.commitTransaction()

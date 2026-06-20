@@ -79,6 +79,7 @@ export class AssetLocationService {
                 action: "relocate",
                 description: `Asset location moved to "${locationExists.name}".`,
                 createdByUserId: data.createdByUserId,
+                newValue: data,
             }, queryRunner.manager)
 
             await queryRunner.commitTransaction()

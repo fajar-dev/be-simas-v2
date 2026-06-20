@@ -204,6 +204,9 @@ export class AssetService {
             changes.push(`Maintenance feature ${data.hasMaintenance ? "enabled" : "disabled"}`)
         }
 
+        // Capture old values before merge
+        const oldValue = { ...asset }
+
         if (data.image !== undefined) {
             data.image = minio.sanitizePath(data.image) ?? undefined
         }
@@ -232,6 +235,8 @@ export class AssetService {
                 action: "update",
                 description,
                 createdByUserId: operatorId,
+                oldValue,
+                newValue: data,
             })
 
             return await this.getById(id)

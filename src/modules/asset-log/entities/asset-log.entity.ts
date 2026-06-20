@@ -27,6 +27,12 @@ export class AssetLog {
     @JoinColumn({ name: "created_by" })
     createdBy?: User | null
 
+    @Column({ name: "old_value", type: "text", nullable: true })
+    oldValue?: string | null
+
+    @Column({ name: "new_value", type: "text", nullable: true })
+    newValue?: string | null
+
     @CreateDateColumn({ name: "created_at" })
     createdAt!: Date
 }
