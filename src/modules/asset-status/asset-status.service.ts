@@ -16,7 +16,7 @@ export class AssetStatusService {
         return await this.repository.findLastByAssetId(assetId)
     }
 
-    async create(data: { assetId: number; status: string; note?: string | null; date: string; createdByUserId?: number | null }): Promise<AssetStatus> {
+    async create(data: { assetId: number; status: string; note?: string | null; createdByUserId?: number | null }): Promise<AssetStatus> {
         // Validate asset exists
         await this.assetService.getById(data.assetId)
 
@@ -24,7 +24,7 @@ export class AssetStatusService {
             assetId: data.assetId,
             status: data.status,
             note: data.note || null,
-            date: data.date,
+            date: new Date().toISOString().split('T')[0],
             createdByUserId: data.createdByUserId,
         })
 
