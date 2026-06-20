@@ -61,8 +61,9 @@ export class AssetMaintenanceController {
             throw new BadRequestException("Invalid ID")
         }
 
+        const user = c.get("user")
         const body = c.req.valid("json" as never) as any
-        const maintenance = await this.service.update(id, body)
+        const maintenance = await this.service.update(id, body, user?.id)
 
         // Fetch fresh associated attachments to serialize
         const { attachments } = await this.service.getById(maintenance.id)
@@ -77,7 +78,8 @@ export class AssetMaintenanceController {
             throw new BadRequestException("Invalid ID")
         }
 
-        await this.service.delete(id)
+        const user = c.get("user")
+        await this.service.delete(id, user?.id)
         return ApiResponse.success(c, null, "Asset maintenance record deleted successfully")
     }
 }

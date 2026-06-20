@@ -590,6 +590,23 @@ components:
               size: { type: integer, example: 1234 }
               url: { type: string, example: "http://cdn.test.com/stock/hello.txt" }
 
+    AssetLogResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        assetId: { type: integer, example: 1 }
+        action: { type: string, example: "create" }
+        description: { type: string, example: "Asset Dell Laptop was registered" }
+        createdAt: { type: string, format: date-time }
+        createdBy:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer, example: 1 }
+            name: { type: string, example: "John Doe" }
+            photo: { type: string, nullable: true, example: "users/avatar.png" }
+            email: { type: string, example: "admin@example.com" }
+
 paths:
   # ── Register ──────────────────────────────────────────────────────────────
   /auth/register:
@@ -2056,3 +2073,48 @@ paths:
         "404": { description: Asset assignment record not found }
         "422": { description: Validation error }
 
+  /asset-log:
+    get:
+      tags: [Asset Log]
+      summary: Get asset activity logs (audit trail)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, default: 10 }
+        - name: q
+          in: query
+          required: false
+          schema: { type: string }
+        - name: sortBy
+          in: query
+          required: false
+          schema: { type: string }
+        - name: order
+          in: query
+          required: false
+          schema: { type: string, enum: [ASC, DESC] }
+        - name: assetId
+          in: query
+          required: false
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Asset activity logs retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/AssetLogResponse" }
+        "401": { description: Unauthorized }

@@ -6,6 +6,7 @@ import { AppDataSource } from "../../config/database"
 import { NotFoundException, BadRequestException } from "../../core/exceptions/base"
 import { AttachmentService } from "../attachment/attachment.service"
 import { Attachment } from "../attachment/entities/attachment.entity"
+import { assetLogService } from "../asset-log/asset-log.module"
 
 export class AssetHolderService {
     constructor(
@@ -86,6 +87,14 @@ export class AssetHolderService {
                 await this.attachmentService.associate(data.attachmentIds, "AssetHolder", log.id, queryRunner.manager)
             }
 
+            // Log Asset assignment
+            await assetLogService.log({
+                assetId: data.assetId!,
+                action: "assign",
+                description: `Asset assigned to employee "${employeeExists.name}".`,
+                createdByUserId: data.createdByUserId,
+            }, queryRunner.manager)
+
             await queryRunner.commitTransaction()
 
             // Reload and return
@@ -120,6 +129,14 @@ export class AssetHolderService {
             if (data.attachmentIds && data.attachmentIds.length > 0) {
                 await this.attachmentService.associate(data.attachmentIds, "AssetHolder", log.id, queryRunner.manager)
             }
+
+            // Log Asset return
+            await assetLogService.log({
+                assetId: log.assetId,
+                action: "return",
+                description: `Asset returned from employee "${log.employee.name}".`,
+                createdByUserId: data.returnedByUserId,
+            }, queryRunner.manager)
 
             await queryRunner.commitTransaction()
 

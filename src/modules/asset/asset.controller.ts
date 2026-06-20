@@ -50,8 +50,9 @@ export class AssetController {
 
     async update(c: Context) {
         const id = Number(c.req.param("id"))
+        const user = c.get("user")
         const data = c.req.valid("json" as never)
-        await this.service.update(id, data)
+        await this.service.update(id, data, user?.id)
         const full = await this.service.getById(id)
         const serialized = await AssetSerializer.single(full)
         return ApiResponse.success(c, serialized, "Asset updated successfully")

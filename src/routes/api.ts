@@ -34,6 +34,7 @@ import { attachmentController } from "../modules/attachment/attachment.module"
 import { assetMaintenanceController } from "../modules/asset-maintenance/asset-maintenance.module"
 import { assetLocationController } from "../modules/asset-location/asset-location.module"
 import { assetHolderController } from "../modules/asset-holder/asset-holder.module"
+import { assetLogController } from "../modules/asset-log/asset-log.module"
 import { StoreFeedbackValidator } from "../modules/feedback/validators/feedback.validator"
 
 // ── Routes ───────────────────────────────────────────────────────────────────
@@ -130,6 +131,10 @@ routes.get("/asset-holder/active/:assetId", authMiddleware, (c) => assetHolderCo
 routes.get("/asset-holder/:id", authMiddleware, (c) => assetHolderController.show(c))
 routes.post("/asset-holder", authMiddleware, zValidator("json", AssignAssetValidator, validationHook), (c) => assetHolderController.store(c))
 routes.post("/asset-holder/:id/return", authMiddleware, zValidator("json", ReturnAssetValidator, validationHook), (c) => assetHolderController.returnAsset(c))
+
+// Asset Log
+routes.get("/asset-log", authMiddleware, (c) => assetLogController.index(c))
+
 
 
 // Upload

@@ -9,6 +9,7 @@ import { AssetHolder } from "../asset-holder/entities/asset-holder.entity"
 import { AssetLocation } from "../asset-location/entities/asset-location.entity"
 import { Location } from "../location/entities/location.entity"
 import { attachmentService } from "../attachment/attachment.module"
+import { assetLogService } from "../asset-log/asset-log.module"
 
 export class AssetService {
     constructor(private readonly repository: IAssetRepository) {}
@@ -84,6 +85,14 @@ export class AssetService {
             // 1. Save Asset
             const asset = await this.repository.save(assetData, queryRunner.manager)
 
+            // Log Asset registration
+            await assetLogService.log({
+                assetId: asset.id,
+                action: "create",
+                description: `Asset "${asset.name}" (${asset.code}) was registered.`,
+                createdByUserId: assetData.createdByUserId,
+            }, queryRunner.manager)
+
             // 2. If employeeId is provided, create AssetHolder
             if (employeeId) {
                 // Validate employee exists
@@ -105,6 +114,14 @@ export class AssetService {
                 if (assignAttachmentIds && assignAttachmentIds.length > 0) {
                     await attachmentService.associate(assignAttachmentIds, "AssetHolder", log.id, queryRunner.manager)
                 }
+
+                // Log Asset assignment
+                await assetLogService.log({
+                    assetId: asset.id,
+                    action: "assign",
+                    description: `Asset assigned to employee "${employeeExists.name}".`,
+                    createdByUserId: assetData.createdByUserId,
+                }, queryRunner.manager)
             }
 
             // 3. If locationId is provided, create AssetLocation
@@ -128,6 +145,14 @@ export class AssetService {
                 if (locationAttachmentIds && locationAttachmentIds.length > 0) {
                     await attachmentService.associate(locationAttachmentIds, "AssetLocation", log.id, queryRunner.manager)
                 }
+
+                // Log Asset relocation
+                await assetLogService.log({
+                    assetId: asset.id,
+                    action: "relocate",
+                    description: `Asset location set to "${locationExists.name}".`,
+                    createdByUserId: assetData.createdByUserId,
+                }, queryRunner.manager)
             }
 
             await queryRunner.commitTransaction()
@@ -146,8 +171,39 @@ export class AssetService {
         }
     }
 
-    async update(id: number, data: Partial<Asset>): Promise<Asset> {
+    async update(id: number, data: Partial<Asset>, operatorId?: number): Promise<Asset> {
         const asset = await this.getById(id)
+
+        // Compare details for audit log
+        const changes: string[] = []
+        if (data.name !== undefined && data.name !== asset.name) {
+            changes.push(`Name changed from "${asset.name}" to "${data.name}"`)
+        }
+        if (data.code !== undefined && data.code !== asset.code) {
+            changes.push(`Code changed from "${asset.code}" to "${data.code}"`)
+        }
+        if (data.price !== undefined && data.price !== asset.price) {
+            changes.push(`Price changed from "${asset.price ?? '-'}" to "${data.price}"`)
+        }
+        if (data.brand !== undefined && data.brand !== asset.brand) {
+            changes.push(`Brand changed from "${asset.brand ?? '-'}" to "${data.brand}"`)
+        }
+        if (data.model !== undefined && data.model !== asset.model) {
+            changes.push(`Model changed from "${asset.model ?? '-'}" to "${data.model}"`)
+        }
+        if (data.description !== undefined && data.description !== asset.description) {
+            changes.push(`Description updated`)
+        }
+        if (data.hasHolder !== undefined && data.hasHolder !== asset.hasHolder) {
+            changes.push(`Holder feature ${data.hasHolder ? "enabled" : "disabled"}`)
+        }
+        if (data.hasLocation !== undefined && data.hasLocation !== asset.hasLocation) {
+            changes.push(`Location feature ${data.hasLocation ? "enabled" : "disabled"}`)
+        }
+        if (data.hasMaintenance !== undefined && data.hasMaintenance !== asset.hasMaintenance) {
+            changes.push(`Maintenance feature ${data.hasMaintenance ? "enabled" : "disabled"}`)
+        }
+
         if (data.image !== undefined) {
             data.image = minio.sanitizePath(data.image) ?? undefined
         }
@@ -165,6 +221,19 @@ export class AssetService {
                     await this.repository.saveLabels(id, newLabels as any)
                 }
             }
+
+            // Log activity after successful save
+            const description = changes.length > 0 
+                ? `Asset details updated: ${changes.join(", ")}.`
+                : "Asset details updated."
+
+            await assetLogService.log({
+                assetId: id,
+                action: "update",
+                description,
+                createdByUserId: operatorId,
+            })
+
             return await this.getById(id)
         } catch (error: any) {
             if (error?.message?.includes("UNIQUE") || error?.message?.includes("Duplicate entry")) {

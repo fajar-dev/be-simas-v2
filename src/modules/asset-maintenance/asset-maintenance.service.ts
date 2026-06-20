@@ -5,6 +5,7 @@ import { Attachment } from "../attachment/entities/attachment.entity"
 import { Asset } from "../asset/entities/asset.entity"
 import { AppDataSource } from "../../config/database"
 import { NotFoundException, BadRequestException } from "../../core/exceptions/base"
+import { assetLogService } from "../asset-log/asset-log.module"
 
 export class AssetMaintenanceService {
     constructor(
@@ -64,6 +65,14 @@ export class AssetMaintenanceService {
                 await this.attachmentService.associate(data.attachmentIds, "AssetMaintenance", maintenance.id, queryRunner.manager)
             }
 
+            // Log Asset maintenance creation
+            await assetLogService.log({
+                assetId: data.assetId!,
+                action: "maintenance_create",
+                description: `Maintenance recorded: ${data.note || "No notes"}.`,
+                createdByUserId: data.createdByUserId,
+            }, queryRunner.manager)
+
             await queryRunner.commitTransaction()
             
             // Reload with relations
@@ -78,7 +87,7 @@ export class AssetMaintenanceService {
         }
     }
 
-    async update(id: number, data: Partial<AssetMaintenance> & { attachmentIds?: number[] }): Promise<AssetMaintenance> {
+    async update(id: number, data: Partial<AssetMaintenance> & { attachmentIds?: number[] }, operatorId?: number): Promise<AssetMaintenance> {
         const { maintenance } = await this.getById(id)
 
         if (data.assetId && data.assetId !== maintenance.assetId) {
@@ -109,6 +118,14 @@ export class AssetMaintenanceService {
                 await this.attachmentService.associate(data.attachmentIds, "AssetMaintenance", id, queryRunner.manager)
             }
 
+            // Log Asset maintenance update
+            await assetLogService.log({
+                assetId: maintenance.assetId,
+                action: "maintenance_update",
+                description: `Maintenance record updated: ${data.note || maintenance.note || "No notes"}.`,
+                createdByUserId: operatorId,
+            }, queryRunner.manager)
+
             await queryRunner.commitTransaction()
 
             // Reload with relations
@@ -123,7 +140,7 @@ export class AssetMaintenanceService {
         }
     }
 
-    async delete(id: number): Promise<void> {
+    async delete(id: number, operatorId?: number): Promise<void> {
         const { maintenance } = await this.getById(id)
 
         const queryRunner = AppDataSource.createQueryRunner()
@@ -135,6 +152,15 @@ export class AssetMaintenanceService {
             await this.attachmentService.disassociateOrphans("AssetMaintenance", id, [], queryRunner.manager)
             // Delete record
             await this.repository.delete(id, queryRunner.manager)
+
+            // Log Asset maintenance deletion
+            await assetLogService.log({
+                assetId: maintenance.assetId,
+                action: "maintenance_delete",
+                description: `Maintenance record was deleted (Note: "${maintenance.note || 'No notes'}").`,
+                createdByUserId: operatorId,
+            }, queryRunner.manager)
+
             await queryRunner.commitTransaction()
         } catch (err) {
             await queryRunner.rollbackTransaction()

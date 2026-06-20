@@ -6,6 +6,7 @@ import { AppDataSource } from "../../config/database"
 import { NotFoundException } from "../../core/exceptions/base"
 import { AttachmentService } from "../attachment/attachment.service"
 import { Attachment } from "../attachment/entities/attachment.entity"
+import { assetLogService } from "../asset-log/asset-log.module"
 
 export class AssetLocationService {
     constructor(
@@ -71,6 +72,14 @@ export class AssetLocationService {
             if (data.attachmentIds && data.attachmentIds.length > 0) {
                 await this.attachmentService.associate(data.attachmentIds, "AssetLocation", log.id, queryRunner.manager)
             }
+
+            // Log Asset relocation
+            await assetLogService.log({
+                assetId: data.assetId!,
+                action: "relocate",
+                description: `Asset location moved to "${locationExists.name}".`,
+                createdByUserId: data.createdByUserId,
+            }, queryRunner.manager)
 
             await queryRunner.commitTransaction()
 
