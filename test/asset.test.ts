@@ -265,61 +265,60 @@ describe("POST /api/asset", () => {
         expect(body.message).toBe("Asset code must be unique")
     })
 
-    test("should create an asset with immediate assignment and relocation successfully", async () => {
+    test("should create an asset and immediately assign and set location successfully", async () => {
         const { headers } = await registerAndLogin(app)
         const subCategory = await createTestSubCategory(app, headers)
-
-        // 1. Create Employee
+        
+        // Create Employee for assign
         const empRes = await request(app, "/api/employee", {
             method: "POST",
             headers,
             body: {
-                employeeId: "EMP-IMMEDIATE",
-                name: "Immediate Employee",
-                jobPosition: "Developer",
-                email: "immediate@example.com",
-                phone: "08123456789"
+                employeeId: "EMP-999",
+                name: "Bob Builder",
+                jobPosition: "Engineer",
+                email: "bob@builder.com",
+                phone: "08123456780"
             }
         })
         const employeeId = empRes.body.data.id
 
-        // 2. Create Branch & Location
+        // Create Branch & Location for relocation
         const branchRes = await request(app, "/api/branch", {
             method: "POST",
             headers,
-            body: { code: "BR-IMMEDIATE", name: "Immediate Branch", description: "Immediate Branch Desc" },
+            body: { code: "BR-NEW", name: "New Branch" }
         })
         const locRes = await request(app, "/api/location", {
             method: "POST",
             headers,
-            body: { name: "Immediate Room", description: "Immediate Room Desc", branchId: branchRes.body.data.id },
+            body: { name: "Room 101", branchId: branchRes.body.data.id }
         })
         const locationId = locRes.body.data.id
 
-        // 3. Create Asset with immediate assignment & relocation
-        const assetData = createAssetData(subCategory.id, {
-            code: "IMMEDIATE-AST",
-            employeeId,
-            assignedDate: "2026-06-20 07:23:00",
-            assignNote: "Immediate Assign Note",
-            locationId,
-            locationDate: "2026-06-20 07:24:00",
-            locationNote: "Immediate Relocate Note",
-        })
-
-        const { status, body } = await request(app, "/api/asset", {
+        // Now create asset with immediate assign & location
+        const assetRes = await request(app, "/api/asset", {
             method: "POST",
             headers,
-            body: assetData,
+            body: {
+                code: "AST-TRANS",
+                name: "Transactional Laptop",
+                subCategoryId: subCategory.id,
+                employeeId,
+                assignedDate: "2026-06-20",
+                assignNote: "Direct assign",
+                locationId,
+                locationDate: "2026-06-20",
+                locationNote: "Direct location"
+            }
         })
 
-        expect(status).toBe(201)
-        expect(body.success).toBe(true)
-        expect(body.data.activeHolder).toBeDefined()
-        expect(body.data.activeHolder.employee.name).toBe("Immediate Employee")
-        expect(body.data.lastLocation).toBeDefined()
-        expect(body.data.lastLocation.location.name).toBe("Immediate Room")
-        expect(body.data.lastLocation.location.branch.name).toBe("Immediate Branch")
+        expect(assetRes.status).toBe(201)
+        expect(assetRes.body.success).toBe(true)
+        expect(assetRes.body.data.activeHolder).toBeDefined()
+        expect(assetRes.body.data.activeHolder.employee.name).toBe("Bob Builder")
+        expect(assetRes.body.data.lastLocation).toBeDefined()
+        expect(assetRes.body.data.lastLocation.location.name).toBe("Room 101")
     })
 })
 

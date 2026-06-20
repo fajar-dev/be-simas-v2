@@ -5,9 +5,10 @@ import { IAssetRepository } from "./interfaces/asset.repository.interface"
 import { minio } from "../../core/helpers/minio"
 import { AppDataSource } from "../../config/database"
 import { Employee } from "../employee/entities/employee.entity"
-import { Location } from "../location/entities/location.entity"
 import { AssetHolder } from "../asset-holder/entities/asset-holder.entity"
 import { AssetLocation } from "../asset-location/entities/asset-location.entity"
+import { Location } from "../location/entities/location.entity"
+import { attachmentService } from "../attachment/attachment.module"
 
 export class AssetService {
     constructor(private readonly repository: IAssetRepository) {}
@@ -31,15 +32,15 @@ export class AssetService {
     }
 
     async create(data: any): Promise<Asset> {
-        // Extract assignment and relocation fields
         const {
             employeeId,
             assignedDate,
             assignNote,
+            assignAttachmentIds,
             locationId,
             locationDate,
             locationNote,
-            createdByUserId,
+            locationAttachmentIds,
             ...assetData
         } = data
 
@@ -47,64 +48,66 @@ export class AssetService {
             assetData.image = minio.sanitizePath(assetData.image) ?? undefined
         }
 
-        // Validate employee if provided
-        if (employeeId) {
-            const employeeRepo = AppDataSource.getRepository(Employee)
-            const employeeExists = await employeeRepo.findOneBy({ id: employeeId })
-            if (!employeeExists) {
-                throw new NotFoundException("Employee not found")
-            }
-        }
-
-        // Validate location if provided
-        if (locationId) {
-            const locationRepo = AppDataSource.getRepository(Location)
-            const locationExists = await locationRepo.findOneBy({ id: locationId })
-            if (!locationExists) {
-                throw new NotFoundException("Location not found")
-            }
-        }
-
         const queryRunner = AppDataSource.createQueryRunner()
         await queryRunner.connect()
         await queryRunner.startTransaction()
 
         try {
-            // Save asset
-            const assetPayload = {
-                ...assetData,
-                createdByUserId,
-            }
-            const asset = await this.repository.save(assetPayload, queryRunner.manager)
+            // 1. Save Asset
+            const asset = await this.repository.save(assetData, queryRunner.manager)
 
-            // Save assignment log if employeeId is provided
+            // 2. If employeeId is provided, create AssetHolder
             if (employeeId) {
+                // Validate employee exists
+                const employeeRepo = queryRunner.manager.getRepository(Employee)
+                const employeeExists = await employeeRepo.findOneBy({ id: employeeId })
+                if (!employeeExists) {
+                    throw new NotFoundException("Employee not found")
+                }
+
                 const holderRepo = queryRunner.manager.getRepository(AssetHolder)
-                const nowStr = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)
-                await holderRepo.save({
+                const log = await holderRepo.save({
                     assetId: asset.id,
                     employeeId,
-                    assignedDate: assignedDate || nowStr,
+                    assignedDate: assignedDate || new Date().toISOString().split('T')[0],
                     assignNote: assignNote || null,
-                    createdByUserId,
+                    createdByUserId: assetData.createdByUserId,
                 })
+
+                if (assignAttachmentIds && assignAttachmentIds.length > 0) {
+                    await attachmentService.associate(assignAttachmentIds, "AssetHolder", log.id, queryRunner.manager)
+                }
             }
 
-            // Save relocation log if locationId is provided
+            // 3. If locationId is provided, create AssetLocation
             if (locationId) {
-                const locationRepo = queryRunner.manager.getRepository(AssetLocation)
-                const nowStr = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)
-                await locationRepo.save({
+                // Validate location exists
+                const locationRepo = queryRunner.manager.getRepository(Location)
+                const locationExists = await locationRepo.findOneBy({ id: locationId })
+                if (!locationExists) {
+                    throw new NotFoundException("Location not found")
+                }
+
+                const locationLogRepo = queryRunner.manager.getRepository(AssetLocation)
+                const log = await locationLogRepo.save({
                     assetId: asset.id,
                     locationId,
-                    date: locationDate || nowStr,
+                    date: locationDate || new Date().toISOString().split('T')[0],
                     note: locationNote || null,
-                    createdByUserId,
+                    createdByUserId: assetData.createdByUserId,
                 })
+
+                if (locationAttachmentIds && locationAttachmentIds.length > 0) {
+                    await attachmentService.associate(locationAttachmentIds, "AssetLocation", log.id, queryRunner.manager)
+                }
             }
 
             await queryRunner.commitTransaction()
-            return asset
+
+            // Fetch the fully loaded asset (with category, branch, etc.)
+            const full = await this.repository.findById(asset.id)
+            if (!full) throw new NotFoundException("Asset not found after creation")
+            return full
         } catch (error: any) {
             await queryRunner.rollbackTransaction()
             if (error?.message?.includes("UNIQUE") || error?.message?.includes("Duplicate entry")) {
