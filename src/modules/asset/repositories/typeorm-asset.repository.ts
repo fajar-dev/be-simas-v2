@@ -22,6 +22,7 @@ export class TypeOrmAssetRepository implements IAssetRepository {
             .leftJoinAndSelect("asset.subCategory", "subCategory")
             .leftJoinAndSelect("subCategory.category", "category")
             .leftJoinAndSelect("asset.labels", "labels")
+            .leftJoinAndSelect("asset.createdBy", "createdBy")
             .leftJoin(AssetHolder, "activeHolder", "activeHolder.assetId = asset.id AND activeHolder.returnedDate IS NULL")
             .leftJoin(Employee, "activeEmployee", "activeEmployee.id = activeHolder.employeeId")
             .leftJoin(AssetLocation, "lastAssetLocation", "lastAssetLocation.id = (SELECT MAX(sub_al.id) FROM asset_locations sub_al WHERE sub_al.asset_id = asset.id)")
@@ -70,7 +71,7 @@ export class TypeOrmAssetRepository implements IAssetRepository {
     async findById(id: number): Promise<Asset | null> {
         return await this.repository.findOne({
             where: { id },
-            relations: ["subCategory", "subCategory.category", "labels"]
+            relations: ["subCategory", "subCategory.category", "labels", "createdBy"]
         })
     }
 

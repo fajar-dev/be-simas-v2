@@ -75,6 +75,11 @@ export class AssetSerializer {
             } : null,
             createdAt: asset.createdAt,
             updatedAt: asset.updatedAt,
+            createdBy: asset.createdBy ? {
+                id: asset.createdBy.id,
+                name: asset.createdBy.name,
+                photo: asset.createdBy.photo ? await minio.getPresignedUrl(asset.createdBy.photo) : null,
+            } : null,
             labels: (asset.labels || []).map(l => ({
                 id: l.id,
                 key: l.key,

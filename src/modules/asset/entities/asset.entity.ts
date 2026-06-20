@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 import type { Relation } from "typeorm"
 import { SubCategory } from "../../sub-category/entities/sub-category.entity"
 import { AssetLabel } from "./asset-label.entity"
+import { User } from "../../user/entities/user.entity"
 
 @Entity("assets")
 export class Asset {
@@ -38,6 +39,13 @@ export class Asset {
     @ManyToOne(() => SubCategory)
     @JoinColumn({ name: "sub_category_id" })
     subCategory!: SubCategory
+
+    @Column({ name: "created_by", nullable: true })
+    createdByUserId?: number | null
+
+    @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
+    @JoinColumn({ name: "created_by" })
+    createdBy?: User | null
 
     @CreateDateColumn({ name: "created_at" })
     createdAt!: Date

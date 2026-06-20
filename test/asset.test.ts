@@ -184,6 +184,8 @@ describe("POST /api/asset", () => {
         expect(body.data.subCategory.id).toBe(subCategory.id)
         expect(body.data.subCategory.name).toBe(subCategory.name)
         expect(body.data.subCategory.category).toBeDefined()
+        expect(body.data.createdBy).toBeDefined()
+        expect(body.data.createdBy.name).toBe("Test User")
     })
 
     test("should create an asset without optional fields", async () => {
@@ -208,6 +210,8 @@ describe("POST /api/asset", () => {
         expect(body.data.brand).toBeNull()
         expect(body.data.model).toBeNull()
         expect(body.data.image).toBeNull()
+        expect(body.data.createdBy).toBeDefined()
+        expect(body.data.createdBy.name).toBe("Test User")
     })
 
     test("should fail validation without code", async () => {

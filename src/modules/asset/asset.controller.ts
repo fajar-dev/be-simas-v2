@@ -37,8 +37,12 @@ export class AssetController {
     }
 
     async store(c: Context) {
+        const user = c.get("user")
         const data = c.req.valid("json" as never)
-        const asset = await this.service.create(data)
+        const asset = await this.service.create({
+            ...data,
+            createdByUserId: user?.id,
+        })
         const full = await this.service.getById(asset.id)
         const serialized = await AssetSerializer.single(full)
         return ApiResponse.success(c, serialized, "Asset created successfully", 201)

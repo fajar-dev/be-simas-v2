@@ -354,6 +354,13 @@ components:
                 name: { type: string, example: "Electronics" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+        createdBy:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer, example: 1 }
+            name: { type: string, example: "John Doe" }
+            photo: { type: string, nullable: true, example: "https://cdn.example.com/stock/avatars/user1.png" }
         activeHolder:
           type: object
           nullable: true
