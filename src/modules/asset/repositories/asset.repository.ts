@@ -2,7 +2,7 @@ import { EntityManager, Repository } from "typeorm"
 import { AppDataSource } from "../../../config/database"
 import { Asset } from "../entities/asset.entity"
 import { AssetLabel } from "../entities/asset-label.entity"
-import { IAssetRepository } from "../interfaces/asset.repository.interface"
+import { IAssetRepository, AssetFilter } from "../interfaces/asset.repository.interface"
 import { AssetHolder } from "../../asset-holder/entities/asset-holder.entity"
 import { AssetLocation } from "../../asset-location/entities/asset-location.entity"
 import { Employee } from "../../employee/entities/employee.entity"
@@ -15,7 +15,7 @@ export class AssetRepository implements IAssetRepository {
         this.repository = AppDataSource.getRepository(Asset)
     }
 
-    async findAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: Asset[]; total: number }> {
+    async findAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC', filters?: AssetFilter): Promise<{ data: Asset[]; total: number }> {
         const offset = (page - 1) * limit
 
         const query = this.repository.createQueryBuilder("asset")
@@ -35,6 +35,40 @@ export class AssetRepository implements IAssetRepository {
                 "(asset.name LIKE :q OR asset.code LIKE :q OR asset.brand LIKE :q OR asset.model LIKE :q OR subCategory.name LIKE :q OR category.name LIKE :q)",
                 { q: `%${q}%` }
             )
+        }
+
+        if (filters?.categoryId) {
+            query.andWhere("subCategory.categoryId = :categoryId", { categoryId: filters.categoryId })
+        }
+        if (filters?.subCategoryId) {
+            query.andWhere("asset.subCategoryId = :subCategoryId", { subCategoryId: filters.subCategoryId })
+        }
+        if (filters?.branchId) {
+            query.andWhere("lastLoc.branchId = :branchId", { branchId: filters.branchId })
+        }
+        if (filters?.locationId) {
+            query.andWhere("lastAssetLocation.locationId = :locationId", { locationId: filters.locationId })
+        }
+        if (filters?.holderStatus === 'has_holder') {
+            query.andWhere("activeHolder.id IS NOT NULL")
+        }
+        if (filters?.holderStatus === 'no_holder') {
+            query.andWhere("activeHolder.id IS NULL")
+        }
+        if (filters?.holderId) {
+            query.andWhere("activeHolder.employeeId = :holderId", { holderId: filters.holderId })
+        }
+        if (filters?.priceMin !== undefined) {
+            query.andWhere("asset.price >= :priceMin", { priceMin: filters.priceMin })
+        }
+        if (filters?.priceMax !== undefined) {
+            query.andWhere("asset.price <= :priceMax", { priceMax: filters.priceMax })
+        }
+        if (filters?.purchaseDateFrom) {
+            query.andWhere("asset.purchaseDate >= :purchaseDateFrom", { purchaseDateFrom: filters.purchaseDateFrom })
+        }
+        if (filters?.purchaseDateTo) {
+            query.andWhere("asset.purchaseDate <= :purchaseDateTo", { purchaseDateTo: filters.purchaseDateTo })
         }
 
         const total = await query.getCount()

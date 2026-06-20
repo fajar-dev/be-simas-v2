@@ -78,6 +78,7 @@ export class AssetSerializer {
                     name: asset.activeHolder.employee.name,
                     employeeId: asset.activeHolder.employee.employeeId,
                     jobPosition: asset.activeHolder.employee.jobPosition,
+                    photo: asset.activeHolder.employee.photo ? await minio.getPresignedUrl(asset.activeHolder.employee.photo) : null,
                 } : null,
             } : null,
             lastLocation: asset.lastLocation ? {

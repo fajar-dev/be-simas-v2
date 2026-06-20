@@ -616,3 +616,128 @@ describe("DELETE /api/asset/:id", () => {
         expect(getStatus).toBe(404)
     })
 })
+
+describe("GET /api/asset - filtering", () => {
+    test("should filter assets by categoryId and subCategoryId", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers) // has Category "Electronics" and SubCategory "Laptops"
+        
+        // Create another category & subcategory
+        const catRes2 = await request(app, "/api/category", {
+            method: "POST",
+            headers,
+            body: { name: "Furniture", description: "Furniture items" }
+        })
+        const category2 = catRes2.body.data
+        const subRes2 = await request(app, "/api/sub-category", {
+            method: "POST",
+            headers,
+            body: { name: "Chairs", categoryId: category2.id }
+        })
+        const subCategory2 = subRes2.body.data
+
+        // Create asset 1 in subCategory 1
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, { name: "Laptop 1", price: 10000 }),
+        })
+        // Create asset 2 in subCategory 2
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory2.id, { name: "Chair 1", price: 5000 }),
+        })
+
+        // Filter by categoryId of subCategory 1
+        const resCat1 = await request(app, `/api/asset?categoryId=${subCategory.category.id}`, { method: "GET", headers })
+        expect(resCat1.body.data.length).toBe(1)
+        expect(resCat1.body.data[0].name).toBe("Laptop 1")
+
+        // Filter by subCategoryId of subCategory 2
+        const resSub2 = await request(app, `/api/asset?subCategoryId=${subCategory2.id}`, { method: "GET", headers })
+        expect(resSub2.body.data.length).toBe(1)
+        expect(resSub2.body.data[0].name).toBe("Chair 1")
+    })
+
+    test("should filter assets by price range", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, { name: "Cheap Laptop", price: 5000000 }),
+        })
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, { name: "Medium Laptop", price: 10000000 }),
+        })
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, { name: "Expensive Laptop", price: 20000000 }),
+        })
+
+        // Filter min price
+        const resMin = await request(app, "/api/asset?priceMin=10000000", { method: "GET", headers })
+        expect(resMin.body.data.length).toBe(2)
+        const namesMin = resMin.body.data.map((a: any) => a.name)
+        expect(namesMin).toContain("Medium Laptop")
+        expect(namesMin).toContain("Expensive Laptop")
+
+        // Filter max price
+        const resMax = await request(app, "/api/asset?priceMax=10000000", { method: "GET", headers })
+        expect(resMax.body.data.length).toBe(2)
+        const namesMax = resMax.body.data.map((a: any) => a.name)
+        expect(namesMax).toContain("Cheap Laptop")
+        expect(namesMax).toContain("Medium Laptop")
+
+        // Filter min & max price range
+        const resRange = await request(app, "/api/asset?priceMin=6000000&priceMax=15000000", { method: "GET", headers })
+        expect(resRange.body.data.length).toBe(1)
+        expect(resRange.body.data[0].name).toBe("Medium Laptop")
+    })
+
+    test("should filter assets by purchaseDate range", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, { name: "Asset A", purchaseDate: "2024-01-15" }),
+        })
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, { name: "Asset B", purchaseDate: "2025-06-20" }),
+        })
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, { name: "Asset C", purchaseDate: "2026-03-10" }),
+        })
+
+        // Filter purchaseDateFrom
+        const resFrom = await request(app, "/api/asset?purchaseDateFrom=2025-01-01", { method: "GET", headers })
+        expect(resFrom.body.data.length).toBe(2)
+        const namesFrom = resFrom.body.data.map((a: any) => a.name)
+        expect(namesFrom).toContain("Asset B")
+        expect(namesFrom).toContain("Asset C")
+
+        // Filter purchaseDateTo
+        const resTo = await request(app, "/api/asset?purchaseDateTo=2025-12-31", { method: "GET", headers })
+        expect(resTo.body.data.length).toBe(2)
+        const namesTo = resTo.body.data.map((a: any) => a.name)
+        expect(namesTo).toContain("Asset A")
+        expect(namesTo).toContain("Asset B")
+
+        // Filter purchaseDate range
+        const resRange = await request(app, "/api/asset?purchaseDateFrom=2025-01-01&purchaseDateTo=2025-12-31", { method: "GET", headers })
+        expect(resRange.body.data.length).toBe(1)
+        expect(resRange.body.data[0].name).toBe("Asset B")
+    })
+})
+

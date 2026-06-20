@@ -2,6 +2,7 @@ import { Asset } from "./entities/asset.entity"
 import { NotFoundException, BadRequestException } from "../../core/exceptions/base"
 import { EntityManager } from "typeorm"
 import { IAssetRepository } from "./interfaces/asset.repository.interface"
+import { AssetFilter } from "./interfaces/asset.repository.interface"
 import { minio } from "../../core/helpers/minio"
 import { attachmentService } from "../attachment/attachment.module"
 import { assetLogService } from "../asset-log/asset-log.module"
@@ -16,8 +17,8 @@ export class AssetService {
     private get employeeService() { return require("../employee/employee.module").employeeService }
     private get locationService() { return require("../location/location.module").locationService }
 
-    async getAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: Asset[]; total: number }> {
-        const { data, total } = await this.repository.findAll(page, limit, q, sortBy, order)
+    async getAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC', filters?: AssetFilter): Promise<{ data: Asset[]; total: number }> {
+        const { data, total } = await this.repository.findAll(page, limit, q, sortBy, order, filters)
         await Promise.all(data.map(asset => this.populateRelations(asset)))
         return { data, total }
     }

@@ -2,6 +2,7 @@ import { Context } from "hono"
 import { AssetService } from "./asset.service"
 import { AssetSerializer } from "./serializers/asset.serialize"
 import { ApiResponse } from "../../core/helpers/response"
+import { AssetFilter } from "./interfaces/asset.repository.interface"
 
 export class AssetController {
     constructor(private readonly service: AssetService) {}
@@ -13,7 +14,21 @@ export class AssetController {
         const sortBy = c.req.query("sortBy") || undefined
         const order = (c.req.query("order") || "DESC").toUpperCase() as 'ASC' | 'DESC'
 
-        const { data, total } = await this.service.getAll(page, limit, q, sortBy, order)
+        // Parse filter params
+        const filters: AssetFilter = {}
+        if (c.req.query("categoryId")) filters.categoryId = Number(c.req.query("categoryId"))
+        if (c.req.query("subCategoryId")) filters.subCategoryId = Number(c.req.query("subCategoryId"))
+        if (c.req.query("branchId")) filters.branchId = Number(c.req.query("branchId"))
+        if (c.req.query("locationId")) filters.locationId = Number(c.req.query("locationId"))
+        const holderStatus = c.req.query("holderStatus")
+        if (holderStatus === 'has_holder' || holderStatus === 'no_holder') filters.holderStatus = holderStatus
+        if (c.req.query("holderId")) filters.holderId = Number(c.req.query("holderId"))
+        if (c.req.query("priceMin")) filters.priceMin = Number(c.req.query("priceMin"))
+        if (c.req.query("priceMax")) filters.priceMax = Number(c.req.query("priceMax"))
+        if (c.req.query("purchaseDateFrom")) filters.purchaseDateFrom = c.req.query("purchaseDateFrom")!
+        if (c.req.query("purchaseDateTo")) filters.purchaseDateTo = c.req.query("purchaseDateTo")!
+
+        const { data, total } = await this.service.getAll(page, limit, q, sortBy, order, filters)
 
         const serialized = await AssetSerializer.collection(data)
         return ApiResponse.paginate(c, serialized, total, page, limit, "Assets retrieved successfully")
