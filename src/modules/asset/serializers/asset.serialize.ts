@@ -97,6 +97,7 @@ export class AssetSerializer {
                 id: asset.lastStatus.id,
                 status: asset.lastStatus.status,
                 note: asset.lastStatus.note || null,
+                createdAt: asset.lastStatus.createdAt,
             } : null,
         }
     }
