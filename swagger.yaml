@@ -377,6 +377,8 @@ components:
         hasHolder: { type: boolean, default: true, example: true }
         hasMaintenance: { type: boolean, default: true, example: true }
         hasLocation: { type: boolean, default: true, example: true }
+        status: { type: string, enum: [active, idle, under_repair, damaged, lost, sold, disposed], example: "active", description: "Initial asset status" }
+        statusNote: { type: string, nullable: true, example: "Asset is ready for use" }
 
     UpdateAssetRequest:
       type: object
@@ -463,6 +465,14 @@ components:
                   properties:
                     id: { type: integer, example: 1 }
                     name: { type: string, example: "Medan Branch" }
+        lastStatus:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer, example: 1 }
+            status: { type: string, example: "active" }
+            note: { type: string, nullable: true, example: "Asset is ready for use" }
+            createdAt: { type: string, format: date-time }
 
     AttachmentResponse:
       type: object
@@ -666,6 +676,31 @@ components:
             name: { type: string, example: "John Doe" }
             photo: { type: string, nullable: true, example: "users/avatar.png" }
             email: { type: string, example: "admin@example.com" }
+
+    # --- Asset Status Schemas ---
+    CreateAssetStatusRequest:
+      type: object
+      required: [assetId, status]
+      properties:
+        assetId: { type: integer, example: 1 }
+        status: { type: string, enum: [active, idle, under_repair, damaged, lost, sold, disposed], example: "active" }
+        note: { type: string, nullable: true, example: "Asset is operational" }
+
+    AssetStatusResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        assetId: { type: integer, example: 1 }
+        status: { type: string, example: "active" }
+        note: { type: string, nullable: true, example: "Asset is operational" }
+        createdAt: { type: string, format: date-time }
+        createdBy:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer, example: 1 }
+            name: { type: string, example: "John Doe" }
+            photo: { type: string, nullable: true, example: "users/avatar.png" }
 
 paths:
   # ── Register ──────────────────────────────────────────────────────────────
@@ -2178,3 +2213,59 @@ paths:
                         type: array
                         items: { $ref: "#/components/schemas/AssetLogResponse" }
         "401": { description: Unauthorized }
+
+  # ── Asset Status ─────────────────────────────────────────────────────────
+  /asset-status:
+    get:
+      tags: [Asset Status]
+      summary: List asset status history
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, default: 10 }
+        - name: assetId
+          in: query
+          required: false
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Asset status history retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/AssetStatusResponse" }
+        "401": { description: Unauthorized }
+    post:
+      tags: [Asset Status]
+      summary: Create a new asset status
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateAssetStatusRequest" }
+      responses:
+        "201":
+          description: Asset status created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/AssetStatusResponse" }
+        "401": { description: Unauthorized }
+        "422": { description: Validation error }
