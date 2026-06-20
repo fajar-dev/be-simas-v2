@@ -15,6 +15,7 @@ import { AssetMaintenance } from "../src/modules/asset-maintenance/entities/asse
 import { AssetLocation } from "../src/modules/asset-location/entities/asset-location.entity"
 import { AssetHolder } from "../src/modules/asset-holder/entities/asset-holder.entity"
 import { AssetLog } from "../src/modules/asset-log/entities/asset-log.entity"
+import { AssetStatus } from "../src/modules/asset-status/entities/asset-status.entity"
 import { ApiResponse } from "../src/core/helpers/response"
 import { BaseException, ValidationException } from "../src/core/exceptions/base"
 import { ZodError } from "zod"
@@ -37,7 +38,7 @@ const TestDataSource = new DataSource({
     database: testDbName,
     synchronize: true,
     dropSchema: true,
-    entities: [User, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetLocation, AssetHolder, AssetLog],
+    entities: [User, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetLocation, AssetHolder, AssetLog, AssetStatus],
     logging: false,
 })
 

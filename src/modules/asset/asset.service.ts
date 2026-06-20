@@ -14,6 +14,7 @@ export class AssetService {
     // Lazy getters — resolve circular deps at call-time, not import-time
     private get assetHolderService() { return require("../asset-holder/asset-holder.module").assetHolderService }
     private get assetLocationService() { return require("../asset-location/asset-location.module").assetLocationService }
+    private get assetStatusService() { return require("../asset-status/asset-status.module").assetStatusService }
     private get employeeService() { return require("../employee/employee.module").employeeService }
     private get locationService() { return require("../location/location.module").locationService }
 
@@ -41,7 +42,10 @@ export class AssetService {
         // Load lastLocation
         if (asset.hasLocation) {
             asset.lastLocation = await this.assetLocationService.findLastLocation(asset.id)
-        } 
+        }
+
+        // Load lastStatus
+        asset.lastStatus = await this.assetStatusService.findLastStatus(asset.id)
     }
 
     async checkCode(code: string, excludeId?: number): Promise<boolean> {

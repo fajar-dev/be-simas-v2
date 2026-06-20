@@ -13,6 +13,7 @@ import { AssetMaintenance } from "../modules/asset-maintenance/entities/asset-ma
 import { AssetLocation } from "../modules/asset-location/entities/asset-location.entity"
 import { AssetHolder } from "../modules/asset-holder/entities/asset-holder.entity"
 import { AssetLog } from "../modules/asset-log/entities/asset-log.entity"
+import { AssetStatus } from "../modules/asset-status/entities/asset-status.entity"
 import { config } from "./config"
 
 /**
@@ -30,7 +31,7 @@ const defaultDataSource = new DataSource({
     password: config.database.pass,
     database: config.database.name,
     synchronize: config.database.sync,
-    entities: [User, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetLocation, AssetHolder, AssetLog],
+    entities: [User, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetLocation, AssetHolder, AssetLog, AssetStatus],
     migrations: [],
     subscribers: [],
 })

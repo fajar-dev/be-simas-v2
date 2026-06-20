@@ -93,6 +93,17 @@ export class AssetSerializer {
                     } : null,
                 } : null,
             } : null,
+            lastStatus: asset.lastStatus ? {
+                id: asset.lastStatus.id,
+                status: asset.lastStatus.status,
+                note: asset.lastStatus.note || null,
+                date: asset.lastStatus.date,
+                createdBy: asset.lastStatus.createdBy ? {
+                    id: asset.lastStatus.createdBy.id,
+                    name: asset.lastStatus.createdBy.name,
+                    photo: asset.lastStatus.createdBy.photo ? await minio.getPresignedUrl(asset.lastStatus.createdBy.photo) : null,
+                } : null,
+            } : null,
         }
     }
 

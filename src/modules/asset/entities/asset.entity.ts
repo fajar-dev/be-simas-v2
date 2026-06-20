@@ -5,6 +5,7 @@ import { AssetLabel } from "./asset-label.entity"
 import { User } from "../../user/entities/user.entity"
 import type { AssetHolder } from "../../asset-holder/entities/asset-holder.entity"
 import type { AssetLocation } from "../../asset-location/entities/asset-location.entity"
+import type { AssetStatus } from "../../asset-status/entities/asset-status.entity"
 
 @Entity("assets")
 export class Asset {
@@ -70,4 +71,5 @@ export class Asset {
     // Transient/virtual fields populated at service layer
     activeHolder?: AssetHolder
     lastLocation?: AssetLocation
+    lastStatus?: AssetStatus
 }

@@ -15,6 +15,7 @@ import { CreateAssetMaintenanceValidator, UpdateAssetMaintenanceValidator } from
 import { CreateAssetLocationValidator } from "../modules/asset-location/validators/asset-location.validator"
 import { AssignAssetValidator, ReturnAssetValidator } from "../modules/asset-holder/validators/asset-holder.validator"
 import { StoreFeedbackValidator } from "../modules/feedback/validators/feedback.validator"
+import { CreateAssetStatusValidator } from "../modules/asset-status/validators/asset-status.validator"
 
 // ── Middlewares ──────────────────────────────────────────────────────────────
 import { authMiddleware } from "../core/middlewares/auth.middleware"
@@ -36,6 +37,7 @@ import { assetMaintenanceController } from "../modules/asset-maintenance/asset-m
 import { assetLocationController } from "../modules/asset-location/asset-location.module"
 import { assetHolderController } from "../modules/asset-holder/asset-holder.module"
 import { assetLogController } from "../modules/asset-log/asset-log.module"
+import { assetStatusController } from "../modules/asset-status/asset-status.module"
 
 // ── Routes ───────────────────────────────────────────────────────────────────
 const routes = new Hono()
@@ -136,6 +138,9 @@ routes.post("/asset-holder/:id/return", authMiddleware, zValidator("json", Retur
 // Asset Log
 routes.get("/asset-log", authMiddleware, (c) => assetLogController.index(c))
 
+// Asset Status
+routes.get("/asset-status", authMiddleware, (c) => assetStatusController.index(c))
+routes.post("/asset-status", authMiddleware, zValidator("json", CreateAssetStatusValidator, validationHook), (c) => assetStatusController.store(c))
 
 
 // Upload
