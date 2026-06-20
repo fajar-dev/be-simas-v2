@@ -14,7 +14,7 @@ export class AssetMaintenanceSerializer {
             id: maintenance.id,
             assetId: maintenance.assetId,
             date: maintenance.date,
-            note: maintenance.note || null,
+            note: maintenance.note,
             createdAt: maintenance.createdAt,
             updatedAt: maintenance.updatedAt,
             asset: maintenance.asset ? {

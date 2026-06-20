@@ -24,8 +24,8 @@ export class AssetMaintenance {
     @Column({ type: "varchar" })
     date!: string
 
-    @Column({ nullable: true, type: "varchar" })
-    note?: string
+    @Column({ type: "varchar" })
+    note!: string
 
     @CreateDateColumn({ name: "created_at" })
     createdAt!: Date

@@ -420,7 +420,7 @@ components:
 
     CreateAssetMaintenanceRequest:
       type: object
-      required: [assetId, date]
+      required: [assetId, date, note]
       properties:
         assetId: { type: integer, example: 1 }
         date: { type: string, format: date, example: "2026-06-19" }
@@ -447,7 +447,7 @@ components:
         id: { type: integer, example: 1 }
         assetId: { type: integer, example: 1 }
         date: { type: string, format: date, example: "2026-06-19" }
-        note: { type: string, nullable: true, example: "Routine hardware checkup" }
+        note: { type: string, example: "Routine hardware checkup" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         asset:
