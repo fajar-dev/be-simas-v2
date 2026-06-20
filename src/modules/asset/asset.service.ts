@@ -1,18 +1,20 @@
 import { Asset } from "./entities/asset.entity"
 import { NotFoundException, BadRequestException } from "../../core/exceptions/base"
-import { EntityManager, IsNull } from "typeorm"
+import { EntityManager } from "typeorm"
 import { IAssetRepository } from "./interfaces/asset.repository.interface"
 import { minio } from "../../core/helpers/minio"
-import { AppDataSource } from "../../config/database"
-import { Employee } from "../employee/entities/employee.entity"
-import { AssetHolder } from "../asset-holder/entities/asset-holder.entity"
-import { AssetLocation } from "../asset-location/entities/asset-location.entity"
-import { Location } from "../location/entities/location.entity"
 import { attachmentService } from "../attachment/attachment.module"
 import { assetLogService } from "../asset-log/asset-log.module"
+import { withTransaction } from "../../core/helpers/transaction"
 
 export class AssetService {
     constructor(private readonly repository: IAssetRepository) {}
+
+    // Lazy getters — resolve circular deps at call-time, not import-time
+    private get assetHolderService() { return require("../asset-holder/asset-holder.module").assetHolderService }
+    private get assetLocationService() { return require("../asset-location/asset-location.module").assetLocationService }
+    private get employeeService() { return require("../employee/employee.module").employeeService }
+    private get locationService() { return require("../location/location.module").locationService }
 
     async getAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: Asset[]; total: number }> {
         const { data, total } = await this.repository.findAll(page, limit, q, sortBy, order)
@@ -32,26 +34,13 @@ export class AssetService {
     private async populateRelations(asset: Asset): Promise<void> {
         // Load activeHolder
         if (asset.hasHolder) {
-            const holderRepo = AppDataSource.getRepository(AssetHolder)
-            asset.activeHolder = await holderRepo.findOne({
-                where: { assetId: asset.id, returnedDate: IsNull() },
-                relations: ["employee"],
-            })
-        } else {
-            asset.activeHolder = null
+            asset.activeHolder = await this.assetHolderService.findActiveHolder(asset.id)
         }
 
         // Load lastLocation
         if (asset.hasLocation) {
-            const locationRepo = AppDataSource.getRepository(AssetLocation)
-            asset.lastLocation = await locationRepo.findOne({
-                where: { assetId: asset.id },
-                order: { date: "DESC", id: "DESC" },
-                relations: ["location", "location.branch"],
-            })
-        } else {
-            asset.lastLocation = null
-        }
+            asset.lastLocation = await this.assetLocationService.findLastLocation(asset.id)
+        } 
     }
 
     async checkCode(code: string, excludeId?: number): Promise<boolean> {
@@ -77,132 +66,95 @@ export class AssetService {
             assetData.image = minio.sanitizePath(assetData.image) ?? undefined
         }
 
-        const queryRunner = AppDataSource.createQueryRunner()
-        await queryRunner.connect()
-        await queryRunner.startTransaction()
+        // Validate employee exists before starting transaction
+        let employeeExists: any = null
+        if (employeeId) {
+            employeeExists = await this.employeeService.getById(employeeId)
+        }
+
+        // Validate location exists before starting transaction
+        let locationExists: any = null
+        if (locationId) {
+            locationExists = await this.locationService.getById(locationId)
+        }
 
         try {
-            // 1. Save Asset
-            const asset = await this.repository.save(assetData, queryRunner.manager)
+            const asset = await withTransaction(async (manager) => {
+                // 1. Save Asset
+                const asset = await this.repository.save(assetData, manager)
 
-            // Log Asset registration
-            await assetLogService.log({
-                assetId: asset.id,
-                action: "create",
-                description: `Asset "${asset.name}" (${asset.code}) was registered.`,
-                createdByUserId: assetData.createdByUserId,
-            }, queryRunner.manager)
-
-            // 2. If employeeId is provided, create AssetHolder
-            if (employeeId) {
-                // Validate employee exists
-                const employeeRepo = queryRunner.manager.getRepository(Employee)
-                const employeeExists = await employeeRepo.findOneBy({ id: employeeId })
-                if (!employeeExists) {
-                    throw new NotFoundException("Employee not found")
-                }
-
-                const holderRepo = queryRunner.manager.getRepository(AssetHolder)
-                const log = await holderRepo.save({
-                    assetId: asset.id,
-                    employeeId,
-                    assignedDate: assignedDate || new Date().toISOString().split('T')[0],
-                    assignNote: assignNote || null,
-                    createdByUserId: assetData.createdByUserId,
-                })
-
-                if (assignAttachmentIds && assignAttachmentIds.length > 0) {
-                    await attachmentService.associate(assignAttachmentIds, "AssetHolder", log.id, queryRunner.manager)
-                }
-
-                // Log Asset assignment
+                // Log Asset registration
                 await assetLogService.log({
                     assetId: asset.id,
-                    action: "assign",
-                    description: `Asset assigned to employee "${employeeExists.name}".`,
+                    module: "asset",
+                    action: "create",
+                    description: "Asset registered.",
                     createdByUserId: assetData.createdByUserId,
-                }, queryRunner.manager)
-            }
+                }, manager)
 
-            // 3. If locationId is provided, create AssetLocation
-            if (locationId) {
-                // Validate location exists
-                const locationRepo = queryRunner.manager.getRepository(Location)
-                const locationExists = await locationRepo.findOneBy({ id: locationId })
-                if (!locationExists) {
-                    throw new NotFoundException("Location not found")
+                // 2. If employeeId is provided, create AssetHolder
+                if (employeeId) {
+                    const log = await this.assetHolderService.save({
+                        assetId: asset.id,
+                        employeeId,
+                        assignedDate: assignedDate || new Date().toISOString().split('T')[0],
+                        assignNote: assignNote || null,
+                        createdByUserId: assetData.createdByUserId,
+                    }, manager)
+
+                    if (assignAttachmentIds && assignAttachmentIds.length > 0) {
+                        await attachmentService.associate(assignAttachmentIds, "AssetHolder", log.id, manager)
+                    }
+
+                    // Log Asset assignment
+                    await assetLogService.log({
+                        assetId: asset.id,
+                        module: "holder",
+                        action: "assign",
+                        description: `Asset assigned to employee "${employeeExists.name}".`,
+                        createdByUserId: assetData.createdByUserId,
+                    }, manager)
                 }
 
-                const locationLogRepo = queryRunner.manager.getRepository(AssetLocation)
-                const log = await locationLogRepo.save({
-                    assetId: asset.id,
-                    locationId,
-                    date: locationDate || new Date().toISOString().split('T')[0],
-                    note: locationNote || null,
-                    createdByUserId: assetData.createdByUserId,
-                })
+                // 3. If locationId is provided, create AssetLocation
+                if (locationId) {
+                    const log = await this.assetLocationService.save({
+                        assetId: asset.id,
+                        locationId,
+                        date: locationDate || new Date().toISOString().split('T')[0],
+                        note: locationNote || null,
+                        createdByUserId: assetData.createdByUserId,
+                    }, manager)
 
-                if (locationAttachmentIds && locationAttachmentIds.length > 0) {
-                    await attachmentService.associate(locationAttachmentIds, "AssetLocation", log.id, queryRunner.manager)
+                    if (locationAttachmentIds && locationAttachmentIds.length > 0) {
+                        await attachmentService.associate(locationAttachmentIds, "AssetLocation", log.id, manager)
+                    }
+
+                    // Log Asset relocation
+                    await assetLogService.log({
+                        assetId: asset.id,
+                        module: "location",
+                        action: "relocate",
+                        description: `Asset location set to "${locationExists.name}".`,
+                        createdByUserId: assetData.createdByUserId,
+                    }, manager)
                 }
 
-                // Log Asset relocation
-                await assetLogService.log({
-                    assetId: asset.id,
-                    action: "relocate",
-                    description: `Asset location set to "${locationExists.name}".`,
-                    createdByUserId: assetData.createdByUserId,
-                }, queryRunner.manager)
-            }
-
-            await queryRunner.commitTransaction()
+                return asset
+            })
 
             // Fetch the fully loaded asset (with category, branch, etc.)
-            const full = await this.getById(asset.id)
-            return full
+            return await this.getById(asset.id)
         } catch (error: any) {
-            await queryRunner.rollbackTransaction()
             if (error?.message?.includes("UNIQUE") || error?.message?.includes("Duplicate entry")) {
                 throw new BadRequestException("Asset code must be unique")
             }
             throw error
-        } finally {
-            await queryRunner.release()
         }
     }
 
     async update(id: number, data: Partial<Asset>, operatorId?: number): Promise<Asset> {
         const asset = await this.getById(id)
-
-        // Compare details for audit log
-        const changes: string[] = []
-        if (data.name !== undefined && data.name !== asset.name) {
-            changes.push(`Name changed from "${asset.name}" to "${data.name}"`)
-        }
-        if (data.code !== undefined && data.code !== asset.code) {
-            changes.push(`Code changed from "${asset.code}" to "${data.code}"`)
-        }
-        if (data.price !== undefined && data.price !== asset.price) {
-            changes.push(`Price changed from "${asset.price ?? '-'}" to "${data.price}"`)
-        }
-        if (data.brand !== undefined && data.brand !== asset.brand) {
-            changes.push(`Brand changed from "${asset.brand ?? '-'}" to "${data.brand}"`)
-        }
-        if (data.model !== undefined && data.model !== asset.model) {
-            changes.push(`Model changed from "${asset.model ?? '-'}" to "${data.model}"`)
-        }
-        if (data.description !== undefined && data.description !== asset.description) {
-            changes.push(`Description updated`)
-        }
-        if (data.hasHolder !== undefined && data.hasHolder !== asset.hasHolder) {
-            changes.push(`Holder feature ${data.hasHolder ? "enabled" : "disabled"}`)
-        }
-        if (data.hasLocation !== undefined && data.hasLocation !== asset.hasLocation) {
-            changes.push(`Location feature ${data.hasLocation ? "enabled" : "disabled"}`)
-        }
-        if (data.hasMaintenance !== undefined && data.hasMaintenance !== asset.hasMaintenance) {
-            changes.push(`Maintenance feature ${data.hasMaintenance ? "enabled" : "disabled"}`)
-        }
 
         // Capture old values before merge
         const oldValue = { ...asset }
@@ -225,15 +177,11 @@ export class AssetService {
                 }
             }
 
-            // Log activity after successful save
-            const description = changes.length > 0 
-                ? `Asset details updated: ${changes.join(", ")}.`
-                : "Asset details updated."
-
             await assetLogService.log({
                 assetId: id,
+                module: "asset",
                 action: "update",
-                description,
+                description: "Asset updated.",
                 createdByUserId: operatorId,
                 oldValue,
                 newValue: data,

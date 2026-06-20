@@ -25,7 +25,7 @@ export class AssetLogRepository implements IAssetLogRepository {
 
         if (q) {
             query.where(
-                "(log.description LIKE :q OR log.action LIKE :q OR createdBy.name LIKE :q)",
+                "(log.description LIKE :q OR log.module LIKE :q OR log.action LIKE :q OR createdBy.name LIKE :q)",
                 { q: `%${q}%` }
             )
         }
@@ -38,6 +38,7 @@ export class AssetLogRepository implements IAssetLogRepository {
 
         // Allowed sorting columns
         const sortColumnMap: Record<string, string> = {
+            module: "log.module",
             action: "log.action",
             description: "log.description",
             createdBy: "createdBy.name",

@@ -3,6 +3,6 @@ import { LocationService } from "./location.service"
 import { LocationController } from "./location.controller"
 
 const locationRepository = new LocationRepository()
-const locationService = new LocationService(locationRepository)
+export const locationService = new LocationService(locationRepository)
 
 export const locationController = new LocationController(locationService)

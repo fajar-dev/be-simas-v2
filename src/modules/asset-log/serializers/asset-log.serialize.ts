@@ -11,6 +11,7 @@ export class AssetLogSerializer {
         return {
             id: log.id,
             assetId: log.assetId,
+            module: log.module,
             action: log.action,
             description: log.description,
             createdAt: log.createdAt,

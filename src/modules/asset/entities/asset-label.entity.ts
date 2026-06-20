@@ -1,4 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from "typeorm"
+import type { Asset } from "./asset.entity"
 
 @Entity("asset_labels")
 export class AssetLabel {
@@ -16,5 +17,5 @@ export class AssetLabel {
 
     @ManyToOne("Asset", "labels", { onDelete: "CASCADE" })
     @JoinColumn({ name: "asset_id" })
-    asset!: any
+    asset!: Asset
 }

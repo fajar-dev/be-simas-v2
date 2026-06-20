@@ -18,6 +18,7 @@ export class AssetLogService {
 
     async log(data: {
         assetId: number
+        module: string
         action: string
         description: string
         createdByUserId?: number | null
@@ -26,6 +27,7 @@ export class AssetLogService {
     }, manager?: EntityManager): Promise<AssetLog> {
         return await this.repository.save({
             assetId: data.assetId,
+            module: data.module,
             action: data.action,
             description: data.description,
             createdByUserId: data.createdByUserId,

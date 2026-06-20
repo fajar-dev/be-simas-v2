@@ -10,18 +10,10 @@ export class UserRepository implements IUserRepository {
         this.repository = AppDataSource.getRepository(User)
     }
 
-    async findAll(page: number, limit: number, q: string, filters: UserListFilters = {}, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: any[]; total: number }> {
+    async findAll(page: number, limit: number, q: string, filters: UserListFilters = {}, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: User[]; total: number }> {
         const offset = (page - 1) * limit
 
         const query = this.repository.createQueryBuilder("user")
-            .select([
-                "user.id AS id",
-                "user.name AS name",
-                "user.photo AS photo",
-                "user.email AS email",
-                "user.is_active AS isActive",
-                "user.created_at AS createdAt",
-            ])
 
         if (q) {
             query.where(
@@ -31,18 +23,18 @@ export class UserRepository implements IUserRepository {
         }
 
         if (filters.isActive !== undefined && filters.isActive !== "") {
-            query.andWhere("user.is_active = :isActive", { isActive: filters.isActive === "1" })
+            query.andWhere("user.isActive = :isActive", { isActive: filters.isActive === "1" })
         }
 
-        // Get total count (efficient)
-        const total = await query.clone().getCount()
+        // Get total count before pagination
+        const total = await query.getCount()
 
         // Whitelist of allowed sort columns
         const sortColumnMap: Record<string, string> = {
             name: "user.name",
             email: "user.email",
-            isActive: "user.is_active",
-            createdAt: "user.created_at",
+            isActive: "user.isActive",
+            createdAt: "user.createdAt",
         }
 
         const sortColumn = sortColumnMap[sortBy || ''] || "user.id"
@@ -51,9 +43,9 @@ export class UserRepository implements IUserRepository {
         // Get paginated data
         const data = await query
             .orderBy(sortColumn, sortOrder)
-            .limit(limit)
-            .offset(offset)
-            .getRawMany()
+            .skip(offset)
+            .take(limit)
+            .getMany()
 
         return { data, total }
     }

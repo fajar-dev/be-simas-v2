@@ -14,7 +14,7 @@ export class Employee {
     @Column({ name: "job_position" })
     jobPosition!: string
 
-    @Column()
+    @Column({ unique: true })
     email!: string
 
     @Column()

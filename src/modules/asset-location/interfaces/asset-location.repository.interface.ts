@@ -11,5 +11,7 @@ export interface IAssetLocationRepository {
         assetId?: number
     ): Promise<{ data: AssetLocation[]; total: number }>
     findById(id: number): Promise<AssetLocation | null>
+    findLatestByAssetId(assetId: number): Promise<AssetLocation | null>
+    findLastLocation(assetId: number): Promise<AssetLocation | null>
     save(data: Partial<AssetLocation>, manager?: EntityManager): Promise<AssetLocation>
 }

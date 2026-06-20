@@ -17,7 +17,7 @@ export class EmployeeRepository implements IEmployeeRepository {
 
         if (q) {
             query.where(
-                "(employee.name LIKE :q OR employee.employee_id LIKE :q OR employee.email LIKE :q OR employee.job_position LIKE :q)",
+                "(employee.name LIKE :q OR employee.employeeId LIKE :q OR employee.email LIKE :q OR employee.jobPosition LIKE :q)",
                 { q: `%${q}%` }
             )
         }

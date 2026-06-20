@@ -20,35 +20,35 @@ export class AssetLocationRepository implements IAssetLocationRepository {
     ): Promise<{ data: AssetLocation[]; total: number }> {
         const offset = (page - 1) * limit
 
-        const query = this.repository.createQueryBuilder("log")
-            .leftJoinAndSelect("log.asset", "asset")
-            .leftJoinAndSelect("log.location", "location")
+        const query = this.repository.createQueryBuilder("assetLocation")
+            .leftJoinAndSelect("assetLocation.asset", "asset")
+            .leftJoinAndSelect("assetLocation.location", "location")
             .leftJoinAndSelect("location.branch", "branch")
-            .leftJoinAndSelect("log.createdBy", "createdBy")
+            .leftJoinAndSelect("assetLocation.createdBy", "createdBy")
 
         if (q) {
             query.where(
-                "(log.note LIKE :q OR asset.name LIKE :q OR asset.code LIKE :q OR location.name LIKE :q)",
+                "(assetLocation.note LIKE :q OR asset.name LIKE :q OR asset.code LIKE :q OR location.name LIKE :q)",
                 { q: `%${q}%` }
             )
         }
 
         if (assetId) {
-            query.andWhere("log.assetId = :assetId", { assetId })
+            query.andWhere("assetLocation.assetId = :assetId", { assetId })
         }
 
         const total = await query.getCount()
 
         // Allowed sorting columns
         const sortColumnMap: Record<string, string> = {
-            date: "log.date",
+            date: "assetLocation.date",
             location: "location.name",
-            createdAt: "log.createdAt",
-            note: "log.note",
+            createdAt: "assetLocation.createdAt",
+            note: "assetLocation.note",
             createdBy: "createdBy.name",
         }
 
-        const sortColumn = sortColumnMap[sortBy || ''] || "log.id"
+        const sortColumn = sortColumnMap[sortBy || ''] || "assetLocation.id"
         const sortOrder = order === 'ASC' ? 'ASC' : 'DESC'
 
         const data = await query
@@ -64,6 +64,21 @@ export class AssetLocationRepository implements IAssetLocationRepository {
         return await this.repository.findOne({
             where: { id },
             relations: ["asset", "location", "location.branch", "createdBy"],
+        })
+    }
+
+    async findLatestByAssetId(assetId: number): Promise<AssetLocation | null> {
+        return await this.repository.findOne({
+            where: { assetId },
+            order: { id: "DESC" },
+        })
+    }
+
+    async findLastLocation(assetId: number): Promise<AssetLocation | null> {
+        return await this.repository.findOne({
+            where: { assetId },
+            order: { date: "DESC", id: "DESC" },
+            relations: ["location", "location.branch"],
         })
     }
 

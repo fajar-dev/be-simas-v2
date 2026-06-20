@@ -3,6 +3,8 @@ import type { Relation } from "typeorm"
 import { SubCategory } from "../../sub-category/entities/sub-category.entity"
 import { AssetLabel } from "./asset-label.entity"
 import { User } from "../../user/entities/user.entity"
+import type { AssetHolder } from "../../asset-holder/entities/asset-holder.entity"
+import type { AssetLocation } from "../../asset-location/entities/asset-location.entity"
 
 @Entity("assets")
 export class Asset {
@@ -66,6 +68,6 @@ export class Asset {
     labels!: Relation<AssetLabel[]>
 
     // Transient/virtual fields populated at service layer
-    activeHolder?: any
-    lastLocation?: any
+    activeHolder?: AssetHolder
+    lastLocation?: AssetLocation
 }

@@ -14,7 +14,8 @@ export class UserSerializer {
             photo: await this.resolvePhotoUrl(user.photo),
             email: user.email,
             isActive: Boolean(user.isActive),
-            createdAt: user.createdAt
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt
         }
     }
 

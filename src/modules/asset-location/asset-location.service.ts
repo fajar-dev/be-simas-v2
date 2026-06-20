@@ -1,17 +1,20 @@
 import { AssetLocation } from "./entities/asset-location.entity"
 import { IAssetLocationRepository } from "./interfaces/asset-location.repository.interface"
-import { Asset } from "../asset/entities/asset.entity"
-import { Location } from "../location/entities/location.entity"
-import { AppDataSource } from "../../config/database"
-import { NotFoundException } from "../../core/exceptions/base"
+import { NotFoundException, BadRequestException } from "../../core/exceptions/base"
 import { AttachmentService } from "../attachment/attachment.service"
 import { Attachment } from "../attachment/entities/attachment.entity"
 import { assetLogService } from "../asset-log/asset-log.module"
+import type { AssetService } from "../asset/asset.service"
+import type { LocationService } from "../location/location.service"
+import { withTransaction } from "../../core/helpers/transaction"
+import { EntityManager } from "typeorm"
 
 export class AssetLocationService {
     constructor(
         private readonly repository: IAssetLocationRepository,
-        private readonly attachmentService: AttachmentService
+        private readonly attachmentService: AttachmentService,
+        private readonly assetService: AssetService,
+        private readonly locationService: LocationService
     ) {}
 
     async getAll(
@@ -41,58 +44,56 @@ export class AssetLocationService {
         return { log, attachments }
     }
 
+    async findLastLocation(assetId: number): Promise<AssetLocation | null> {
+        return await this.repository.findLastLocation(assetId)
+    }
+
     async create(data: Partial<AssetLocation> & { attachmentIds?: number[] }): Promise<AssetLocation> {
-        // Validate asset exists
-        const assetRepo = AppDataSource.getRepository(Asset)
-        const assetExists = await assetRepo.findOneBy({ id: data.assetId })
-        if (!assetExists) {
-            throw new NotFoundException("Asset not found")
+        // Validate asset exists (throws NotFoundException if not found)
+        await this.assetService.getById(data.assetId!)
+
+        // Validate location exists (throws NotFoundException if not found)
+        const location = await this.locationService.getById(data.locationId!)
+
+        // Prevent relocating to the same current location
+        const currentLocation = await this.repository.findLatestByAssetId(data.assetId!)
+        if (currentLocation && currentLocation.locationId === data.locationId) {
+            throw new BadRequestException("Asset is already at this location")
         }
 
-        // Validate location exists
-        const locationRepo = AppDataSource.getRepository(Location)
-        const locationExists = await locationRepo.findOneBy({ id: data.locationId })
-        if (!locationExists) {
-            throw new NotFoundException("Location not found")
-        }
-
-        const queryRunner = AppDataSource.createQueryRunner()
-        await queryRunner.connect()
-        await queryRunner.startTransaction()
-
-        try {
+        const log = await withTransaction(async (manager) => {
             const log = await this.repository.save({
                 assetId: data.assetId,
                 locationId: data.locationId,
                 date: data.date,
                 note: data.note,
                 createdByUserId: data.createdByUserId,
-            }, queryRunner.manager)
+            }, manager)
 
             if (data.attachmentIds && data.attachmentIds.length > 0) {
-                await this.attachmentService.associate(data.attachmentIds, "AssetLocation", log.id, queryRunner.manager)
+                await this.attachmentService.associate(data.attachmentIds, "AssetLocation", log.id, manager)
             }
 
             // Log Asset relocation
             await assetLogService.log({
                 assetId: data.assetId!,
+                module: "location",
                 action: "relocate",
-                description: `Asset location moved to "${locationExists.name}".`,
+                description: `Asset relocated to "${location.name}".`,
                 createdByUserId: data.createdByUserId,
                 newValue: data,
-            }, queryRunner.manager)
+            }, manager)
 
-            await queryRunner.commitTransaction()
+            return log
+        })
 
-            // Reload with relations
-            const reloaded = await this.repository.findById(log.id)
-            if (!reloaded) throw new NotFoundException("Created record could not be loaded")
-            return reloaded
-        } catch (err) {
-            await queryRunner.rollbackTransaction()
-            throw err
-        } finally {
-            await queryRunner.release()
-        }
+        // Reload with relations
+        const reloaded = await this.repository.findById(log.id)
+        if (!reloaded) throw new NotFoundException("Created record could not be loaded")
+        return reloaded
+    }
+
+    async save(data: Partial<AssetLocation>, manager?: EntityManager): Promise<AssetLocation> {
+        return await this.repository.save(data, manager)
     }
 }

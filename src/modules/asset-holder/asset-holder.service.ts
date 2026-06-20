@@ -1,17 +1,20 @@
 import { AssetHolder } from "./entities/asset-holder.entity"
 import { IAssetHolderRepository } from "./interfaces/asset-holder.repository.interface"
-import { Asset } from "../asset/entities/asset.entity"
-import { Employee } from "../employee/entities/employee.entity"
-import { AppDataSource } from "../../config/database"
 import { NotFoundException, BadRequestException } from "../../core/exceptions/base"
 import { AttachmentService } from "../attachment/attachment.service"
 import { Attachment } from "../attachment/entities/attachment.entity"
 import { assetLogService } from "../asset-log/asset-log.module"
+import type { AssetService } from "../asset/asset.service"
+import type { EmployeeService } from "../employee/employee.service"
+import { withTransaction } from "../../core/helpers/transaction"
+import { EntityManager } from "typeorm"
 
 export class AssetHolderService {
     constructor(
         private readonly repository: IAssetHolderRepository,
-        private readonly attachmentService: AttachmentService
+        private readonly attachmentService: AttachmentService,
+        private readonly assetService: AssetService,
+        private readonly employeeService: EmployeeService
     ) {}
 
     async getAll(
@@ -50,19 +53,11 @@ export class AssetHolderService {
     }
 
     async create(data: Partial<AssetHolder> & { attachmentIds?: number[] }): Promise<AssetHolder> {
-        // Validate asset exists
-        const assetRepo = AppDataSource.getRepository(Asset)
-        const assetExists = await assetRepo.findOneBy({ id: data.assetId })
-        if (!assetExists) {
-            throw new NotFoundException("Asset not found")
-        }
+        // Validate asset exists (throws NotFoundException if not found)
+        await this.assetService.getById(data.assetId!)
 
-        // Validate employee exists
-        const employeeRepo = AppDataSource.getRepository(Employee)
-        const employeeExists = await employeeRepo.findOneBy({ id: data.employeeId })
-        if (!employeeExists) {
-            throw new NotFoundException("Employee not found")
-        }
+        // Validate employee exists (throws NotFoundException if not found)
+        const employee = await this.employeeService.getById(data.employeeId!)
 
         // Check if there is an active holder for this asset
         const activeLog = await this.repository.findActiveByAssetId(data.assetId!)
@@ -70,44 +65,36 @@ export class AssetHolderService {
             throw new BadRequestException("Asset is currently assigned and must be returned first")
         }
 
-        const queryRunner = AppDataSource.createQueryRunner()
-        await queryRunner.connect()
-        await queryRunner.startTransaction()
-
-        try {
+        const log = await withTransaction(async (manager) => {
             const log = await this.repository.save({
                 assetId: data.assetId,
                 employeeId: data.employeeId,
                 assignedDate: data.assignedDate,
                 assignNote: data.assignNote,
                 createdByUserId: data.createdByUserId,
-            }, queryRunner.manager)
+            }, manager)
 
             if (data.attachmentIds && data.attachmentIds.length > 0) {
-                await this.attachmentService.associate(data.attachmentIds, "AssetHolder", log.id, queryRunner.manager)
+                await this.attachmentService.associate(data.attachmentIds, "AssetHolder", log.id, manager)
             }
 
             // Log Asset assignment
             await assetLogService.log({
                 assetId: data.assetId!,
+                module: "holder",
                 action: "assign",
-                description: `Asset assigned to employee "${employeeExists.name}".`,
+                description: `Asset assigned to employee "${employee.name}".`,
                 createdByUserId: data.createdByUserId,
                 newValue: data,
-            }, queryRunner.manager)
+            }, manager)
 
-            await queryRunner.commitTransaction()
+            return log
+        })
 
-            // Reload and return
-            const reloaded = await this.repository.findById(log.id)
-            if (!reloaded) throw new NotFoundException("Created assignment could not be loaded")
-            return reloaded
-        } catch (err) {
-            await queryRunner.rollbackTransaction()
-            throw err
-        } finally {
-            await queryRunner.release()
-        }
+        // Reload and return
+        const reloaded = await this.repository.findById(log.id)
+        if (!reloaded) throw new NotFoundException("Created assignment could not be loaded")
+        return reloaded
     }
 
     async returnAsset(id: number, data: { returnedDate: string; returnNote?: string; returnedByUserId?: number; attachmentIds?: number[] }): Promise<AssetHolder> {
@@ -116,42 +103,40 @@ export class AssetHolderService {
             throw new BadRequestException("Asset has already been returned")
         }
 
-        const queryRunner = AppDataSource.createQueryRunner()
-        await queryRunner.connect()
-        await queryRunner.startTransaction()
-
-        try {
+        await withTransaction(async (manager) => {
             log.returnedDate = data.returnedDate
             log.returnNote = data.returnNote || null
             log.returnedByUserId = data.returnedByUserId || null
 
-            await this.repository.save(log, queryRunner.manager)
+            await this.repository.save(log, manager)
 
             if (data.attachmentIds && data.attachmentIds.length > 0) {
-                await this.attachmentService.associate(data.attachmentIds, "AssetHolder", log.id, queryRunner.manager)
+                await this.attachmentService.associate(data.attachmentIds, "AssetHolder", log.id, manager)
             }
 
             // Log Asset return
             await assetLogService.log({
                 assetId: log.assetId,
+                module: "holder",
                 action: "return",
                 description: `Asset returned from employee "${log.employee.name}".`,
                 createdByUserId: data.returnedByUserId,
                 oldValue: { ...log },
                 newValue: data,
-            }, queryRunner.manager)
+            }, manager)
+        })
 
-            await queryRunner.commitTransaction()
+        // Reload and return
+        const reloaded = await this.repository.findById(log.id)
+        if (!reloaded) throw new NotFoundException("Updated assignment could not be loaded")
+        return reloaded
+    }
 
-            // Reload and return
-            const reloaded = await this.repository.findById(log.id)
-            if (!reloaded) throw new NotFoundException("Updated assignment could not be loaded")
-            return reloaded
-        } catch (err) {
-            await queryRunner.rollbackTransaction()
-            throw err
-        } finally {
-            await queryRunner.release()
-        }
+    async findActiveHolder(assetId: number): Promise<AssetHolder | null> {
+        return await this.repository.findActiveByAssetId(assetId)
+    }
+
+    async save(data: Partial<AssetHolder>, manager?: EntityManager): Promise<AssetHolder> {
+        return await this.repository.save(data, manager)
     }
 }

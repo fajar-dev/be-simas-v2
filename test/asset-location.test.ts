@@ -25,6 +25,7 @@ let app: Hono
 let authHeaders: Record<string, string>
 let assetId: number
 let locationId: number
+let locationId2: number
 
 beforeAll(async () => {
     await initTestDatabase()
@@ -52,6 +53,14 @@ beforeEach(async () => {
         body: { name: "IT Room", description: "2nd Floor", branchId: branchRes.body.data.id },
     })
     locationId = locRes.body.data.id
+
+    // Create a second location for sort/multi-relocation tests
+    const locRes2 = await request(app, "/api/location", {
+        method: "POST",
+        headers: authHeaders,
+        body: { name: "Server Room", description: "3rd Floor", branchId: branchRes.body.data.id },
+    })
+    locationId2 = locRes2.body.data.id
 
     // Setup: Create Category and SubCategory
     const catRes = await request(app, "/api/category", {
@@ -138,7 +147,7 @@ describe("Asset Location API Tests", () => {
     })
 
     test("GET /api/asset-location - sort results by note and createdBy", async () => {
-        // Create two relocation logs with different notes
+        // Create two relocation logs with different notes and different locations
         await request(app, "/api/asset-location", {
             method: "POST",
             headers: authHeaders,
@@ -147,7 +156,7 @@ describe("Asset Location API Tests", () => {
         await request(app, "/api/asset-location", {
             method: "POST",
             headers: authHeaders,
-            body: { assetId, locationId, date: "2026-06-20", note: "A Note" },
+            body: { assetId, locationId: locationId2, date: "2026-06-20", note: "A Note" },
         })
 
         // Sort by note ASC
@@ -164,6 +173,23 @@ describe("Asset Location API Tests", () => {
         })
         expect(resCreatedByAsc.status).toBe(200)
         expect(resCreatedByAsc.body.data[0].createdBy.name).toBe("Test User")
+    })
+
+    test("POST /api/asset-location - prevent relocating to the same current location", async () => {
+        // First relocation
+        await request(app, "/api/asset-location", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, locationId, date: "2026-06-19", note: "Initial move" },
+        })
+
+        // Second relocation to the same location should fail
+        const res = await request(app, "/api/asset-location", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, locationId, date: "2026-06-20", note: "Same location" },
+        })
+        expect(res.status).toBe(400)
     })
 
     test("GET /api/asset-location/:id - retrieve single log details", async () => {

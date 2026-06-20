@@ -10,7 +10,7 @@ export class AssetLogController {
         const page = Number(c.req.query("page") || "1")
         const limit = Number(c.req.query("limit") || "10")
         const q = c.req.query("q") || ""
-        const sortBy = c.req.query("sortBy") || ""
+        const sortBy = c.req.query("sortBy") || undefined
         const order = c.req.query("order") as "ASC" | "DESC" | undefined
         const assetIdVal = c.req.query("assetId")
         const assetId = assetIdVal ? Number(assetIdVal) : undefined

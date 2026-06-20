@@ -15,7 +15,10 @@ export class AssetLog {
     asset!: Asset
 
     @Column()
-    action!: string // e.g. 'create', 'update', 'assign', 'return', 'relocate', 'maintenance_create', 'maintenance_update', 'maintenance_delete'
+    module!: string // e.g. 'asset', 'holder', 'location', 'maintenance'
+
+    @Column()
+    action!: string // e.g. 'create', 'update', 'delete', 'assign', 'return', 'relocate'
 
     @Column({ type: "text" })
     description!: string

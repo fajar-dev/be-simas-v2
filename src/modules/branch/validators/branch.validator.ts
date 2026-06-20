@@ -9,7 +9,7 @@ export const CreateBranchValidator = z.object({
 export type CreateBranchValidator = z.infer<typeof CreateBranchValidator>
 
 export const UpdateBranchValidator = z.object({
-    code: z.string().min(1, "Code is required").optional(),
+    code: z.string().optional(),
     name: z.string().min(1, "Name is required").optional(),
     description: z.string().optional(),
 })

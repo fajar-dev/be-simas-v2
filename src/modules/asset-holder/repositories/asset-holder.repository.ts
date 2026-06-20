@@ -21,42 +21,42 @@ export class AssetHolderRepository implements IAssetHolderRepository {
     ): Promise<{ data: AssetHolder[]; total: number }> {
         const offset = (page - 1) * limit
 
-        const query = this.repository.createQueryBuilder("log")
-            .leftJoinAndSelect("log.asset", "asset")
-            .leftJoinAndSelect("log.employee", "employee")
-            .leftJoinAndSelect("log.createdBy", "createdBy")
-            .leftJoinAndSelect("log.returnedBy", "returnedBy")
+        const query = this.repository.createQueryBuilder("holder")
+            .leftJoinAndSelect("holder.asset", "asset")
+            .leftJoinAndSelect("holder.employee", "employee")
+            .leftJoinAndSelect("holder.createdBy", "createdBy")
+            .leftJoinAndSelect("holder.returnedBy", "returnedBy")
 
         if (q) {
             query.where(
-                "(log.assignNote LIKE :q OR log.returnNote LIKE :q OR asset.name LIKE :q OR asset.code LIKE :q OR employee.name LIKE :q OR employee.employeeId LIKE :q)",
+                "(holder.assignNote LIKE :q OR holder.returnNote LIKE :q OR asset.name LIKE :q OR asset.code LIKE :q OR employee.name LIKE :q OR employee.employeeId LIKE :q)",
                 { q: `%${q}%` }
             )
         }
 
         if (assetId) {
-            query.andWhere("log.assetId = :assetId", { assetId })
+            query.andWhere("holder.assetId = :assetId", { assetId })
         }
 
         if (employeeId) {
-            query.andWhere("log.employeeId = :employeeId", { employeeId })
+            query.andWhere("holder.employeeId = :employeeId", { employeeId })
         }
 
         const total = await query.getCount()
 
         // Allowed sorting columns
         const sortColumnMap: Record<string, string> = {
-            assignedDate: "log.assignedDate",
-            returnedDate: "log.returnedDate",
+            assignedDate: "holder.assignedDate",
+            returnedDate: "holder.returnedDate",
             employee: "employee.name",
             asset: "asset.name",
-            notes: "log.assignNote",
+            notes: "holder.assignNote",
             createdBy: "createdBy.name",
             returnedBy: "returnedBy.name",
-            createdAt: "log.createdAt",
+            createdAt: "holder.createdAt",
         }
 
-        const sortColumn = sortColumnMap[sortBy || ''] || "log.id"
+        const sortColumn = sortColumnMap[sortBy || ''] || "holder.id"
         const sortOrder = order === 'ASC' ? 'ASC' : 'DESC'
 
         const data = await query

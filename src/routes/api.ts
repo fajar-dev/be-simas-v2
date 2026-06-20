@@ -14,6 +14,7 @@ import { CreateAssetValidator, UpdateAssetValidator } from "../modules/asset/val
 import { CreateAssetMaintenanceValidator, UpdateAssetMaintenanceValidator } from "../modules/asset-maintenance/validators/asset-maintenance.validator"
 import { CreateAssetLocationValidator } from "../modules/asset-location/validators/asset-location.validator"
 import { AssignAssetValidator, ReturnAssetValidator } from "../modules/asset-holder/validators/asset-holder.validator"
+import { StoreFeedbackValidator } from "../modules/feedback/validators/feedback.validator"
 
 // ── Middlewares ──────────────────────────────────────────────────────────────
 import { authMiddleware } from "../core/middlewares/auth.middleware"
@@ -35,7 +36,6 @@ import { assetMaintenanceController } from "../modules/asset-maintenance/asset-m
 import { assetLocationController } from "../modules/asset-location/asset-location.module"
 import { assetHolderController } from "../modules/asset-holder/asset-holder.module"
 import { assetLogController } from "../modules/asset-log/asset-log.module"
-import { StoreFeedbackValidator } from "../modules/feedback/validators/feedback.validator"
 
 // ── Routes ───────────────────────────────────────────────────────────────────
 const routes = new Hono()
