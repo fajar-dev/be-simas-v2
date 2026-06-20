@@ -9,7 +9,7 @@ export class Location {
     @Column()
     name!: string
 
-    @Column({ nullable: true })
+    @Column({ nullable: true, type: "text" })
     description?: string
 
     @Column({ name: "branch_id" })

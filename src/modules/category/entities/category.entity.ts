@@ -8,7 +8,7 @@ export class Category {
     @Column()
     name!: string
 
-    @Column({ nullable: true })
+    @Column({ nullable: true, type: "text" })
     description?: string
 
     @CreateDateColumn({ name: "created_at" })

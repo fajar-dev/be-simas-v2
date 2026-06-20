@@ -15,7 +15,7 @@ export class Asset {
     @Column()
     name!: string
 
-    @Column({ nullable: true })
+    @Column({ nullable: true, type: "text" })
     description?: string
 
     @Column({ type: "integer", nullable: true })

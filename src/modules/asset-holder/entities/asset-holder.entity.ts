@@ -28,10 +28,10 @@ export class AssetHolder {
     @Column({ name: "returned_date", type: "varchar", nullable: true })
     returnedDate?: string | null
 
-    @Column({ name: "assign_note", type: "varchar", nullable: true })
+    @Column({ name: "assign_note", type: "text", nullable: true })
     assignNote?: string | null
 
-    @Column({ name: "return_note", type: "varchar", nullable: true })
+    @Column({ name: "return_note", type: "text", nullable: true })
     returnNote?: string | null
 
     @Column({ name: "created_by", nullable: true })

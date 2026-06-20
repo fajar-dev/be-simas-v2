@@ -32,7 +32,7 @@ export class AssetLocation {
     @Column({ type: "varchar" })
     date!: string
 
-    @Column({ nullable: true, type: "varchar" })
+    @Column({ nullable: true, type: "text" })
     note?: string
 
     @CreateDateColumn({ name: "created_at" })

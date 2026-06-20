@@ -9,7 +9,7 @@ export class SubCategory {
     @Column()
     name!: string
 
-    @Column({ nullable: true })
+    @Column({ nullable: true, type: "text" })
     description?: string
 
     @Column({ name: "category_id" })
