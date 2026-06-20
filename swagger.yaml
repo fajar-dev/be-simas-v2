@@ -314,6 +314,9 @@ components:
         model: { type: string, example: "A2941" }
         image: { type: string, nullable: true, example: "assets/macbook.png" }
         subCategoryId: { type: integer, example: 1 }
+        hasHolder: { type: boolean, default: true, example: true }
+        hasMaintenance: { type: boolean, default: true, example: true }
+        hasLocation: { type: boolean, default: true, example: true }
 
     UpdateAssetRequest:
       type: object
@@ -327,6 +330,9 @@ components:
         model: { type: string, example: "A2941" }
         image: { type: string, nullable: true, example: "assets/macbook.png" }
         subCategoryId: { type: integer, example: 1 }
+        hasHolder: { type: boolean, example: true }
+        hasMaintenance: { type: boolean, example: true }
+        hasLocation: { type: boolean, example: true }
 
     AssetResponse:
       type: object
@@ -342,6 +348,9 @@ components:
         image: { type: string, nullable: true, example: "https://cdn.example.com/stock/assets/macbook.png" }
         rawImage: { type: string, nullable: true, example: "assets/macbook.png" }
         subCategoryId: { type: integer, example: 1 }
+        hasHolder: { type: boolean, example: true }
+        hasMaintenance: { type: boolean, example: true }
+        hasLocation: { type: boolean, example: true }
         subCategory:
           type: object
           properties:

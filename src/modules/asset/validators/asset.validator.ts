@@ -16,6 +16,9 @@ export const CreateAssetValidator = z.object({
     image: z.string().optional().nullable(),
     subCategoryId: z.number().int().positive("Sub category is required"),
     labels: z.array(LabelSchema).optional(),
+    hasHolder: z.boolean().default(true).optional(),
+    hasMaintenance: z.boolean().default(true).optional(),
+    hasLocation: z.boolean().default(true).optional(),
 
     // Optional immediate assign fields
     employeeId: z.number().int().positive().optional().nullable(),
@@ -43,6 +46,9 @@ export const UpdateAssetValidator = z.object({
     image: z.string().optional().nullable(),
     subCategoryId: z.number().int().positive("Sub category is required").optional(),
     labels: z.array(LabelSchema).optional(),
+    hasHolder: z.boolean().optional(),
+    hasMaintenance: z.boolean().optional(),
+    hasLocation: z.boolean().optional(),
 })
 
 export type UpdateAssetValidator = z.infer<typeof UpdateAssetValidator>

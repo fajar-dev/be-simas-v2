@@ -47,6 +47,15 @@ export class Asset {
     @JoinColumn({ name: "created_by" })
     createdBy?: User | null
 
+    @Column({ name: "has_holder", type: "boolean", default: true })
+    hasHolder!: boolean
+
+    @Column({ name: "has_maintenance", type: "boolean", default: true })
+    hasMaintenance!: boolean
+
+    @Column({ name: "has_location", type: "boolean", default: true })
+    hasLocation!: boolean
+
     @CreateDateColumn({ name: "created_at" })
     createdAt!: Date
 

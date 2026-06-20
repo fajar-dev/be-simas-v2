@@ -65,6 +65,9 @@ export class AssetSerializer {
             brand: asset.brand || null,
             model: asset.model || null,
             image: await this.resolveImageUrl(asset.image),
+            hasHolder: asset.hasHolder,
+            hasMaintenance: asset.hasMaintenance,
+            hasLocation: asset.hasLocation,
             subCategory: asset.subCategory ? {
                 id: asset.subCategory.id,
                 name: asset.subCategory.name,
