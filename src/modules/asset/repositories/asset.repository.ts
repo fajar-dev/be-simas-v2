@@ -37,17 +37,23 @@ export class AssetRepository implements IAssetRepository {
             )
         }
 
-        if (filters?.categoryId) {
-            query.andWhere("subCategory.categoryId = :categoryId", { categoryId: filters.categoryId })
+        if (filters?.categoryIds?.length) {
+            query.andWhere("subCategory.categoryId IN (:...categoryIds)", { categoryIds: filters.categoryIds })
         }
-        if (filters?.subCategoryId) {
-            query.andWhere("asset.subCategoryId = :subCategoryId", { subCategoryId: filters.subCategoryId })
+        if (filters?.subCategoryIds?.length) {
+            query.andWhere("asset.subCategoryId IN (:...subCategoryIds)", { subCategoryIds: filters.subCategoryIds })
         }
-        if (filters?.branchId) {
-            query.andWhere("lastLoc.branchId = :branchId", { branchId: filters.branchId })
+        if (filters?.branchIds?.length) {
+            query.andWhere("lastLoc.branchId IN (:...branchIds)", { branchIds: filters.branchIds })
         }
-        if (filters?.locationId) {
-            query.andWhere("lastAssetLocation.locationId = :locationId", { locationId: filters.locationId })
+        if (filters?.locationIds?.length) {
+            query.andWhere("lastAssetLocation.locationId IN (:...locationIds)", { locationIds: filters.locationIds })
+        }
+        if (filters?.status?.length) {
+            query.andWhere(
+                `(SELECT s.status FROM asset_statuses s WHERE s.asset_id = asset.id ORDER BY s.id DESC LIMIT 1) IN (:...statuses)`,
+                { statuses: filters.status }
+            )
         }
         if (filters?.holderStatus === 'has_holder') {
             query.andWhere("activeHolder.id IS NOT NULL")
@@ -69,6 +75,14 @@ export class AssetRepository implements IAssetRepository {
         }
         if (filters?.purchaseDateTo) {
             query.andWhere("asset.purchaseDate <= :purchaseDateTo", { purchaseDateTo: filters.purchaseDateTo })
+        }
+        if (filters?.labels?.length) {
+            filters.labels.forEach((label, i) => {
+                query.andWhere(
+                    `EXISTS (SELECT 1 FROM asset_labels al${i} WHERE al${i}.asset_id = asset.id AND al${i}.key = :lk${i} AND al${i}.value LIKE :lv${i})`,
+                    { [`lk${i}`]: label.key, [`lv${i}`]: `%${label.value}%` }
+                )
+            })
         }
 
         const total = await query.getCount()

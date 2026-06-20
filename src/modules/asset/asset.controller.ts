@@ -15,11 +15,21 @@ export class AssetController {
         const order = (c.req.query("order") || "DESC").toUpperCase() as 'ASC' | 'DESC'
 
         // Parse filter params
+        const parseIds = (val: string | undefined) => val ? val.split(',').map(Number).filter(n => !isNaN(n)) : undefined
+
         const filters: AssetFilter = {}
-        if (c.req.query("categoryId")) filters.categoryId = Number(c.req.query("categoryId"))
-        if (c.req.query("subCategoryId")) filters.subCategoryId = Number(c.req.query("subCategoryId"))
-        if (c.req.query("branchId")) filters.branchId = Number(c.req.query("branchId"))
-        if (c.req.query("locationId")) filters.locationId = Number(c.req.query("locationId"))
+        const categoryIds = parseIds(c.req.query("categoryIds"))
+        if (categoryIds?.length) filters.categoryIds = categoryIds
+        const subCategoryIds = parseIds(c.req.query("subCategoryIds"))
+        if (subCategoryIds?.length) filters.subCategoryIds = subCategoryIds
+        const branchIds = parseIds(c.req.query("branchIds"))
+        if (branchIds?.length) filters.branchIds = branchIds
+        const locationIds = parseIds(c.req.query("locationIds"))
+        if (locationIds?.length) filters.locationIds = locationIds
+
+        const statusParam = c.req.query("status")
+        if (statusParam) filters.status = statusParam.split(',')
+
         const holderStatus = c.req.query("holderStatus")
         if (holderStatus === 'has_holder' || holderStatus === 'no_holder') filters.holderStatus = holderStatus
         if (c.req.query("holderId")) filters.holderId = Number(c.req.query("holderId"))
@@ -27,6 +37,16 @@ export class AssetController {
         if (c.req.query("priceMax")) filters.priceMax = Number(c.req.query("priceMax"))
         if (c.req.query("purchaseDateFrom")) filters.purchaseDateFrom = c.req.query("purchaseDateFrom")!
         if (c.req.query("purchaseDateTo")) filters.purchaseDateTo = c.req.query("purchaseDateTo")!
+
+        // Parse label filters: label.{key}=value
+        const allQueries = c.req.queries()
+        const labelFilters: { key: string; value: string }[] = []
+        for (const [qKey, values] of Object.entries(allQueries)) {
+            if (qKey.startsWith('label.') && values?.[0]) {
+                labelFilters.push({ key: qKey.substring(6), value: values[0] })
+            }
+        }
+        if (labelFilters.length) filters.labels = labelFilters
 
         const { data, total } = await this.service.getAll(page, limit, q, sortBy, order, filters)
 

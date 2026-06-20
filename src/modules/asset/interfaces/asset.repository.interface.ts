@@ -2,16 +2,18 @@ import { EntityManager } from "typeorm"
 import { Asset } from "../entities/asset.entity"
 
 export interface AssetFilter {
-    categoryId?: number
-    subCategoryId?: number
-    branchId?: number
-    locationId?: number
+    categoryIds?: number[]
+    subCategoryIds?: number[]
+    branchIds?: number[]
+    locationIds?: number[]
+    status?: string[]
     holderStatus?: 'has_holder' | 'no_holder'
     holderId?: number
     priceMin?: number
     priceMax?: number
     purchaseDateFrom?: string
     purchaseDateTo?: string
+    labels?: { key: string; value: string }[]
 }
 
 export interface IAssetRepository {
