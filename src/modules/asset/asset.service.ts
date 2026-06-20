@@ -64,6 +64,8 @@ export class AssetService {
             locationDate,
             locationNote,
             locationAttachmentIds,
+            status: initialStatus,
+            statusNote,
             ...assetData
         } = data
 
@@ -141,6 +143,24 @@ export class AssetService {
                         module: "location",
                         action: "relocate",
                         description: `Asset location set to "${locationExists.name}".`,
+                        createdByUserId: assetData.createdByUserId,
+                    }, manager)
+                }
+
+                // 4. If status is provided, create AssetStatus
+                if (initialStatus) {
+                    await this.assetStatusService.save({
+                        assetId: asset.id,
+                        status: initialStatus,
+                        note: statusNote || null,
+                        createdByUserId: assetData.createdByUserId,
+                    }, manager)
+
+                    await assetLogService.log({
+                        assetId: asset.id,
+                        module: "status",
+                        action: "update",
+                        description: `Asset status set to "${initialStatus}".`,
                         createdByUserId: assetData.createdByUserId,
                     }, manager)
                 }
