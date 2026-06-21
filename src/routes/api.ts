@@ -147,6 +147,9 @@ routes.post("/asset-status", authMiddleware, zValidator("json", CreateAssetStatu
 routes.get("/statistic/summary", authMiddleware, (c) => statisticController.summary(c))
 routes.get("/statistic/assets-by-category", authMiddleware, (c) => statisticController.assetsByCategory(c))
 routes.get("/statistic/assets-by-location", authMiddleware, (c) => statisticController.assetsByLocation(c))
+routes.get("/statistic/assets-by-sub-category", authMiddleware, (c) => statisticController.assetsBySubCategory(c))
+routes.get("/statistic/asset-aging", authMiddleware, (c) => statisticController.assetAging(c))
+routes.get("/statistic/data-quality", authMiddleware, (c) => statisticController.dataQuality(c))
 
 
 // Upload

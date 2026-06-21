@@ -19,4 +19,19 @@ export class StatisticController {
         const data = await this.service.getAssetsByLocation()
         return ApiResponse.success(c, data, "Assets by location retrieved successfully")
     }
+
+    async assetsBySubCategory(c: Context) {
+        const data = await this.service.getAssetsBySubCategory()
+        return ApiResponse.success(c, data, "Assets by sub category retrieved successfully")
+    }
+
+    async assetAging(c: Context) {
+        const data = await this.service.getAssetAging()
+        return ApiResponse.success(c, data, "Asset aging retrieved successfully")
+    }
+
+    async dataQuality(c: Context) {
+        const data = await this.service.getDataQuality()
+        return ApiResponse.success(c, data, "Data quality retrieved successfully")
+    }
 }
