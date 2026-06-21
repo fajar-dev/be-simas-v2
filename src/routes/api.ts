@@ -38,6 +38,7 @@ import { assetLocationController } from "../modules/asset-location/asset-locatio
 import { assetHolderController } from "../modules/asset-holder/asset-holder.module"
 import { assetLogController } from "../modules/asset-log/asset-log.module"
 import { assetStatusController } from "../modules/asset-status/asset-status.module"
+import { statisticController } from "../modules/statistic/statistic.module"
 
 // ── Routes ───────────────────────────────────────────────────────────────────
 const routes = new Hono()
@@ -141,6 +142,9 @@ routes.get("/asset-log", authMiddleware, (c) => assetLogController.index(c))
 // Asset Status
 routes.get("/asset-status", authMiddleware, (c) => assetStatusController.index(c))
 routes.post("/asset-status", authMiddleware, zValidator("json", CreateAssetStatusValidator, validationHook), (c) => assetStatusController.store(c))
+
+// Statistic
+routes.get("/statistic/summary", authMiddleware, (c) => statisticController.summary(c))
 
 
 // Upload
