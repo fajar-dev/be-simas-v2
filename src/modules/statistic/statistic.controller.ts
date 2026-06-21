@@ -9,4 +9,14 @@ export class StatisticController {
         const data = await this.service.getSummary()
         return ApiResponse.success(c, data, "Statistics retrieved successfully")
     }
+
+    async assetsByCategory(c: Context) {
+        const data = await this.service.getAssetsByCategory()
+        return ApiResponse.success(c, data, "Assets by category retrieved successfully")
+    }
+
+    async assetsByLocation(c: Context) {
+        const data = await this.service.getAssetsByLocation()
+        return ApiResponse.success(c, data, "Assets by location retrieved successfully")
+    }
 }

@@ -145,6 +145,8 @@ routes.post("/asset-status", authMiddleware, zValidator("json", CreateAssetStatu
 
 // Statistic
 routes.get("/statistic/summary", authMiddleware, (c) => statisticController.summary(c))
+routes.get("/statistic/assets-by-category", authMiddleware, (c) => statisticController.assetsByCategory(c))
+routes.get("/statistic/assets-by-location", authMiddleware, (c) => statisticController.assetsByLocation(c))
 
 
 // Upload
