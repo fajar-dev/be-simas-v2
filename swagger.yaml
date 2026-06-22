@@ -137,6 +137,7 @@ components:
         photo: { type: string, nullable: true, example: "users/abc-123.png" }
         isActive: { type: boolean, default: true, example: true }
         roleId: { type: integer, nullable: true, example: 1 }
+        employeeId: { type: integer, nullable: true, example: 1 }
 
     UpdateUserRequest:
       type: object
@@ -147,6 +148,7 @@ components:
         photo: { type: string, nullable: true, example: "users/abc-123.png" }
         isActive: { type: boolean, example: true }
         roleId: { type: integer, nullable: true, example: 1 }
+        employeeId: { type: integer, nullable: true, example: 1 }
 
     UpdateProfileRequest:
       type: object

@@ -7,6 +7,7 @@ export const CreateUserValidator = z.object({
     photo: z.string().trim().nullable().optional(),
     isActive: z.boolean().optional(),
     roleId: z.number().int().positive().nullable().optional(),
+    employeeId: z.number().int().positive().nullable().optional(),
 })
 
 export type CreateUserValidator = z.infer<typeof CreateUserValidator>
@@ -18,6 +19,7 @@ export const UpdateUserValidator = z.object({
     photo: z.string().trim().nullable().optional(),
     isActive: z.boolean().optional(),
     roleId: z.number().int().positive().nullable().optional(),
+    employeeId: z.number().int().positive().nullable().optional(),
 })
 
 export type UpdateUserValidator = z.infer<typeof UpdateUserValidator>

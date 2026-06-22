@@ -85,6 +85,9 @@ export class UserService {
         if (data.roleId !== undefined) {
             user.role = undefined as any
         }
+        if (data.employeeId !== undefined) {
+            user.employee = undefined as any
+        }
         this.repository.merge(user, data)
         return await this.repository.save(user)
     }

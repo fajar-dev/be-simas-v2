@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from "typeorm"
 import { Role } from "../../role/entities/role.entity"
+import { Employee } from "../../employee/entities/employee.entity"
 
 @Entity("users")
 export class User {
@@ -33,6 +34,13 @@ export class User {
     @ManyToOne(() => Role, { eager: true, nullable: true })
     @JoinColumn({ name: "role_id" })
     role?: Role
+
+    @Column({ name: "employee_id", nullable: true })
+    employeeId?: number | null
+
+    @ManyToOne(() => Employee, { nullable: true, onDelete: "SET NULL" })
+    @JoinColumn({ name: "employee_id" })
+    employee?: Employee
 
     @CreateDateColumn({ name: "created_at" })
     createdAt!: Date

@@ -12,6 +12,14 @@ export class UserSerializer {
             isActive: Boolean(user.isActive),
             role: user.role ? { id: user.role.id, name: user.role.name } : null,
             roleId: user.roleId || null,
+            employee: user.employee ? {
+                id: user.employee.id,
+                name: user.employee.name,
+                employeeId: user.employee.employeeId,
+                jobPosition: user.employee.jobPosition,
+                photo: await resolvePhotoUrl(user.employee.photo),
+            } : null,
+            employeeId: user.employeeId || null,
             createdAt: user.createdAt,
             updatedAt: user.updatedAt
         }
@@ -21,3 +29,4 @@ export class UserSerializer {
         return Promise.all(users.map(user => this.single(user)))
     }
 }
+
