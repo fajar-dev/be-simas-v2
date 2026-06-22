@@ -64,11 +64,17 @@ export class AssetRepository implements IAssetRepository {
         if (filters?.holderId) {
             query.andWhere("activeHolder.employeeId = :holderId", { holderId: filters.holderId })
         }
+        if (filters?.priceMin !== undefined || filters?.priceMax !== undefined) {
+            query.andWhere("asset.price IS NOT NULL AND asset.price > 0")
+        }
         if (filters?.priceMin !== undefined) {
             query.andWhere("asset.price >= :priceMin", { priceMin: filters.priceMin })
         }
         if (filters?.priceMax !== undefined) {
             query.andWhere("asset.price <= :priceMax", { priceMax: filters.priceMax })
+        }
+        if (filters?.purchaseDateFrom || filters?.purchaseDateTo) {
+            query.andWhere("asset.purchaseDate IS NOT NULL AND asset.purchaseDate != ''")
         }
         if (filters?.purchaseDateFrom) {
             query.andWhere("asset.purchaseDate >= :purchaseDateFrom", { purchaseDateFrom: filters.purchaseDateFrom })
