@@ -7,8 +7,13 @@ import {
     createTestApp,
     request,
     registerAndLogin,
+    TestDataSource,
 } from "./setup"
 import { resetCounters } from "./helpers"
+import { Category } from "../src/modules/category/entities/category.entity"
+import { SubCategory } from "../src/modules/sub-category/entities/sub-category.entity"
+import { Asset } from "../src/modules/asset/entities/asset.entity"
+import { AssetLocation } from "../src/modules/asset-location/entities/asset-location.entity"
 
 // ── Mock MinIO to prevent real connections ──────────────────────────────────
 
@@ -601,5 +606,42 @@ describe("DELETE /api/location/:id", () => {
         expect(status).toBe(404)
         expect(body.success).toBe(false)
         expect(body.message).toBe("Location not found")
+    })
+
+    test("should return 409 when deleting location with linked asset-locations", async () => {
+        const { headers } = await registerAndLogin(app)
+        const branch = await createTestBranch(app, headers)
+
+        // Create a location
+        const locRes = await request(app, "/api/location", {
+            method: "POST",
+            headers,
+            body: createLocationData(branch.id),
+        })
+        const locationId = locRes.body.data.id
+
+        // Create category → subcategory → asset via repos
+        const categoryRepo = TestDataSource.getRepository(Category)
+        const cat = await categoryRepo.save({ code: "CAT1", name: "Cat" })
+
+        const subCatRepo = TestDataSource.getRepository(SubCategory)
+        const subCat = await subCatRepo.save({ code: "SC1", name: "SubCat", categoryId: cat.id })
+
+        const assetRepo = TestDataSource.getRepository(Asset)
+        const asset = await assetRepo.save({ code: "AST1", name: "Asset", subCategoryId: subCat.id })
+
+        // Create asset_location linked to location
+        const assetLocationRepo = TestDataSource.getRepository(AssetLocation)
+        await assetLocationRepo.save({ assetId: asset.id, locationId, date: "2024-01-01" })
+
+        // Try to delete the location
+        const { status, body } = await request(app, `/api/location/${locationId}`, {
+            method: "DELETE",
+            headers,
+        })
+
+        expect(status).toBe(409)
+        expect(body.success).toBe(false)
+        expect(body.message).toContain("Cannot delete location")
     })
 })

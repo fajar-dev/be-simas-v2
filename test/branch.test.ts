@@ -512,6 +512,35 @@ describe("DELETE /api/branch/:id", () => {
         expect(body.success).toBe(false)
         expect(body.message).toBe("Branch not found")
     })
+
+    test("should return 409 when deleting branch with linked locations", async () => {
+        const { headers } = await registerAndLogin(app)
+
+        // Create a branch
+        const branchRes = await request(app, "/api/branch", {
+            method: "POST",
+            headers,
+            body: createBranchData(),
+        })
+        const branchId = branchRes.body.data.id
+
+        // Create a location linked to the branch
+        await request(app, "/api/location", {
+            method: "POST",
+            headers,
+            body: { name: "Test Location", branchId },
+        })
+
+        // Try to delete the branch
+        const { status, body } = await request(app, `/api/branch/${branchId}`, {
+            method: "DELETE",
+            headers,
+        })
+
+        expect(status).toBe(409)
+        expect(body.success).toBe(false)
+        expect(body.message).toContain("Cannot delete branch")
+    })
 })
 
 // ═══════════════════════════════════════════════════════════════════════════

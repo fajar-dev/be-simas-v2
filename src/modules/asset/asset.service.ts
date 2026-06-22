@@ -58,10 +58,10 @@ export class AssetService {
         asset.lastStatus = await this.assetStatusService.findLastStatus(asset.id)
     }
 
-    async checkCode(code: string, excludeId?: number): Promise<boolean> {
+    async checkCode(code: string, excludeId?: number): Promise<{ exists: boolean; id?: number }> {
         const asset = await this.repository.findByCode(code)
-        if (asset && excludeId && asset.id === excludeId) return false
-        return !!asset
+        if (asset && excludeId && asset.id === excludeId) return { exists: false }
+        return { exists: !!asset, id: asset?.id }
     }
 
     async create(data: any): Promise<Asset> {

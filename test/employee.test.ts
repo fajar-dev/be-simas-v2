@@ -7,8 +7,10 @@ import {
     createTestApp,
     request,
     registerAndLogin,
+    TestDataSource,
 } from "./setup"
 import { resetCounters } from "./helpers"
+import { User } from "../src/modules/user/entities/user.entity"
 
 // ── Mock MinIO to prevent real connections ──────────────────────────────────
 
@@ -511,6 +513,32 @@ describe("DELETE /api/employee/:id", () => {
         expect(body.success).toBe(false)
         expect(body.message).toBe("Employee not found")
     })
+
+    test("should return 409 when deleting employee with linked users", async () => {
+        const { headers } = await registerAndLogin(app)
+
+        // Create an employee
+        const createRes = await request(app, "/api/employee", {
+            method: "POST",
+            headers,
+            body: createEmployeeData(),
+        })
+        const empId = createRes.body.data.id
+
+        // Link the test user to this employee
+        const userRepo = TestDataSource.getRepository(User)
+        await userRepo.update({ email: "test@example.com" }, { employeeId: empId })
+
+        // Try to delete the employee
+        const { status, body } = await request(app, `/api/employee/${empId}`, {
+            method: "DELETE",
+            headers,
+        })
+
+        expect(status).toBe(409)
+        expect(body.success).toBe(false)
+        expect(body.message).toContain("Cannot delete employee")
+    })
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -648,6 +676,30 @@ describe("GET /api/employee/list", () => {
         expect(body.data[0].name).toBe("Andi")
         expect(body.data[1].name).toBe("Maria")
         expect(body.data[2].name).toBe("Zara")
+    })
+
+    test("should filter by isActive query param", async () => {
+        const { headers } = await registerAndLogin(app)
+
+        // Create 2 active employees and 1 inactive
+        await request(app, "/api/employee", { method: "POST", headers, body: createEmployeeData({ name: "Active1" }) })
+        await request(app, "/api/employee", { method: "POST", headers, body: createEmployeeData({ name: "Active2" }) })
+        await request(app, "/api/employee", { method: "POST", headers, body: createEmployeeData({ name: "Inactive", isActive: false }) })
+
+        // Get only active
+        const activeRes = await request(app, "/api/employee/list?isActive=true", { method: "GET", headers })
+        expect(activeRes.status).toBe(200)
+        expect(activeRes.body.data).toBeArrayOfSize(2)
+
+        // Get only inactive
+        const inactiveListRes = await request(app, "/api/employee/list?isActive=false", { method: "GET", headers })
+        expect(inactiveListRes.status).toBe(200)
+        expect(inactiveListRes.body.data).toBeArrayOfSize(1)
+
+        // Get all (no filter)
+        const allRes = await request(app, "/api/employee/list", { method: "GET", headers })
+        expect(allRes.status).toBe(200)
+        expect(allRes.body.data).toBeArrayOfSize(3)
     })
 
     test("should fail without auth", async () => {

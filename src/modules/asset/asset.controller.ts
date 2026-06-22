@@ -78,8 +78,8 @@ export class AssetController {
             return ApiResponse.success(c, { exists: false }, "Code is empty")
         }
         const excludeId = c.req.query("excludeId") ? Number(c.req.query("excludeId")) : undefined
-        const exists = await this.service.checkCode(code, excludeId)
-        return ApiResponse.success(c, { exists }, exists ? "Code already exists" : "Code is available")
+        const { exists, id } = await this.service.checkCode(code, excludeId)
+        return ApiResponse.success(c, { exists, id }, exists ? "Code already exists" : "Code is available")
     }
 
     async getLabelKeys(c: Context) {
