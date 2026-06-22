@@ -1570,7 +1570,7 @@ paths:
           schema: { type: integer, default: 10 }
         - name: q
           in: query
-          description: Search by name, code, brand, model, subcategory name, or category name
+          description: "Search across: asset name, code, brand, model, description, category, sub-category, employee name, employee ID, location, branch, label values"
           schema: { type: string }
         - name: sortBy
           in: query
@@ -1580,6 +1580,54 @@ paths:
           in: query
           description: Sort order
           schema: { type: string, enum: [ASC, DESC], default: DESC }
+        - name: categoryIds
+          in: query
+          description: "Filter by category IDs (comma-separated)"
+          schema: { type: string, example: "1,2,3" }
+        - name: subCategoryIds
+          in: query
+          description: "Filter by sub-category IDs (comma-separated)"
+          schema: { type: string, example: "1,2" }
+        - name: branchIds
+          in: query
+          description: "Filter by branch IDs (comma-separated)"
+          schema: { type: string, example: "1,2" }
+        - name: locationIds
+          in: query
+          description: "Filter by location IDs (comma-separated)"
+          schema: { type: string, example: "1,2" }
+        - name: holderStatus
+          in: query
+          description: "Filter by holder status"
+          schema: { type: string, enum: [has_holder, no_holder] }
+        - name: holderId
+          in: query
+          description: "Filter by active holder employee ID"
+          schema: { type: integer }
+        - name: priceMin
+          in: query
+          description: "Filter minimum price (excludes NULL prices)"
+          schema: { type: integer }
+        - name: priceMax
+          in: query
+          description: "Filter maximum price (excludes NULL prices)"
+          schema: { type: integer }
+        - name: purchaseDateFrom
+          in: query
+          description: "Filter from purchase date (excludes NULL dates)"
+          schema: { type: string, format: date }
+        - name: purchaseDateTo
+          in: query
+          description: "Filter to purchase date (excludes NULL dates)"
+          schema: { type: string, format: date }
+        - name: statuses
+          in: query
+          description: "Filter by asset statuses (comma-separated)"
+          schema: { type: string, example: "active,idle" }
+        - name: missingFields
+          in: query
+          description: "Filter by data quality (missing fields, comma-separated)"
+          schema: { type: string, example: "price,brand,purchaseDate" }
       responses:
         "200":
           description: Assets retrieved successfully
@@ -1715,7 +1763,7 @@ paths:
                 file:
                   type: string
                   format: binary
-                  description: The file to upload
+                  description: "File to upload. Max size: 5MB. Allowed types: image/jpeg, image/png, image/gif, image/webp, application/pdf"
       responses:
         "200":
           description: File uploaded successfully
@@ -1730,7 +1778,7 @@ paths:
                         type: object
                         properties:
                           path: { type: string, example: "users/abc-123.png" }
-        "400": { description: No file uploaded or invalid file }
+        "400": { description: "No file uploaded, file too large (>5MB), or unsupported file type" }
         "401": { description: Unauthorized }
 
   # ── Attachment ────────────────────────────────────────────────────────────
@@ -2269,3 +2317,28 @@ paths:
                       data: { $ref: "#/components/schemas/AssetStatusResponse" }
         "401": { description: Unauthorized }
         "422": { description: Validation error }
+
+  # ── Proxy MinIO ─────────────────────────────────────────────────────────
+  /proxy:
+    get:
+      tags: [Upload]
+      summary: Proxy a file from MinIO storage
+      description: "Streams a file from MinIO object storage. Requires authentication."
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: path
+          in: query
+          required: true
+          description: MinIO object path
+          schema: { type: string, example: "users/abc-123.png" }
+      responses:
+        "200":
+          description: File stream
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "400": { description: "Missing 'path' query parameter" }
+        "401": { description: Unauthorized }
