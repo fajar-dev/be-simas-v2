@@ -74,6 +74,9 @@ function createBranchData(overrides: Record<string, any> = {}) {
         code: `BR-${String(branchCounter).padStart(3, "0")}`,
         name: `Branch ${branchCounter}`,
         description: `Description for branch ${branchCounter}`,
+        address: `Address for branch ${branchCounter}`,
+        email: `branch${branchCounter}@example.com`,
+        phone: `021-${String(branchCounter).padStart(7, "0")}`,
         ...overrides,
     }
 }
@@ -149,25 +152,47 @@ describe("POST /api/branch", () => {
         expect(body.data.code).toBe(branchData.code)
         expect(body.data.name).toBe(branchData.name)
         expect(body.data.description).toBe(branchData.description)
+        expect(body.data.address).toBe(branchData.address)
+        expect(body.data.email).toBe(branchData.email)
+        expect(body.data.phone).toBe(branchData.phone)
         expect(body.data.id).toBeDefined()
         expect(body.data.createdAt).toBeDefined()
         expect(body.data.updatedAt).toBeDefined()
     })
 
-    test("should create a branch without description", async () => {
+    test("should create a branch without description, address, email, phone", async () => {
         const { headers } = await registerAndLogin(app)
-        const branchData = createBranchData({ description: undefined })
+        const branchData = createBranchData({ description: undefined, address: undefined, email: undefined, phone: undefined })
         delete branchData.description
-
+        delete branchData.address
+        delete branchData.email
+        delete branchData.phone
+ 
         const { status, body } = await request(app, "/api/branch", {
             method: "POST",
             headers,
             body: { code: branchData.code, name: branchData.name },
         })
-
+ 
         expect(status).toBe(201)
         expect(body.success).toBe(true)
         expect(body.data.description).toBeNull()
+        expect(body.data.address).toBeNull()
+        expect(body.data.email).toBeNull()
+        expect(body.data.phone).toBeNull()
+    })
+
+    test("should fail validation with invalid email format", async () => {
+        const { headers } = await registerAndLogin(app)
+
+        const { status, body } = await request(app, "/api/branch", {
+            method: "POST",
+            headers,
+            body: { name: "Test Branch", email: "invalid-email" },
+        })
+
+        expect(status).toBe(422)
+        expect(body.success).toBe(false)
     })
 
     test("should create a branch without code (auto-fill from ID)", async () => {
@@ -409,7 +434,13 @@ describe("PUT /api/branch/:id", () => {
         const { status, body } = await request(app, `/api/branch/${branchId}`, {
             method: "PUT",
             headers,
-            body: { name: "Updated Branch", description: "Updated description" },
+            body: { 
+                name: "Updated Branch", 
+                description: "Updated description",
+                address: "Updated address",
+                email: "updated@example.com",
+                phone: "021-9876543"
+            },
         })
 
         expect(status).toBe(200)
@@ -417,6 +448,9 @@ describe("PUT /api/branch/:id", () => {
         expect(body.message).toBe("Branch updated successfully")
         expect(body.data.name).toBe("Updated Branch")
         expect(body.data.description).toBe("Updated description")
+        expect(body.data.address).toBe("Updated address")
+        expect(body.data.email).toBe("updated@example.com")
+        expect(body.data.phone).toBe("021-9876543")
     })
 
     test("should return 404 when updating non-existent branch", async () => {

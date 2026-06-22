@@ -14,6 +14,15 @@ export class Branch {
     @Column({ nullable: true, type: "text" })
     description?: string
 
+    @Column({ nullable: true, type: "text" })
+    address?: string
+
+    @Column({ nullable: true })
+    email?: string
+
+    @Column({ nullable: true })
+    phone?: string
+
     @CreateDateColumn({ name: "created_at" })
     createdAt!: Date
 

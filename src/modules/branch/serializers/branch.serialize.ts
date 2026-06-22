@@ -7,6 +7,9 @@ export class BranchSerializer {
             code: branch.code,
             name: branch.name,
             description: branch.description || null,
+            address: branch.address || null,
+            email: branch.email || null,
+            phone: branch.phone || null,
             createdAt: branch.createdAt,
             updatedAt: branch.updatedAt,
         }

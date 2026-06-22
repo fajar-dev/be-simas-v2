@@ -329,6 +329,9 @@ components:
         code: { type: string, example: "BR-001" }
         name: { type: string, example: "Jakarta Branch" }
         description: { type: string, nullable: true, example: "Main branch in Jakarta" }
+        address: { type: string, nullable: true, example: "Jl. Sudirman No. 1, Jakarta" }
+        email: { type: string, format: email, nullable: true, example: "jakarta@company.com" }
+        phone: { type: string, nullable: true, example: "021-1234567" }
 
     UpdateBranchRequest:
       type: object
@@ -336,6 +339,9 @@ components:
         code: { type: string, example: "BR-001" }
         name: { type: string, example: "Jakarta Branch" }
         description: { type: string, nullable: true, example: "Updated description" }
+        address: { type: string, nullable: true, example: "Jl. Sudirman No. 1, Jakarta" }
+        email: { type: string, format: email, nullable: true, example: "jakarta@company.com" }
+        phone: { type: string, nullable: true, example: "021-1234567" }
 
     BranchResponse:
       type: object
@@ -344,6 +350,9 @@ components:
         code: { type: string, example: "BR-001" }
         name: { type: string, example: "Jakarta Branch" }
         description: { type: string, nullable: true, example: "Main branch in Jakarta" }
+        address: { type: string, nullable: true, example: "Jl. Sudirman No. 1, Jakarta" }
+        email: { type: string, format: email, nullable: true, example: "jakarta@company.com" }
+        phone: { type: string, nullable: true, example: "021-1234567" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
