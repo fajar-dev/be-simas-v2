@@ -8,7 +8,7 @@ import { AssetFilter } from "./interfaces/asset.repository.interface"
 export class AssetController {
     constructor(
         private readonly service: AssetService,
-        private readonly exportService: AssetUtilsService,
+        private readonly utilsService: AssetUtilsService,
     ) {}
 
     async index(c: Context) {
@@ -88,7 +88,7 @@ export class AssetController {
 
         const data = await this.service.getAllForExport(q, sortBy, order, filters)
 
-        const buffer = await this.exportService.generateExcel(data, labelKeys)
+        const buffer = await this.utilsService.generateExcel(data, labelKeys)
         const filename = `assets_export_${new Date().toISOString().slice(0, 10)}.xlsx`
 
         return new Response(new Uint8Array(buffer), {
