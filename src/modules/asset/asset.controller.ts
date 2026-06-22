@@ -147,21 +147,18 @@ export class AssetController {
         }
         if (labelFilters.length) filters.labels = labelFilters
 
-        const { data } = await this.service.getAll(1, 999999, q, sortBy, order, filters)
+        // Parse label columns to include (only checked ones)
+        const labelColumnsParam = c.req.query("labelColumns")
+        const labelKeys = labelColumnsParam ? labelColumnsParam.split(',').filter(Boolean) : []
 
-        // Collect all unique label keys from the data
-        const allLabelKeys = new Set<string>()
-        data.forEach(asset => {
-            (asset.labels || []).forEach(l => allLabelKeys.add(l.key))
-        })
-        const labelKeys = Array.from(allLabelKeys).sort()
+        const { data } = await this.service.getAll(1, 999999, q, sortBy, order, filters)
 
         // Build Excel
         const ExcelJS = await import('exceljs')
         const workbook = new ExcelJS.Workbook()
         const sheet = workbook.addWorksheet('Assets')
 
-        // Define columns
+        // Define columns — Active Holder split into 2, Last Location split into 2
         const columns: { header: string; key: string; width: number }[] = [
             { header: 'No', key: 'no', width: 5 },
             { header: 'Code', key: 'code', width: 15 },
@@ -174,30 +171,60 @@ export class AssetController {
             { header: 'Price', key: 'price', width: 15 },
             { header: 'Purchase Date', key: 'purchaseDate', width: 15 },
             { header: 'Status', key: 'status', width: 15 },
-            { header: 'Active Holder', key: 'activeHolder', width: 25 },
-            { header: 'Location', key: 'location', width: 25 },
+            { header: 'Holder Name', key: 'holderName', width: 22 },
+            { header: 'Holder Employee ID', key: 'holderEmployeeId', width: 18 },
+            { header: 'Location', key: 'location', width: 22 },
             { header: 'Branch', key: 'branch', width: 20 },
         ]
 
-        // Add label columns dynamically
+        // Add label columns dynamically (only checked ones)
         labelKeys.forEach(key => {
             columns.push({ header: key, key: `label_${key}`, width: 20 })
         })
 
         sheet.columns = columns
 
-        // Style header row
-        const headerRow = sheet.getRow(1)
-        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }
-        headerRow.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'FF009838' },
-        }
-        headerRow.alignment = { vertical: 'middle', horizontal: 'center' }
-        headerRow.height = 24
+        // Find column indices for merged headers (1-indexed)
+        const holderNameCol = columns.findIndex(c => c.key === 'holderName') + 1
+        const holderEmpIdCol = columns.findIndex(c => c.key === 'holderEmployeeId') + 1
+        const locationCol = columns.findIndex(c => c.key === 'location') + 1
+        const branchCol = columns.findIndex(c => c.key === 'branch') + 1
 
-        // Add data rows
+        // Insert a group header row (row 1) with merged cells
+        sheet.insertRow(1, [])
+        const groupRow = sheet.getRow(1)
+
+        // Merge Active Holder header
+        sheet.mergeCells(1, holderNameCol, 1, holderEmpIdCol)
+        groupRow.getCell(holderNameCol).value = 'Active Holder'
+
+        // Merge Last Location header
+        sheet.mergeCells(1, locationCol, 1, branchCol)
+        groupRow.getCell(locationCol).value = 'Last Location'
+
+        // Style group header row (row 1)
+        const headerStyle = {
+            font: { bold: true, color: { argb: 'FFFFFFFF' } },
+            fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FF009838' } },
+            alignment: { vertical: 'middle' as const, horizontal: 'center' as const },
+        }
+        groupRow.height = 24
+        groupRow.eachCell({ includeEmpty: false }, (cell) => {
+            cell.font = headerStyle.font
+            cell.fill = headerStyle.fill
+            cell.alignment = headerStyle.alignment
+        })
+
+        // Style sub-header row (row 2)
+        const subHeaderRow = sheet.getRow(2)
+        subHeaderRow.height = 24
+        subHeaderRow.eachCell({ includeEmpty: false }, (cell) => {
+            cell.font = headerStyle.font
+            cell.fill = headerStyle.fill
+            cell.alignment = headerStyle.alignment
+        })
+
+        // Add data rows (starting from row 3)
         data.forEach((asset, index) => {
             const row: Record<string, any> = {
                 no: index + 1,
@@ -211,9 +238,8 @@ export class AssetController {
                 price: asset.price ?? '',
                 purchaseDate: asset.purchaseDate || '',
                 status: asset.lastStatus?.status || '',
-                activeHolder: asset.activeHolder?.employee?.name
-                    ? `${asset.activeHolder.employee.name} (${asset.activeHolder.employee.employeeId || ''})`
-                    : '',
+                holderName: asset.activeHolder?.employee?.name || '',
+                holderEmployeeId: asset.activeHolder?.employee?.employeeId || '',
                 location: asset.lastLocation?.location?.name || '',
                 branch: asset.lastLocation?.location?.branch?.name || '',
             }
@@ -247,10 +273,10 @@ export class AssetController {
             })
         })
 
-        // Auto-filter
+        // Auto-filter on sub-header row
         sheet.autoFilter = {
-            from: { row: 1, column: 1 },
-            to: { row: 1, column: columns.length },
+            from: { row: 2, column: 1 },
+            to: { row: 2, column: columns.length },
         }
 
         // Generate buffer
