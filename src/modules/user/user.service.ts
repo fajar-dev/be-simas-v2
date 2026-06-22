@@ -82,6 +82,9 @@ export class UserService {
         if (data.photo !== undefined) {
             data.photo = minio.sanitizePath(data.photo) ?? undefined
         }
+        if (data.roleId !== undefined) {
+            user.role = undefined as any
+        }
         this.repository.merge(user, data)
         return await this.repository.save(user)
     }
