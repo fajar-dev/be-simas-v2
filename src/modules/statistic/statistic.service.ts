@@ -150,7 +150,7 @@ export class StatisticService {
     async getDataQuality() {
         const assetRepo = AppDataSource.getRepository(Asset)
 
-        const [withoutImage, withoutPrice, withoutBrand, withoutModel] = await Promise.all([
+        const [withoutImage, withoutPrice, withoutBrand, withoutModel, withoutPurchaseDate] = await Promise.all([
             assetRepo.createQueryBuilder("asset")
                 .where("asset.image IS NULL OR asset.image = ''")
                 .getCount(),
@@ -163,6 +163,9 @@ export class StatisticService {
             assetRepo.createQueryBuilder("asset")
                 .where("asset.model IS NULL OR asset.model = ''")
                 .getCount(),
+            assetRepo.createQueryBuilder("asset")
+                .where("asset.purchase_date IS NULL OR asset.purchase_date = ''")
+                .getCount(),
         ])
 
         return [
@@ -170,6 +173,7 @@ export class StatisticService {
             { label: "Without Price", count: withoutPrice },
             { label: "Without Brand", count: withoutBrand },
             { label: "Without Model", count: withoutModel },
+            { label: "Without Purchase Date", count: withoutPurchaseDate },
         ]
     }
 }
