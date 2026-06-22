@@ -31,14 +31,14 @@ export class User {
     @Column({ name: "role_id", nullable: true })
     roleId?: number
 
-    @ManyToOne(() => Role, { eager: true, nullable: true })
+    @ManyToOne(() => Role, { eager: true, nullable: true, onDelete: "RESTRICT" })
     @JoinColumn({ name: "role_id" })
     role?: Role
 
     @Column({ name: "employee_id", nullable: true })
     employeeId?: number | null
 
-    @ManyToOne(() => Employee, { nullable: true, onDelete: "SET NULL" })
+    @ManyToOne(() => Employee, { nullable: true, onDelete: "RESTRICT" })
     @JoinColumn({ name: "employee_id" })
     employee?: Employee
 

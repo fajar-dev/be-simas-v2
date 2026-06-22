@@ -11,7 +11,7 @@ export class AssetHolder {
     @Column({ name: "asset_id" })
     assetId!: number
 
-    @ManyToOne(() => Asset, { onDelete: "CASCADE" })
+    @ManyToOne(() => Asset, { onDelete: "RESTRICT" })
     @JoinColumn({ name: "asset_id" })
     asset!: Asset
 

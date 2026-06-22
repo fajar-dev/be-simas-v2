@@ -3,7 +3,7 @@ import { AppDataSource } from "../../config/database"
 import { Role } from "./entities/role.entity"
 import { Permission } from "./entities/permission.entity"
 import { User } from "../user/entities/user.entity"
-import { NotFoundException, BadRequestException } from "../../core/exceptions/base"
+import { NotFoundException, BadRequestException, ConflictException } from "../../core/exceptions/base"
 
 export class RoleService {
     private get roleRepository() {
@@ -100,7 +100,7 @@ export class RoleService {
 
         const usersCount = await this.userRepository.count({ where: { roleId: id } })
         if (usersCount > 0) {
-            throw new BadRequestException(`Cannot delete role, ${usersCount} user(s) are still assigned to this role`)
+            throw new ConflictException(`Cannot delete role, ${usersCount} user(s) are still assigned to this role`)
         }
 
         await this.roleRepository.remove(role)

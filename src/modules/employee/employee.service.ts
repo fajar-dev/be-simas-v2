@@ -1,6 +1,9 @@
 import { Employee } from "./entities/employee.entity"
-import { NotFoundException } from "../../core/exceptions/base"
-import { EntityManager } from "typeorm"
+import { NotFoundException, ConflictException } from "../../core/exceptions/base"
+import { EntityManager, IsNull } from "typeorm"
+import { AppDataSource } from "../../config/database"
+import { AssetHolder } from "../asset-holder/entities/asset-holder.entity"
+import { User } from "../user/entities/user.entity"
 import { IEmployeeRepository } from "./interfaces/employee.repository.interface"
 import { minio } from "../../core/helpers/minio"
 
@@ -41,6 +44,14 @@ export class EmployeeService {
 
     async delete(id: number): Promise<void> {
         await this.getById(id)
+        const holderCount = await AppDataSource.getRepository(AssetHolder).count({ where: { employeeId: id, returnedDate: IsNull() } })
+        if (holderCount > 0) {
+            throw new ConflictException(`Cannot delete employee, ${holderCount} asset(s) are still assigned to this employee`)
+        }
+        const userCount = await AppDataSource.getRepository(User).count({ where: { employeeId: id } })
+        if (userCount > 0) {
+            throw new ConflictException(`Cannot delete employee, ${userCount} user(s) are still linked to this employee`)
+        }
         await this.repository.delete(id)
     }
 

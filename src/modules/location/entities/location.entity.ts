@@ -15,7 +15,7 @@ export class Location {
     @Column({ name: "branch_id" })
     branchId!: number
 
-    @ManyToOne(() => Branch)
+    @ManyToOne(() => Branch, { onDelete: "RESTRICT" })
     @JoinColumn({ name: "branch_id" })
     branch!: Branch
 

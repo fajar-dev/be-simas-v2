@@ -1,6 +1,8 @@
 import { Location } from "./entities/location.entity"
-import { NotFoundException } from "../../core/exceptions/base"
+import { NotFoundException, ConflictException } from "../../core/exceptions/base"
 import { EntityManager } from "typeorm"
+import { AppDataSource } from "../../config/database"
+import { AssetLocation } from "../asset-location/entities/asset-location.entity"
 import { ILocationRepository } from "./interfaces/location.repository.interface"
 
 export class LocationService {
@@ -34,6 +36,10 @@ export class LocationService {
 
     async delete(id: number): Promise<void> {
         await this.getById(id)
+        const assetLocationCount = await AppDataSource.getRepository(AssetLocation).count({ where: { locationId: id } })
+        if (assetLocationCount > 0) {
+            throw new ConflictException(`Cannot delete location, ${assetLocationCount} asset(s) are still linked to this location`)
+        }
         await this.repository.delete(id)
     }
 

@@ -11,14 +11,14 @@ export class AssetLocation {
     @Column({ name: "asset_id" })
     assetId!: number
 
-    @ManyToOne(() => Asset, { onDelete: "CASCADE" })
+    @ManyToOne(() => Asset, { onDelete: "RESTRICT" })
     @JoinColumn({ name: "asset_id" })
     asset!: Asset
 
     @Column({ name: "location_id" })
     locationId!: number
 
-    @ManyToOne(() => Location, { onDelete: "CASCADE" })
+    @ManyToOne(() => Location, { onDelete: "RESTRICT" })
     @JoinColumn({ name: "location_id" })
     location!: Location
 

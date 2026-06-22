@@ -18,7 +18,7 @@ export class SubCategory {
     @Column({ name: "category_id" })
     categoryId!: number
 
-    @ManyToOne(() => Category)
+    @ManyToOne(() => Category, { onDelete: "RESTRICT" })
     @JoinColumn({ name: "category_id" })
     category!: Category
 

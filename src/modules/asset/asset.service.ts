@@ -1,6 +1,10 @@
 import { Asset } from "./entities/asset.entity"
-import { NotFoundException, BadRequestException } from "../../core/exceptions/base"
-import { EntityManager } from "typeorm"
+import { NotFoundException, BadRequestException, ConflictException } from "../../core/exceptions/base"
+import { EntityManager, IsNull } from "typeorm"
+import { AppDataSource } from "../../config/database"
+import { AssetHolder } from "../asset-holder/entities/asset-holder.entity"
+import { AssetLocation } from "../asset-location/entities/asset-location.entity"
+import { AssetMaintenance } from "../asset-maintenance/entities/asset-maintenance.entity"
 import { IAssetRepository } from "./interfaces/asset.repository.interface"
 import { AssetFilter } from "./interfaces/asset.repository.interface"
 import { minio } from "../../core/helpers/minio"
@@ -232,6 +236,18 @@ export class AssetService {
 
     async delete(id: number): Promise<void> {
         await this.getById(id)
+        const holderCount = await AppDataSource.getRepository(AssetHolder).count({ where: { assetId: id, returnedDate: IsNull() } })
+        if (holderCount > 0) {
+            throw new ConflictException(`Cannot delete asset, it is currently assigned to an employee`)
+        }
+        const locationCount = await AppDataSource.getRepository(AssetLocation).count({ where: { assetId: id } })
+        if (locationCount > 0) {
+            throw new ConflictException(`Cannot delete asset, ${locationCount} location history record(s) exist. Please delete them first`)
+        }
+        const maintenanceCount = await AppDataSource.getRepository(AssetMaintenance).count({ where: { assetId: id } })
+        if (maintenanceCount > 0) {
+            throw new ConflictException(`Cannot delete asset, ${maintenanceCount} maintenance record(s) exist. Please delete them first`)
+        }
         await this.repository.delete(id)
     }
 

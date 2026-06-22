@@ -387,7 +387,7 @@ describe("DELETE /api/role/:id", () => {
         expect(body.message).toBe("Cannot delete Super Admin role")
     })
 
-    test("should return 400 when deleting role with assigned users", async () => {
+    test("should return 409 when deleting role with assigned users", async () => {
         const { headers } = await registerAndLogin(app)
         const seeded = await seedPermissions()
         
@@ -409,7 +409,7 @@ describe("DELETE /api/role/:id", () => {
             headers,
         })
 
-        expect(status).toBe(400)
+        expect(status).toBe(409)
         expect(body.success).toBe(false)
         expect(body.message).toContain("Cannot delete role")
     })
