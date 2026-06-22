@@ -1,5 +1,6 @@
 import { Asset } from "./entities/asset.entity"
 import ExcelJS from "exceljs"
+import { config } from "../../config/config"
 
 export class AssetUtilService {
 
@@ -10,6 +11,7 @@ export class AssetUtilService {
         // Define columns — Active Holder split into 2, Last Location split into 2
         const columns: { header: string; key: string; width: number }[] = [
             { header: 'No', key: 'no', width: 5 },
+            { header: 'Image', key: 'image', width: 40 },
             { header: 'Code', key: 'code', width: 15 },
             { header: 'Name', key: 'name', width: 30 },
             { header: 'Description', key: 'description', width: 30 },
@@ -47,7 +49,7 @@ export class AssetUtilService {
         const subHeaderRow = sheet.getRow(2)
 
         // Single-column headers: merge vertically (row 1 + row 2) and set value in row 1
-        const singleCols = ['no', 'code', 'name', 'description', 'category', 'subCategory', 'brand', 'model', 'price', 'purchaseDate', 'status']
+        const singleCols = ['no', 'image', 'code', 'name', 'description', 'category', 'subCategory', 'brand', 'model', 'price', 'purchaseDate', 'status']
         singleCols.forEach(key => {
             const colIdx = columns.findIndex(c => c.key === key) + 1
             const header = columns[colIdx - 1].header
@@ -92,6 +94,7 @@ export class AssetUtilService {
         data.forEach((asset, index) => {
             const row: Record<string, any> = {
                 no: index + 1,
+                image: asset.image ? `${config.app.appUrl}/api/proxy?path=${encodeURI(asset.image)}` : '',
                 code: asset.code,
                 name: asset.name,
                 description: asset.description || '',
