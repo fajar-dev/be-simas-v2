@@ -302,6 +302,32 @@ export class AssetUtilService {
             })
         })
 
+        // Add dropdown validation on Template sheet
+        const scCodeCol = templateSheet.getColumn('subCategoryCode')
+        const statusCol = templateSheet.getColumn('status')
+        const scLastRow = 2 + subCategories.length  // data starts at row 3 in Reference
+        const stLastRow = 2 + statusTypes.length
+
+        // Apply to rows 2–1000 (enough room for data entry)
+        for (let r = 2; r <= 1000; r++) {
+            templateSheet.getCell(r, scCodeCol.number).dataValidation = {
+                type: 'list',
+                allowBlank: true,
+                formulae: [`Reference!$B$3:$B$${scLastRow}`],
+                showErrorMessage: true,
+                errorTitle: 'Invalid Sub Category',
+                error: 'Please select a valid Sub Category Code from the dropdown.',
+            }
+            templateSheet.getCell(r, statusCol.number).dataValidation = {
+                type: 'list',
+                allowBlank: true,
+                formulae: [`Reference!$G$3:$G$${stLastRow}`],
+                showErrorMessage: true,
+                errorTitle: 'Invalid Status',
+                error: 'Please select a valid status from the dropdown.',
+            }
+        }
+
         return Buffer.from(await workbook.xlsx.writeBuffer())
     }
 
