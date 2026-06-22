@@ -49,8 +49,10 @@ export class EmployeeRepository implements IEmployeeRepository {
         return await this.repository.findOneBy({ id })
     }
 
-    async findList(): Promise<Employee[]> {
-        return await this.repository.find({ where: { isActive: true }, order: { name: 'ASC' } })
+    async findList(isActive?: boolean): Promise<Employee[]> {
+        const where: any = {}
+        if (isActive !== undefined) where.isActive = isActive
+        return await this.repository.find({ where, order: { name: 'ASC' } })
     }
 
     async save(data: Partial<Employee>, manager?: EntityManager): Promise<Employee> {

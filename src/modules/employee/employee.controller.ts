@@ -20,7 +20,9 @@ export class EmployeeController {
     }
 
     async list(c: Context) {
-        const data = await this.service.getList()
+        const isActiveParam = c.req.query("isActive")
+        const isActive = isActiveParam !== undefined ? isActiveParam === "true" : undefined
+        const data = await this.service.getList(isActive)
         const serialized = await EmployeeSerializer.listCollection(data)
         return ApiResponse.success(c, serialized, "Employees retrieved successfully")
     }

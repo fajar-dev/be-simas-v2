@@ -14,8 +14,8 @@ export class EmployeeService {
         return await this.repository.findAll(page, limit, q, sortBy, order)
     }
 
-    async getList(): Promise<Employee[]> {
-        return await this.repository.findList()
+    async getList(isActive?: boolean): Promise<Employee[]> {
+        return await this.repository.findList(isActive)
     }
 
     async getById(id: number): Promise<Employee> {
