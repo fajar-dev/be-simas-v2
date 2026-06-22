@@ -1,7 +1,7 @@
 import { Asset } from "./entities/asset.entity"
 import ExcelJS from "exceljs"
 
-export class AssetUtilsService {
+export class AssetUtilService {
 
     async generateExcel(data: Asset[], labelKeys: string[]): Promise<Buffer> {
         const workbook = new ExcelJS.Workbook()
