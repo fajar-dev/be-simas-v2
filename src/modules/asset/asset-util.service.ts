@@ -1,6 +1,10 @@
 import { Asset } from "./entities/asset.entity"
 import ExcelJS from "exceljs"
 import { config } from "../../config/config"
+import { AppDataSource } from "../../config/database"
+import { SubCategory } from "../sub-category/entities/sub-category.entity"
+import { Location } from "../location/entities/location.entity"
+import { Employee } from "../employee/entities/employee.entity"
 
 export class AssetUtilService {
 
@@ -154,5 +158,301 @@ export class AssetUtilService {
         }
 
         return Buffer.from(await workbook.xlsx.writeBuffer())
+    }
+
+    async template(): Promise<Buffer> {
+        const workbook = new ExcelJS.Workbook()
+
+        const headerStyle = {
+            font: { bold: true, color: { argb: 'FFFFFFFF' } } as ExcelJS.Font,
+            fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FF009838' } } as ExcelJS.FillPattern,
+            alignment: { vertical: 'middle' as const, horizontal: 'center' as const } as Partial<ExcelJS.Alignment>,
+        }
+
+        // ── Sheet 1: Template ──
+        const templateSheet = workbook.addWorksheet('Template')
+        templateSheet.columns = [
+            { header: 'Asset Code *', key: 'code', width: 18 },
+            { header: 'Name *', key: 'name', width: 30 },
+            { header: 'Description', key: 'description', width: 30 },
+            { header: 'Sub Category Code *', key: 'subCategoryCode', width: 22 },
+            { header: 'Brand', key: 'brand', width: 15 },
+            { header: 'Model', key: 'model', width: 15 },
+            { header: 'Price', key: 'price', width: 15 },
+            { header: 'Purchase Date', key: 'purchaseDate', width: 18 },
+            { header: 'Location Name', key: 'locationName', width: 20 },
+            { header: 'Employee ID', key: 'employeeId', width: 18 },
+            { header: 'Status', key: 'status', width: 15 },
+        ]
+
+        const templateHeader = templateSheet.getRow(1)
+        templateHeader.height = 24
+        templateHeader.eachCell((cell) => {
+            cell.font = headerStyle.font
+            cell.fill = headerStyle.fill
+            cell.alignment = headerStyle.alignment
+        })
+
+        // Add example row
+        templateSheet.addRow({
+            code: 'AST-001',
+            name: 'Laptop Dell XPS 15',
+            description: 'Laptop kantor',
+            subCategoryCode: 'SC-001',
+            brand: 'Dell',
+            model: 'XPS 15',
+            price: 15000000,
+            purchaseDate: '2024-01-15',
+            locationName: 'Ruang Server',
+            employeeId: 'EMP-001',
+            status: 'active',
+        })
+        const exampleRow = templateSheet.getRow(2)
+        exampleRow.font = { italic: true, color: { argb: 'FF999999' } }
+
+        // ── Sheet 2: Reference ──
+        const refSheet = workbook.addWorksheet('Reference')
+
+        // Fetch reference data
+        const subCategories = await AppDataSource.getRepository(SubCategory)
+            .createQueryBuilder('sc')
+            .leftJoinAndSelect('sc.category', 'cat')
+            .orderBy('cat.name', 'ASC')
+            .addOrderBy('sc.name', 'ASC')
+            .getMany()
+
+        const locations = await AppDataSource.getRepository(Location)
+            .createQueryBuilder('loc')
+            .leftJoinAndSelect('loc.branch', 'branch')
+            .orderBy('branch.name', 'ASC')
+            .addOrderBy('loc.name', 'ASC')
+            .getMany()
+
+        // Sub Category reference table
+        const scStartCol = 1
+        refSheet.getColumn(scStartCol).width = 5
+        refSheet.getColumn(scStartCol + 1).width = 18
+        refSheet.getColumn(scStartCol + 2).width = 25
+        refSheet.getColumn(scStartCol + 3).width = 20
+
+        const scTitleRow = refSheet.getRow(1)
+        refSheet.mergeCells(1, scStartCol, 1, scStartCol + 3)
+        scTitleRow.getCell(scStartCol).value = 'Sub Category Codes'
+        scTitleRow.getCell(scStartCol).font = headerStyle.font
+        scTitleRow.getCell(scStartCol).fill = headerStyle.fill
+        scTitleRow.getCell(scStartCol).alignment = headerStyle.alignment
+        scTitleRow.height = 24
+
+        const scHeaderRow = refSheet.getRow(2)
+        const scHeaders = ['No', 'Code', 'Sub Category Name', 'Category']
+        scHeaders.forEach((h, i) => {
+            const cell = scHeaderRow.getCell(scStartCol + i)
+            cell.value = h
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF555555' } }
+            cell.alignment = { vertical: 'middle', horizontal: 'center' }
+        })
+        scHeaderRow.height = 22
+
+        subCategories.forEach((sc, i) => {
+            const row = refSheet.getRow(3 + i)
+            row.getCell(scStartCol).value = i + 1
+            row.getCell(scStartCol + 1).value = sc.code
+            row.getCell(scStartCol + 2).value = sc.name
+            row.getCell(scStartCol + 3).value = sc.category?.name || ''
+        })
+
+        // Location reference table (start after a gap)
+        const locStartCol = 6
+        refSheet.getColumn(locStartCol).width = 5
+        refSheet.getColumn(locStartCol + 1).width = 25
+        refSheet.getColumn(locStartCol + 2).width = 20
+
+        const locTitleRow = refSheet.getRow(1)
+        refSheet.mergeCells(1, locStartCol, 1, locStartCol + 2)
+        locTitleRow.getCell(locStartCol).value = 'Locations'
+        locTitleRow.getCell(locStartCol).font = headerStyle.font
+        locTitleRow.getCell(locStartCol).fill = headerStyle.fill
+        locTitleRow.getCell(locStartCol).alignment = headerStyle.alignment
+
+        const locHeaderRow = refSheet.getRow(2)
+        const locHeaders = ['No', 'Location Name', 'Branch']
+        locHeaders.forEach((h, i) => {
+            const cell = locHeaderRow.getCell(locStartCol + i)
+            cell.value = h
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF555555' } }
+            cell.alignment = { vertical: 'middle', horizontal: 'center' }
+        })
+
+        locations.forEach((loc, i) => {
+            const row = refSheet.getRow(3 + i)
+            row.getCell(locStartCol).value = i + 1
+            row.getCell(locStartCol + 1).value = loc.name
+            row.getCell(locStartCol + 2).value = loc.branch?.name || ''
+        })
+
+        // Add borders to reference sheet
+        refSheet.eachRow((row) => {
+            row.eachCell((cell) => {
+                cell.border = {
+                    top: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+                    left: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+                    bottom: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+                    right: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+                }
+            })
+        })
+
+        return Buffer.from(await workbook.xlsx.writeBuffer())
+    }
+
+    async import(buffer: Buffer, userId?: number): Promise<{ success: number; errors: { row: number; message: string }[] }> {
+        const workbook = new ExcelJS.Workbook()
+        await workbook.xlsx.load(buffer)
+
+        const sheet = workbook.getWorksheet('Template') || workbook.getWorksheet(1)
+        if (!sheet) throw new Error('Worksheet not found')
+
+        // Build lookup maps
+        const subCategoryRepo = AppDataSource.getRepository(SubCategory)
+        const locationRepo = AppDataSource.getRepository(Location)
+        const employeeRepo = AppDataSource.getRepository(Employee)
+
+        const subCategories = await subCategoryRepo.find()
+        const scMap = new Map(subCategories.map(sc => [sc.code.toLowerCase(), sc]))
+
+        const locations = await locationRepo.find()
+        const locMap = new Map(locations.map(loc => [loc.name.toLowerCase(), loc]))
+
+        const employees = await employeeRepo.find()
+        const empMap = new Map(employees.map(emp => [emp.employeeId.toLowerCase(), emp]))
+
+        // Lazy import to avoid circular deps
+        const { assetService } = require("./asset.module")
+
+        const errors: { row: number; message: string }[] = []
+        let success = 0
+
+        // Read header row to determine column mapping
+        const headerRow = sheet.getRow(1)
+        const colMap: Record<string, number> = {}
+        headerRow.eachCell((cell, colNumber) => {
+            const val = String(cell.value || '').trim().toLowerCase()
+            if (val.includes('asset code')) colMap['code'] = colNumber
+            else if (val === 'name *' || val === 'name') colMap['name'] = colNumber
+            else if (val.includes('description')) colMap['description'] = colNumber
+            else if (val.includes('sub category code')) colMap['subCategoryCode'] = colNumber
+            else if (val === 'brand') colMap['brand'] = colNumber
+            else if (val === 'model') colMap['model'] = colNumber
+            else if (val === 'price') colMap['price'] = colNumber
+            else if (val.includes('purchase date')) colMap['purchaseDate'] = colNumber
+            else if (val.includes('location name')) colMap['locationName'] = colNumber
+            else if (val.includes('employee id')) colMap['employeeId'] = colNumber
+            else if (val === 'status') colMap['status'] = colNumber
+        })
+
+        const getCellValue = (row: ExcelJS.Row, key: string): string => {
+            const col = colMap[key]
+            if (!col) return ''
+            const val = row.getCell(col).value
+            if (val === null || val === undefined) return ''
+            return String(val).trim()
+        }
+
+        // Process data rows (skip header and example row if italic)
+        for (let i = 2; i <= sheet.rowCount; i++) {
+            const row = sheet.getRow(i)
+
+            const code = getCellValue(row, 'code')
+            const name = getCellValue(row, 'name')
+
+            // Skip empty rows
+            if (!code && !name) continue
+
+            // Skip example row (italic)
+            const firstCell = row.getCell(colMap['code'] || 1)
+            if (firstCell.font?.italic) continue
+
+            // Validate required fields
+            if (!code) {
+                errors.push({ row: i, message: 'Asset Code is required' })
+                continue
+            }
+            if (!name) {
+                errors.push({ row: i, message: 'Name is required' })
+                continue
+            }
+
+            const subCategoryCode = getCellValue(row, 'subCategoryCode')
+            if (!subCategoryCode) {
+                errors.push({ row: i, message: 'Sub Category Code is required' })
+                continue
+            }
+
+            const subCategory = scMap.get(subCategoryCode.toLowerCase())
+            if (!subCategory) {
+                errors.push({ row: i, message: `Sub Category Code "${subCategoryCode}" not found` })
+                continue
+            }
+
+            // Optional: location
+            const locationName = getCellValue(row, 'locationName')
+            let locationId: number | undefined
+            if (locationName) {
+                const location = locMap.get(locationName.toLowerCase())
+                if (!location) {
+                    errors.push({ row: i, message: `Location "${locationName}" not found` })
+                    continue
+                }
+                locationId = location.id
+            }
+
+            // Optional: employee
+            const employeeIdStr = getCellValue(row, 'employeeId')
+            let employeeId: number | undefined
+            if (employeeIdStr) {
+                const employee = empMap.get(employeeIdStr.toLowerCase())
+                if (!employee) {
+                    errors.push({ row: i, message: `Employee ID "${employeeIdStr}" not found` })
+                    continue
+                }
+                employeeId = employee.id
+            }
+
+            const priceVal = getCellValue(row, 'price')
+            const price = priceVal ? Number(priceVal) : undefined
+
+            const purchaseDate = getCellValue(row, 'purchaseDate')
+            const description = getCellValue(row, 'description')
+            const brand = getCellValue(row, 'brand')
+            const model = getCellValue(row, 'model')
+            const status = getCellValue(row, 'status')
+
+            try {
+                await assetService.create({
+                    code,
+                    name,
+                    description: description || undefined,
+                    subCategoryId: subCategory.id,
+                    brand: brand || undefined,
+                    model: model || undefined,
+                    price: !isNaN(price as number) ? price : undefined,
+                    purchaseDate: purchaseDate || undefined,
+                    locationId: locationId,
+                    employeeId: employeeId,
+                    status: status || undefined,
+                    createdByUserId: userId,
+                })
+                success++
+            } catch (err: any) {
+                const msg = err?.message?.includes('UNIQUE') || err?.message?.includes('Duplicate')
+                    ? `Asset code "${code}" already exists`
+                    : (err?.message || 'Unknown error')
+                errors.push({ row: i, message: msg })
+            }
+        }
+
+        return { success, errors }
     }
 }

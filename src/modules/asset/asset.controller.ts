@@ -137,4 +137,33 @@ export class AssetController {
             },
         })
     }
+
+    async importTemplate(c: Context) {
+        const buffer = await this.utilService.template()
+
+        return new Response(new Uint8Array(buffer), {
+            headers: {
+                'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition': 'attachment; filename="asset_import_template.xlsx"',
+            },
+        })
+    }
+
+    async import(c: Context) {
+        const user = c.get("user")
+        const body = await c.req.parseBody()
+        const file = body['file']
+
+        if (!file || !(file instanceof File)) {
+            return ApiResponse.error(c, "File is required", 400)
+        }
+
+        const arrayBuffer = await file.arrayBuffer()
+        const buffer = Buffer.from(arrayBuffer)
+
+        const result = await this.utilService.import(buffer, user?.id)
+
+        return ApiResponse.success(c, result, `Import completed: ${result.success} success, ${result.errors.length} errors`)
+    }
 }
+
