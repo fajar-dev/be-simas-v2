@@ -1,17 +1,24 @@
 import { Context } from "hono"
 import { AssetService } from "./asset.service"
+import { AssetExportService } from "./asset-export.service"
 import { AssetSerializer } from "./serializers/asset.serialize"
 import { ApiResponse } from "../../core/helpers/response"
-import { parseAssetQueryParams } from "./helpers/parse-asset-query"
-import { generateAssetExcel } from "./helpers/asset-export"
+import { AssetFilter } from "./interfaces/asset.repository.interface"
 
 export class AssetController {
-    constructor(private readonly service: AssetService) {}
+    constructor(
+        private readonly service: AssetService,
+        private readonly exportService: AssetExportService,
+    ) {}
 
     async index(c: Context) {
         const page = Number(c.req.query("page") || 1)
         const limit = Number(c.req.query("limit") || 10)
-        const { q, sortBy, order, filters } = parseAssetQueryParams(c)
+        const q = c.req.query("q") || ""
+        const sortBy = c.req.query("sortBy") || undefined
+        const order = (c.req.query("order") || "DESC").toUpperCase() as 'ASC' | 'DESC'
+
+        const filters = this.parseFilters(c)
 
         const { data, total } = await this.service.getAll(page, limit, q, sortBy, order, filters)
 
@@ -70,14 +77,18 @@ export class AssetController {
     }
 
     async export(c: Context) {
-        const { q, sortBy, order, filters } = parseAssetQueryParams(c)
+        const q = c.req.query("q") || ""
+        const sortBy = c.req.query("sortBy") || undefined
+        const order = (c.req.query("order") || "DESC").toUpperCase() as 'ASC' | 'DESC'
+
+        const filters = this.parseFilters(c)
 
         const labelColumnsParam = c.req.query("labelColumns")
         const labelKeys = labelColumnsParam ? labelColumnsParam.split(',').filter(Boolean) : []
 
         const { data } = await this.service.getAll(1, 999999, q, sortBy, order, filters)
 
-        const buffer = await generateAssetExcel(data, labelKeys)
+        const buffer = await this.exportService.generateExcel(data, labelKeys)
         const filename = `assets_export_${new Date().toISOString().slice(0, 10)}.xlsx`
 
         return new Response(buffer, {
@@ -86,5 +97,44 @@ export class AssetController {
                 'Content-Disposition': `attachment; filename="${filename}"`,
             },
         })
+    }
+
+    private parseFilters(c: Context): AssetFilter {
+        const parseIds = (val: string | undefined) => val ? val.split(',').map(Number).filter(n => !isNaN(n)) : undefined
+
+        const filters: AssetFilter = {}
+        const categoryIds = parseIds(c.req.query("categoryIds"))
+        if (categoryIds?.length) filters.categoryIds = categoryIds
+        const subCategoryIds = parseIds(c.req.query("subCategoryIds"))
+        if (subCategoryIds?.length) filters.subCategoryIds = subCategoryIds
+        const branchIds = parseIds(c.req.query("branchIds"))
+        if (branchIds?.length) filters.branchIds = branchIds
+        const locationIds = parseIds(c.req.query("locationIds"))
+        if (locationIds?.length) filters.locationIds = locationIds
+
+        const statusParam = c.req.query("status")
+        if (statusParam) filters.status = statusParam.split(',')
+
+        const holderStatus = c.req.query("holderStatus")
+        if (holderStatus === 'has_holder' || holderStatus === 'no_holder') filters.holderStatus = holderStatus
+        if (c.req.query("holderId")) filters.holderId = Number(c.req.query("holderId"))
+        if (c.req.query("priceMin")) filters.priceMin = Number(c.req.query("priceMin"))
+        if (c.req.query("priceMax")) filters.priceMax = Number(c.req.query("priceMax"))
+        if (c.req.query("purchaseDateFrom")) filters.purchaseDateFrom = c.req.query("purchaseDateFrom")!
+        if (c.req.query("purchaseDateTo")) filters.purchaseDateTo = c.req.query("purchaseDateTo")!
+        const missingFields = c.req.query("missingFields")
+        if (missingFields) filters.missingFields = missingFields.split(',')
+
+        // Parse label filters: label.{key}=value
+        const allQueries = c.req.queries()
+        const labelFilters: { key: string; value: string }[] = []
+        for (const [qKey, values] of Object.entries(allQueries)) {
+            if (qKey.startsWith('label.') && values?.[0]) {
+                labelFilters.push({ key: qKey.substring(6), value: values[0] })
+            }
+        }
+        if (labelFilters.length) filters.labels = labelFilters
+
+        return filters
     }
 }
