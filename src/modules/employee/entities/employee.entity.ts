@@ -23,6 +23,9 @@ export class Employee {
     @Column({ nullable: true })
     photo?: string
 
+    @Column({ name: "is_active", default: true })
+    isActive!: boolean
+
     @CreateDateColumn({ name: "created_at" })
     createdAt!: Date
 

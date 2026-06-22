@@ -12,6 +12,7 @@ export class EmployeeSerializer {
             email: employee.email,
             phone: employee.phone,
             photo: await resolvePhotoUrl(employee.photo),
+            isActive: Boolean(employee.isActive),
             createdAt: employee.createdAt,
             updatedAt: employee.updatedAt,
         }
