@@ -3,8 +3,6 @@ import ExcelJS from "exceljs"
 import { config } from "../../config/config"
 import { AppDataSource } from "../../config/database"
 import { SubCategory } from "../sub-category/entities/sub-category.entity"
-import { Location } from "../location/entities/location.entity"
-import { Employee } from "../employee/entities/employee.entity"
 
 export class AssetUtilService {
 
@@ -180,8 +178,6 @@ export class AssetUtilService {
             { header: 'Model', key: 'model', width: 15 },
             { header: 'Price', key: 'price', width: 15 },
             { header: 'Purchase Date', key: 'purchaseDate', width: 18 },
-            { header: 'Location Name', key: 'locationName', width: 20 },
-            { header: 'Employee ID', key: 'employeeId', width: 18 },
             { header: 'Status', key: 'status', width: 15 },
         ]
 
@@ -203,8 +199,6 @@ export class AssetUtilService {
             model: 'XPS 15',
             price: 15000000,
             purchaseDate: '2024-01-15',
-            locationName: 'Ruang Server',
-            employeeId: 'EMP-001',
             status: 'active',
         })
         const exampleRow = templateSheet.getRow(2)
@@ -221,12 +215,16 @@ export class AssetUtilService {
             .addOrderBy('sc.name', 'ASC')
             .getMany()
 
-        const locations = await AppDataSource.getRepository(Location)
-            .createQueryBuilder('loc')
-            .leftJoinAndSelect('loc.branch', 'branch')
-            .orderBy('branch.name', 'ASC')
-            .addOrderBy('loc.name', 'ASC')
-            .getMany()
+        // Status types for reference
+        const statusTypes = [
+            { value: 'active', label: 'Active' },
+            { value: 'idle', label: 'Idle' },
+            { value: 'under_repair', label: 'Under Repair' },
+            { value: 'damaged', label: 'Damaged' },
+            { value: 'lost', label: 'Lost' },
+            { value: 'sold', label: 'Sold' },
+            { value: 'disposed', label: 'Disposed' },
+        ]
 
         // Sub Category reference table
         const scStartCol = 1
@@ -262,34 +260,34 @@ export class AssetUtilService {
             row.getCell(scStartCol + 3).value = sc.category?.name || ''
         })
 
-        // Location reference table (start after a gap)
-        const locStartCol = 6
-        refSheet.getColumn(locStartCol).width = 5
-        refSheet.getColumn(locStartCol + 1).width = 25
-        refSheet.getColumn(locStartCol + 2).width = 20
+        // Status reference table (start after a gap)
+        const stStartCol = 6
+        refSheet.getColumn(stStartCol).width = 5
+        refSheet.getColumn(stStartCol + 1).width = 18
+        refSheet.getColumn(stStartCol + 2).width = 18
 
-        const locTitleRow = refSheet.getRow(1)
-        refSheet.mergeCells(1, locStartCol, 1, locStartCol + 2)
-        locTitleRow.getCell(locStartCol).value = 'Locations'
-        locTitleRow.getCell(locStartCol).font = headerStyle.font
-        locTitleRow.getCell(locStartCol).fill = headerStyle.fill
-        locTitleRow.getCell(locStartCol).alignment = headerStyle.alignment
+        const stTitleRow = refSheet.getRow(1)
+        refSheet.mergeCells(1, stStartCol, 1, stStartCol + 2)
+        stTitleRow.getCell(stStartCol).value = 'Status Types'
+        stTitleRow.getCell(stStartCol).font = headerStyle.font
+        stTitleRow.getCell(stStartCol).fill = headerStyle.fill
+        stTitleRow.getCell(stStartCol).alignment = headerStyle.alignment
 
-        const locHeaderRow = refSheet.getRow(2)
-        const locHeaders = ['No', 'Location Name', 'Branch']
-        locHeaders.forEach((h, i) => {
-            const cell = locHeaderRow.getCell(locStartCol + i)
+        const stHeaderRow = refSheet.getRow(2)
+        const stHeaders = ['No', 'Value', 'Label']
+        stHeaders.forEach((h, i) => {
+            const cell = stHeaderRow.getCell(stStartCol + i)
             cell.value = h
             cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF555555' } }
             cell.alignment = { vertical: 'middle', horizontal: 'center' }
         })
 
-        locations.forEach((loc, i) => {
+        statusTypes.forEach((st, i) => {
             const row = refSheet.getRow(3 + i)
-            row.getCell(locStartCol).value = i + 1
-            row.getCell(locStartCol + 1).value = loc.name
-            row.getCell(locStartCol + 2).value = loc.branch?.name || ''
+            row.getCell(stStartCol).value = i + 1
+            row.getCell(stStartCol + 1).value = st.value
+            row.getCell(stStartCol + 2).value = st.label
         })
 
         // Add borders to reference sheet
@@ -309,24 +307,16 @@ export class AssetUtilService {
 
     async import(buffer: Buffer, userId?: number): Promise<{ success: number; errors: { row: number; message: string }[] }> {
         const workbook = new ExcelJS.Workbook()
-        await workbook.xlsx.load(buffer)
+        await workbook.xlsx.load(buffer as any)
 
         const sheet = workbook.getWorksheet('Template') || workbook.getWorksheet(1)
         if (!sheet) throw new Error('Worksheet not found')
 
         // Build lookup maps
         const subCategoryRepo = AppDataSource.getRepository(SubCategory)
-        const locationRepo = AppDataSource.getRepository(Location)
-        const employeeRepo = AppDataSource.getRepository(Employee)
 
         const subCategories = await subCategoryRepo.find()
         const scMap = new Map(subCategories.map(sc => [sc.code.toLowerCase(), sc]))
-
-        const locations = await locationRepo.find()
-        const locMap = new Map(locations.map(loc => [loc.name.toLowerCase(), loc]))
-
-        const employees = await employeeRepo.find()
-        const empMap = new Map(employees.map(emp => [emp.employeeId.toLowerCase(), emp]))
 
         // Lazy import to avoid circular deps
         const { assetService } = require("./asset.module")
@@ -347,8 +337,6 @@ export class AssetUtilService {
             else if (val === 'model') colMap['model'] = colNumber
             else if (val === 'price') colMap['price'] = colNumber
             else if (val.includes('purchase date')) colMap['purchaseDate'] = colNumber
-            else if (val.includes('location name')) colMap['locationName'] = colNumber
-            else if (val.includes('employee id')) colMap['employeeId'] = colNumber
             else if (val === 'status') colMap['status'] = colNumber
         })
 
@@ -396,30 +384,6 @@ export class AssetUtilService {
                 continue
             }
 
-            // Optional: location
-            const locationName = getCellValue(row, 'locationName')
-            let locationId: number | undefined
-            if (locationName) {
-                const location = locMap.get(locationName.toLowerCase())
-                if (!location) {
-                    errors.push({ row: i, message: `Location "${locationName}" not found` })
-                    continue
-                }
-                locationId = location.id
-            }
-
-            // Optional: employee
-            const employeeIdStr = getCellValue(row, 'employeeId')
-            let employeeId: number | undefined
-            if (employeeIdStr) {
-                const employee = empMap.get(employeeIdStr.toLowerCase())
-                if (!employee) {
-                    errors.push({ row: i, message: `Employee ID "${employeeIdStr}" not found` })
-                    continue
-                }
-                employeeId = employee.id
-            }
-
             const priceVal = getCellValue(row, 'price')
             const price = priceVal ? Number(priceVal) : undefined
 
@@ -439,8 +403,6 @@ export class AssetUtilService {
                     model: model || undefined,
                     price: !isNaN(price as number) ? price : undefined,
                     purchaseDate: purchaseDate || undefined,
-                    locationId: locationId,
-                    employeeId: employeeId,
                     status: status || undefined,
                     createdByUserId: userId,
                 })
