@@ -161,18 +161,6 @@ routes.post("/upload", authMiddleware, async (c) => {
         throw new BadRequestException("No file uploaded or invalid file")
     }
 
-    // File size limit (5MB)
-    const MAX_FILE_SIZE = 5 * 1024 * 1024
-    if (file.size > MAX_FILE_SIZE) {
-        throw new BadRequestException("File size exceeds 5MB limit")
-    }
-
-    // File type validation
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf']
-    if (!allowedTypes.includes(file.type)) {
-        throw new BadRequestException(`File type '${file.type}' not allowed. Allowed: ${allowedTypes.join(', ')}`)
-    }
-
     const buffer = Buffer.from(await file.arrayBuffer())
     const extension = file.name.split(".").pop() || "jpg"
     const objectName = `users/${crypto.randomUUID()}.${extension}`

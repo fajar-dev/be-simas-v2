@@ -19,7 +19,7 @@ app.use('*', requestLogger)
 
 // CORS
 app.use('*', cors({
-    origin: config.app.corsOrigins,
+    origin: '*',
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 }))
 
