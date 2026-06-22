@@ -1,35 +1,17 @@
 import { Asset } from "./entities/asset.entity"
 import ExcelJS from "exceljs"
-import { minio } from "../../core/helpers/minio"
-import { Readable } from "node:stream"
+import { config } from "../../config/config"
 
 export class AssetUtilService {
-
-    private async streamToBuffer(stream: Readable): Promise<Buffer> {
-        const chunks: Buffer[] = []
-        for await (const chunk of stream) {
-            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
-        }
-        return Buffer.concat(chunks)
-    }
-
-    private getImageExtension(contentType: string): 'png' | 'jpeg' | 'gif' {
-        if (contentType.includes('png')) return 'png'
-        if (contentType.includes('gif')) return 'gif'
-        return 'jpeg'
-    }
 
     async export(data: Asset[], labelKeys: string[]): Promise<Buffer> {
         const workbook = new ExcelJS.Workbook()
         const sheet = workbook.addWorksheet('Assets')
 
-        const IMAGE_ROW_HEIGHT = 60
-        const IMAGE_COL_WIDTH = 12
-
         // Define columns
         const columns: { header: string; key: string; width: number }[] = [
             { header: 'No', key: 'no', width: 5 },
-            { header: 'Image', key: 'image', width: IMAGE_COL_WIDTH },
+            { header: 'Image', key: 'image', width: 15 },
             { header: 'Code', key: 'code', width: 15 },
             { header: 'Name', key: 'name', width: 30 },
             { header: 'Description', key: 'description', width: 30 },
@@ -109,8 +91,6 @@ export class AssetUtilService {
         }
 
         // Add data rows (starting from row 3)
-        const imagePromises: { rowNum: number; imagePath: string }[] = []
-
         data.forEach((asset, index) => {
             const row: Record<string, any> = {
                 no: index + 1,
@@ -137,7 +117,14 @@ export class AssetUtilService {
             })
 
             const dataRow = sheet.addRow(row)
-            dataRow.height = IMAGE_ROW_HEIGHT
+
+            // Set hyperlink for image cell
+            if (asset.image) {
+                const imageCell = dataRow.getCell(imageCol)
+                const proxyUrl = `${config.app.appUrl}/api/proxy?path=${encodeURI(asset.image)}`
+                imageCell.value = { text: 'View Image', hyperlink: proxyUrl }
+                imageCell.font = { color: { argb: 'FF0066CC' }, underline: true }
+            }
 
             if (index % 2 === 1) {
                 dataRow.fill = {
@@ -146,29 +133,7 @@ export class AssetUtilService {
                     fgColor: { argb: 'FFF5F5F5' },
                 }
             }
-
-            if (asset.image) {
-                imagePromises.push({ rowNum: dataRow.number, imagePath: asset.image })
-            }
         })
-
-        // Fetch and embed images from MinIO
-        await Promise.all(imagePromises.map(async ({ rowNum, imagePath }) => {
-            try {
-                const { stream, stat } = await minio.getObject(imagePath)
-                const buffer = await this.streamToBuffer(stream)
-                const contentType = stat.metaData?.["content-type"] || "image/jpeg"
-                const ext = this.getImageExtension(contentType)
-
-                const imageId = workbook.addImage({ buffer, extension: ext })
-                sheet.addImage(imageId, {
-                    tl: { col: imageCol - 1 + 0.1, row: rowNum - 1 + 0.1 },
-                    br: { col: imageCol - 1 + 0.9, row: rowNum - 1 + 0.9 },
-                })
-            } catch {
-                // Skip if image not found
-            }
-        }))
 
         // Add borders to all cells
         sheet.eachRow((row) => {
