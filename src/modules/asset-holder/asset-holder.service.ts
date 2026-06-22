@@ -58,6 +58,9 @@ export class AssetHolderService {
 
         // Validate employee exists (throws NotFoundException if not found)
         const employee = await this.employeeService.getById(data.employeeId!)
+        if (!employee.isActive) {
+            throw new BadRequestException("Cannot assign asset to inactive employee")
+        }
 
         // Check if there is an active holder for this asset
         const activeLog = await this.repository.findActiveByAssetId(data.assetId!)

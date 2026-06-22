@@ -87,6 +87,9 @@ export class AssetService {
         let employeeExists: any = null
         if (employeeId) {
             employeeExists = await this.employeeService.getById(employeeId)
+            if (!employeeExists.isActive) {
+                throw new BadRequestException("Cannot assign asset to inactive employee")
+            }
         }
 
         // Validate location exists before starting transaction

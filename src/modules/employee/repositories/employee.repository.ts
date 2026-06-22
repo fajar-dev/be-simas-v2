@@ -50,7 +50,7 @@ export class EmployeeRepository implements IEmployeeRepository {
     }
 
     async findList(): Promise<Employee[]> {
-        return await this.repository.find({ order: { name: 'ASC' } })
+        return await this.repository.find({ where: { isActive: true }, order: { name: 'ASC' } })
     }
 
     async save(data: Partial<Employee>, manager?: EntityManager): Promise<Employee> {
