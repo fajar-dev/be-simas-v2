@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { bodyLimit } from 'hono/body-limit'
+
 import { AppDataSource } from './config/database'
 import { serveStatic } from 'hono/bun'
 import { swaggerUI } from '@hono/swagger-ui'
@@ -23,8 +23,7 @@ app.use('*', cors({
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 }))
 
-// Body Size Limit (10MB)
-app.use('*', bodyLimit({ maxSize: 10 * 1024 * 1024 }))
+
 
 // Database Connection
 AppDataSource.initialize()

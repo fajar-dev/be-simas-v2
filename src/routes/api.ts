@@ -173,7 +173,7 @@ routes.post("/upload", authMiddleware, async (c) => {
 })
 
 // Proxy MinIO
-routes.get("/proxy", authMiddleware, async (c) => {
+routes.get("/proxy", async (c) => {
     const path = c.req.query("path")
     if (!path) return c.json({ message: "Missing 'path' query parameter" }, 400)
 

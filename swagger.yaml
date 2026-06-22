@@ -1763,7 +1763,7 @@ paths:
                 file:
                   type: string
                   format: binary
-                  description: "File to upload. Max size: 5MB. Allowed types: image/jpeg, image/png, image/gif, image/webp, application/pdf"
+                  description: The file to upload
       responses:
         "200":
           description: File uploaded successfully
@@ -1778,7 +1778,7 @@ paths:
                         type: object
                         properties:
                           path: { type: string, example: "users/abc-123.png" }
-        "400": { description: "No file uploaded, file too large (>5MB), or unsupported file type" }
+        "400": { description: No file uploaded or invalid file }
         "401": { description: Unauthorized }
 
   # ── Attachment ────────────────────────────────────────────────────────────
@@ -2323,9 +2323,7 @@ paths:
     get:
       tags: [Upload]
       summary: Proxy a file from MinIO storage
-      description: "Streams a file from MinIO object storage. Requires authentication."
-      security:
-        - bearerAuth: []
+      description: "Streams a file from MinIO object storage."
       parameters:
         - name: path
           in: query
@@ -2341,4 +2339,3 @@ paths:
                 type: string
                 format: binary
         "400": { description: "Missing 'path' query parameter" }
-        "401": { description: Unauthorized }
