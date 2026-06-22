@@ -1,17 +1,35 @@
 import { Asset } from "./entities/asset.entity"
 import ExcelJS from "exceljs"
-import { config } from "../../config/config"
+import { minio } from "../../core/helpers/minio"
+import { Readable } from "node:stream"
 
 export class AssetUtilService {
+
+    private async streamToBuffer(stream: Readable): Promise<Buffer> {
+        const chunks: Buffer[] = []
+        for await (const chunk of stream) {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+        }
+        return Buffer.concat(chunks)
+    }
+
+    private getImageExtension(contentType: string): 'png' | 'jpeg' | 'gif' {
+        if (contentType.includes('png')) return 'png'
+        if (contentType.includes('gif')) return 'gif'
+        return 'jpeg'
+    }
 
     async export(data: Asset[], labelKeys: string[]): Promise<Buffer> {
         const workbook = new ExcelJS.Workbook()
         const sheet = workbook.addWorksheet('Assets')
 
-        // Define columns — Active Holder split into 2, Last Location split into 2
+        const IMAGE_ROW_HEIGHT = 60
+        const IMAGE_COL_WIDTH = 12
+
+        // Define columns
         const columns: { header: string; key: string; width: number }[] = [
             { header: 'No', key: 'no', width: 5 },
-            { header: 'Image', key: 'image', width: 40 },
+            { header: 'Image', key: 'image', width: IMAGE_COL_WIDTH },
             { header: 'Code', key: 'code', width: 15 },
             { header: 'Name', key: 'name', width: 30 },
             { header: 'Description', key: 'description', width: 30 },
@@ -36,6 +54,7 @@ export class AssetUtilService {
         sheet.columns = columns
 
         // Column indices (1-indexed)
+        const imageCol = columns.findIndex(c => c.key === 'image') + 1
         const holderNameCol = columns.findIndex(c => c.key === 'holderName') + 1
         const holderEmpIdCol = columns.findIndex(c => c.key === 'holderEmployeeId') + 1
         const locationCol = columns.findIndex(c => c.key === 'location') + 1
@@ -48,7 +67,7 @@ export class AssetUtilService {
         const groupRow = sheet.getRow(1)
         const subHeaderRow = sheet.getRow(2)
 
-        // Single-column headers: merge vertically (row 1 + row 2) and set value in row 1
+        // Single-column headers: merge vertically (row 1 + row 2)
         const singleCols = ['no', 'image', 'code', 'name', 'description', 'category', 'subCategory', 'brand', 'model', 'price', 'purchaseDate', 'status']
         singleCols.forEach(key => {
             const colIdx = columns.findIndex(c => c.key === key) + 1
@@ -65,7 +84,7 @@ export class AssetUtilService {
         sheet.mergeCells(1, locationCol, 1, branchCol)
         groupRow.getCell(locationCol).value = 'Last Location'
 
-        // Labels: merge horizontally in row 1, key names in row 2
+        // Labels: merge horizontally in row 1
         if (labelKeys.length > 0) {
             if (labelKeys.length > 1) {
                 sheet.mergeCells(1, firstLabelCol, 1, lastLabelCol)
@@ -80,7 +99,6 @@ export class AssetUtilService {
             alignment: { vertical: 'middle' as const, horizontal: 'center' as const } as Partial<ExcelJS.Alignment>,
         }
 
-        // Style both header rows
         for (const row of [groupRow, subHeaderRow]) {
             row.height = 24
             row.eachCell({ includeEmpty: false }, (cell) => {
@@ -91,10 +109,12 @@ export class AssetUtilService {
         }
 
         // Add data rows (starting from row 3)
+        const imagePromises: { rowNum: number; imagePath: string }[] = []
+
         data.forEach((asset, index) => {
             const row: Record<string, any> = {
                 no: index + 1,
-                image: asset.image ? `${config.app.appUrl}/api/proxy?path=${encodeURI(asset.image)}` : '',
+                image: '',
                 code: asset.code,
                 name: asset.name,
                 description: asset.description || '',
@@ -111,13 +131,14 @@ export class AssetUtilService {
                 branch: asset.lastLocation?.location?.branch?.name || '',
             }
 
-            // Add label values
             labelKeys.forEach(key => {
                 const label = (asset.labels || []).find(l => l.key === key)
                 row[`label_${key}`] = label?.value || ''
             })
 
             const dataRow = sheet.addRow(row)
+            dataRow.height = IMAGE_ROW_HEIGHT
+
             if (index % 2 === 1) {
                 dataRow.fill = {
                     type: 'pattern',
@@ -125,7 +146,29 @@ export class AssetUtilService {
                     fgColor: { argb: 'FFF5F5F5' },
                 }
             }
+
+            if (asset.image) {
+                imagePromises.push({ rowNum: dataRow.number, imagePath: asset.image })
+            }
         })
+
+        // Fetch and embed images from MinIO
+        await Promise.all(imagePromises.map(async ({ rowNum, imagePath }) => {
+            try {
+                const { stream, stat } = await minio.getObject(imagePath)
+                const buffer = await this.streamToBuffer(stream)
+                const contentType = stat.metaData?.["content-type"] || "image/jpeg"
+                const ext = this.getImageExtension(contentType)
+
+                const imageId = workbook.addImage({ buffer, extension: ext })
+                sheet.addImage(imageId, {
+                    tl: { col: imageCol - 1 + 0.1, row: rowNum - 1 + 0.1 },
+                    br: { col: imageCol - 1 + 0.9, row: rowNum - 1 + 0.9 },
+                })
+            } catch {
+                // Skip if image not found
+            }
+        }))
 
         // Add borders to all cells
         sheet.eachRow((row) => {
