@@ -76,6 +76,7 @@ function createEmployeeData(overrides: Record<string, any> = {}) {
         jobPosition: "Software Engineer",
         email: `employee${employeeCounter}@example.com`,
         phone: `08123456${String(employeeCounter).padStart(4, "0")}`,
+        isActive: true,
         ...overrides,
     }
 }
@@ -153,6 +154,7 @@ describe("POST /api/employee", () => {
         expect(body.data.jobPosition).toBe(employeeData.jobPosition)
         expect(body.data.email).toBe(employeeData.email)
         expect(body.data.phone).toBe(employeeData.phone)
+        expect(body.data.isActive).toBe(true)
         expect(body.data.photo).toBeNull()
         expect(body.data.id).toBeDefined()
         expect(body.data.createdAt).toBeDefined()
@@ -508,5 +510,72 @@ describe("DELETE /api/employee/:id", () => {
         expect(status).toBe(404)
         expect(body.success).toBe(false)
         expect(body.message).toBe("Employee not found")
+    })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Employee isActive Tests
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("Employee - isActive", () => {
+    test("should create employee with isActive true by default", async () => {
+        const { headers } = await registerAndLogin(app)
+        const employeeData = createEmployeeData()
+        delete (employeeData as any).isActive // remove explicit isActive to test default
+
+        const { status, body } = await request(app, "/api/employee", {
+            method: "POST",
+            headers,
+            body: employeeData,
+        })
+
+        expect(status).toBe(201)
+        expect(body.success).toBe(true)
+        expect(body.data.isActive).toBe(true)
+    })
+
+    test("should create employee with isActive false", async () => {
+        const { headers } = await registerAndLogin(app)
+        const employeeData = createEmployeeData({ isActive: false })
+
+        const { status, body } = await request(app, "/api/employee", {
+            method: "POST",
+            headers,
+            body: employeeData,
+        })
+
+        expect(status).toBe(201)
+        expect(body.success).toBe(true)
+        expect(body.data.isActive).toBe(false)
+    })
+
+    test("should update employee isActive status", async () => {
+        const { headers } = await registerAndLogin(app)
+
+        const createRes = await request(app, "/api/employee", {
+            method: "POST",
+            headers,
+            body: createEmployeeData({ isActive: true }),
+        })
+        const employeeId = createRes.body.data.id
+        expect(createRes.body.data.isActive).toBe(true)
+
+        // Update to false
+        const { status, body } = await request(app, `/api/employee/${employeeId}`, {
+            method: "PUT",
+            headers,
+            body: { isActive: false },
+        })
+
+        expect(status).toBe(200)
+        expect(body.success).toBe(true)
+        expect(body.data.isActive).toBe(false)
+
+        // Verify by fetching
+        const getRes = await request(app, `/api/employee/${employeeId}`, {
+            method: "GET",
+            headers,
+        })
+        expect(getRes.body.data.isActive).toBe(false)
     })
 })

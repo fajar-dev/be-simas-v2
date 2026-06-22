@@ -3,6 +3,8 @@ import { Hono } from "hono"
 import { cors } from "hono/cors"
 import { DataSource } from "typeorm"
 import { User } from "../src/modules/user/entities/user.entity"
+import { Role } from "../src/modules/role/entities/role.entity"
+import { Permission } from "../src/modules/role/entities/permission.entity"
 import { Category } from "../src/modules/category/entities/category.entity"
 import { SubCategory } from "../src/modules/sub-category/entities/sub-category.entity"
 import { Employee } from "../src/modules/employee/entities/employee.entity"
@@ -38,7 +40,7 @@ const TestDataSource = new DataSource({
     database: testDbName,
     synchronize: true,
     dropSchema: true,
-    entities: [User, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetLocation, AssetHolder, AssetLog, AssetStatus],
+    entities: [User, Role, Permission, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetLocation, AssetHolder, AssetLog, AssetStatus],
     logging: false,
 })
 
@@ -158,6 +160,18 @@ export async function registerAndLogin(
         throw new Error(`Register failed: ${JSON.stringify(regRes.body)}`)
     }
 
+    // Create super admin role with all permissions for tests
+    const roleRepo = TestDataSource.getRepository(Role)
+    let superAdmin = await roleRepo.findOne({ where: { name: 'Super Admin' } })
+    if (!superAdmin) {
+        superAdmin = roleRepo.create({ name: 'Super Admin', isSuperAdmin: true, permissions: [] })
+        await roleRepo.save(superAdmin)
+    }
+
+    // Assign role to user
+    const userRepo = TestDataSource.getRepository(User)
+    await userRepo.update({ email: userData.email }, { roleId: superAdmin.id })
+
     // Login
     const loginRes = await request(app, "/api/auth/login", {
         method: "POST",
@@ -174,3 +188,5 @@ export async function registerAndLogin(
         user: loginRes.body.data.user,
     }
 }
+
+export { TestDataSource }

@@ -7,8 +7,11 @@ import {
     createTestApp,
     request,
     registerAndLogin,
+    TestDataSource,
 } from "./setup"
 import { createUserData, resetCounters } from "./helpers"
+import { Role } from "../src/modules/role/entities/role.entity"
+import { Permission } from "../src/modules/role/entities/permission.entity"
 
 // ── Setup ───────────────────────────────────────────────────────────────────
 
@@ -352,6 +355,119 @@ describe("DELETE /api/user/:id", () => {
             headers,
         })
         expect(getStatus).toBe(404)
+    })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// User roleId Tests
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("User - roleId", () => {
+    test("should create user with roleId", async () => {
+        const { headers } = await registerAndLogin(app)
+
+        // Create a new role for testing
+        const permRepo = TestDataSource.getRepository(Permission)
+        const perm = await permRepo.save(permRepo.create({ key: 'test:read', module: 'test', action: 'read' }))
+
+        const roleRes = await request(app, "/api/role", {
+            method: "POST",
+            headers,
+            body: { name: "Editor", permissionIds: [perm.id] },
+        })
+        expect(roleRes.status).toBe(201)
+        const roleId = roleRes.body.data.id
+
+        // Create user with roleId
+        const userData = createUserData({ roleId })
+        const { status, body } = await request(app, "/api/user", {
+            method: "POST",
+            headers,
+            body: userData,
+        })
+
+        expect(status).toBe(201)
+        expect(body.success).toBe(true)
+        expect(body.data.roleId).toBe(roleId)
+    })
+
+    test("should update user roleId", async () => {
+        const { headers } = await registerAndLogin(app)
+
+        // Create two roles
+        const permRepo = TestDataSource.getRepository(Permission)
+        const perm1 = await permRepo.save(permRepo.create({ key: 'role-test:read', module: 'role-test', action: 'read' }))
+        const perm2 = await permRepo.save(permRepo.create({ key: 'role-test:create', module: 'role-test', action: 'create' }))
+
+        const role1Res = await request(app, "/api/role", {
+            method: "POST",
+            headers,
+            body: { name: "Viewer", permissionIds: [perm1.id] },
+        })
+        const role2Res = await request(app, "/api/role", {
+            method: "POST",
+            headers,
+            body: { name: "Creator", permissionIds: [perm2.id] },
+        })
+
+        const role1Id = role1Res.body.data.id
+        const role2Id = role2Res.body.data.id
+
+        // Create user with role1
+        const userData = createUserData({ roleId: role1Id })
+        const createRes = await request(app, "/api/user", {
+            method: "POST",
+            headers,
+            body: userData,
+        })
+        const userId = createRes.body.data.id
+        expect(createRes.body.data.roleId).toBe(role1Id)
+
+        // Update to role2
+        const { status, body } = await request(app, `/api/user/${userId}`, {
+            method: "PUT",
+            headers,
+            body: { roleId: role2Id },
+        })
+
+        expect(status).toBe(200)
+        expect(body.success).toBe(true)
+        expect(body.data.roleId).toBe(role2Id)
+    })
+
+    test("should return role in user show response", async () => {
+        const { headers } = await registerAndLogin(app)
+
+        // Create a role
+        const permRepo = TestDataSource.getRepository(Permission)
+        const perm = await permRepo.save(permRepo.create({ key: 'show-test:read', module: 'show-test', action: 'read' }))
+
+        const roleRes = await request(app, "/api/role", {
+            method: "POST",
+            headers,
+            body: { name: "Show Tester", permissionIds: [perm.id] },
+        })
+        const roleId = roleRes.body.data.id
+
+        // Create user with role
+        const userData = createUserData({ roleId })
+        const createRes = await request(app, "/api/user", {
+            method: "POST",
+            headers,
+            body: userData,
+        })
+        const userId = createRes.body.data.id
+
+        // Fetch user by ID
+        const { status, body } = await request(app, `/api/user/${userId}`, {
+            method: "GET",
+            headers,
+        })
+
+        expect(status).toBe(200)
+        expect(body.data.roleId).toBe(roleId)
+        expect(body.data.role).toBeDefined()
+        expect(body.data.role.name).toBe("Show Tester")
     })
 })
 
