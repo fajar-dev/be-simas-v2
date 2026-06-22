@@ -7,6 +7,7 @@ import { AssetHolder } from "../../asset-holder/entities/asset-holder.entity"
 import { AssetLocation } from "../../asset-location/entities/asset-location.entity"
 import { Employee } from "../../employee/entities/employee.entity"
 import { Location } from "../../location/entities/location.entity"
+import { Branch } from "../../branch/entities/branch.entity"
 
 export class AssetRepository implements IAssetRepository {
     private readonly repository: Repository<Asset>
@@ -27,12 +28,13 @@ export class AssetRepository implements IAssetRepository {
             .leftJoin(Employee, "activeEmployee", "activeEmployee.id = activeHolder.employeeId")
             .leftJoin(AssetLocation, "lastAssetLocation", "lastAssetLocation.id = (SELECT MAX(sub_al.id) FROM asset_locations sub_al WHERE sub_al.asset_id = asset.id)")
             .leftJoin(Location, "lastLoc", "lastLoc.id = lastAssetLocation.locationId")
+            .leftJoin(Branch, "lastBranch", "lastBranch.id = lastLoc.branchId")
             .addSelect("activeEmployee.name")
             .addSelect("lastLoc.name")
 
         if (q) {
             query.where(
-                "(asset.name LIKE :q OR asset.code LIKE :q OR asset.brand LIKE :q OR asset.model LIKE :q OR asset.description LIKE :q OR subCategory.name LIKE :q OR category.name LIKE :q OR activeEmployee.name LIKE :q OR activeEmployee.employeeId LIKE :q OR lastLoc.name LIKE :q OR labels.value LIKE :q)",
+                "(asset.name LIKE :q OR asset.code LIKE :q OR asset.brand LIKE :q OR asset.model LIKE :q OR asset.description LIKE :q OR subCategory.name LIKE :q OR category.name LIKE :q OR activeEmployee.name LIKE :q OR activeEmployee.employeeId LIKE :q OR lastLoc.name LIKE :q OR lastBranch.name LIKE :q OR labels.value LIKE :q)",
                 { q: `%${q}%` }
             )
         }
