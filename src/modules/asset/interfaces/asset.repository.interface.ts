@@ -14,6 +14,7 @@ export interface AssetFilter {
     purchaseDateFrom?: string
     purchaseDateTo?: string
     labels?: { key: string; value: string }[]
+    missingFields?: string[]
 }
 
 export interface IAssetRepository {

@@ -84,6 +84,21 @@ export class AssetRepository implements IAssetRepository {
                 )
             })
         }
+        if (filters?.missingFields?.length) {
+            const fieldMap: Record<string, string> = {
+                image: "asset.image IS NULL OR asset.image = ''",
+                price: "asset.price IS NULL OR asset.price = 0",
+                brand: "asset.brand IS NULL OR asset.brand = ''",
+                model: "asset.model IS NULL OR asset.model = ''",
+                purchaseDate: "asset.purchase_date IS NULL OR asset.purchase_date = ''",
+            }
+            for (const field of filters.missingFields) {
+                const condition = fieldMap[field]
+                if (condition) {
+                    query.andWhere(`(${condition})`)
+                }
+            }
+        }
 
         const total = await query.getCount()
 

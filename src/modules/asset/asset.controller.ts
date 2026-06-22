@@ -37,6 +37,8 @@ export class AssetController {
         if (c.req.query("priceMax")) filters.priceMax = Number(c.req.query("priceMax"))
         if (c.req.query("purchaseDateFrom")) filters.purchaseDateFrom = c.req.query("purchaseDateFrom")!
         if (c.req.query("purchaseDateTo")) filters.purchaseDateTo = c.req.query("purchaseDateTo")!
+        const missingFields = c.req.query("missingFields")
+        if (missingFields) filters.missingFields = missingFields.split(',')
 
         // Parse label filters: label.{key}=value
         const allQueries = c.req.queries()
