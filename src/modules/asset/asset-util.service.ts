@@ -33,23 +33,43 @@ export class AssetUtilService {
 
         sheet.columns = columns
 
-        // Find column indices for merged headers (1-indexed)
+        // Column indices (1-indexed)
         const holderNameCol = columns.findIndex(c => c.key === 'holderName') + 1
         const holderEmpIdCol = columns.findIndex(c => c.key === 'holderEmployeeId') + 1
         const locationCol = columns.findIndex(c => c.key === 'location') + 1
         const branchCol = columns.findIndex(c => c.key === 'branch') + 1
+        const firstLabelCol = labelKeys.length > 0 ? columns.findIndex(c => c.key === `label_${labelKeys[0]}`) + 1 : 0
+        const lastLabelCol = labelKeys.length > 0 ? firstLabelCol + labelKeys.length - 1 : 0
 
-        // Insert a group header row (row 1) with merged cells
+        // Insert group header row (row 1), sub-header becomes row 2
         sheet.insertRow(1, [])
         const groupRow = sheet.getRow(1)
+        const subHeaderRow = sheet.getRow(2)
 
-        // Merge Active Holder header
+        // Single-column headers: merge vertically (row 1 + row 2) and set value in row 1
+        const singleCols = ['no', 'code', 'name', 'description', 'category', 'subCategory', 'brand', 'model', 'price', 'purchaseDate', 'status']
+        singleCols.forEach(key => {
+            const colIdx = columns.findIndex(c => c.key === key) + 1
+            const header = columns[colIdx - 1].header
+            sheet.mergeCells(1, colIdx, 2, colIdx)
+            groupRow.getCell(colIdx).value = header
+        })
+
+        // Active Holder: merge horizontally in row 1
         sheet.mergeCells(1, holderNameCol, 1, holderEmpIdCol)
         groupRow.getCell(holderNameCol).value = 'Active Holder'
 
-        // Merge Last Location header
+        // Last Location: merge horizontally in row 1
         sheet.mergeCells(1, locationCol, 1, branchCol)
         groupRow.getCell(locationCol).value = 'Last Location'
+
+        // Labels: merge horizontally in row 1, key names in row 2
+        if (labelKeys.length > 0) {
+            if (labelKeys.length > 1) {
+                sheet.mergeCells(1, firstLabelCol, 1, lastLabelCol)
+            }
+            groupRow.getCell(firstLabelCol).value = 'Labels'
+        }
 
         // Header style
         const headerStyle = {
@@ -58,22 +78,15 @@ export class AssetUtilService {
             alignment: { vertical: 'middle' as const, horizontal: 'center' as const } as Partial<ExcelJS.Alignment>,
         }
 
-        // Style group header row (row 1)
-        groupRow.height = 24
-        groupRow.eachCell({ includeEmpty: false }, (cell) => {
-            cell.font = headerStyle.font
-            cell.fill = headerStyle.fill
-            cell.alignment = headerStyle.alignment
-        })
-
-        // Style sub-header row (row 2)
-        const subHeaderRow = sheet.getRow(2)
-        subHeaderRow.height = 24
-        subHeaderRow.eachCell({ includeEmpty: false }, (cell) => {
-            cell.font = headerStyle.font
-            cell.fill = headerStyle.fill
-            cell.alignment = headerStyle.alignment
-        })
+        // Style both header rows
+        for (const row of [groupRow, subHeaderRow]) {
+            row.height = 24
+            row.eachCell({ includeEmpty: false }, (cell) => {
+                cell.font = headerStyle.font
+                cell.fill = headerStyle.fill
+                cell.alignment = headerStyle.alignment
+            })
+        }
 
         // Add data rows (starting from row 3)
         data.forEach((asset, index) => {
