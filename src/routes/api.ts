@@ -143,7 +143,7 @@ routes.post("/asset-holder", authMiddleware, requirePermission("asset-holder:cre
 routes.post("/asset-holder/:id/return", authMiddleware, requirePermission("asset-holder:return"), zValidator("json", ReturnAssetValidator, validationHook), (c) => assetHolderController.returnAsset(c))
 
 // Asset Log
-routes.get("/asset-log", authMiddleware, (c) => assetLogController.index(c))
+routes.get("/asset-log", authMiddleware, requirePermission("asset:read"), (c) => assetLogController.index(c))
 
 // Asset Status
 routes.get("/asset-status", authMiddleware, requirePermission("asset-status:read"), (c) => assetStatusController.index(c))
