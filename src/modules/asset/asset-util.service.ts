@@ -3,7 +3,7 @@ import ExcelJS from "exceljs"
 
 export class AssetUtilService {
 
-    async generateExcel(data: Asset[], labelKeys: string[]): Promise<Buffer> {
+    async export(data: Asset[], labelKeys: string[]): Promise<Buffer> {
         const workbook = new ExcelJS.Workbook()
         const sheet = workbook.addWorksheet('Assets')
 

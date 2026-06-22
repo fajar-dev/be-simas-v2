@@ -127,7 +127,7 @@ export class AssetController {
 
         const data = await this.service.getAllForExport(q, sortBy, order, filters)
 
-        const buffer = await this.utilService.generateExcel(data, labelKeys)
+        const buffer = await this.utilService.export(data, labelKeys)
         const filename = `assets_export_${new Date().toISOString().slice(0, 10)}.xlsx`
 
         return new Response(new Uint8Array(buffer), {
