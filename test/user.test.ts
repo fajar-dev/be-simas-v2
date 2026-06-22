@@ -501,4 +501,56 @@ describe("POST /api/upload", () => {
         expect(body.data.path).toStartWith("users/")
         expect(body.data.path).toEndWith(".png")
     })
+
+    test("should upload an employee file successfully and return path starting with employees/", async () => {
+        const { accessToken } = await registerAndLogin(app)
+
+        const formData = new FormData()
+        const fileContent = "dummy image data"
+        const fileBlob = new Blob([fileContent], { type: "image/png" })
+        formData.append("file", fileBlob, "employee.png")
+
+        const res = await app.request("/api/upload?type=employees", {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+            },
+            body: formData,
+        })
+
+        const body = await res.json() as any
+
+        expect(res.status).toBe(200)
+        expect(body.success).toBe(true)
+        expect(body.message).toBe("File uploaded successfully")
+        expect(body.data.path).toBeDefined()
+        expect(body.data.path).toStartWith("employees/")
+        expect(body.data.path).toEndWith(".png")
+    })
+
+    test("should upload an asset file successfully and return path starting with assets/", async () => {
+        const { accessToken } = await registerAndLogin(app)
+
+        const formData = new FormData()
+        const fileContent = "dummy image data"
+        const fileBlob = new Blob([fileContent], { type: "image/png" })
+        formData.append("file", fileBlob, "asset.png")
+
+        const res = await app.request("/api/upload?type=assets", {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+            },
+            body: formData,
+        })
+
+        const body = await res.json() as any
+
+        expect(res.status).toBe(200)
+        expect(body.success).toBe(true)
+        expect(body.message).toBe("File uploaded successfully")
+        expect(body.data.path).toBeDefined()
+        expect(body.data.path).toStartWith("assets/")
+        expect(body.data.path).toEndWith(".png")
+    })
 })

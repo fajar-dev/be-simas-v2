@@ -175,9 +175,13 @@ routes.post("/upload", authMiddleware, async (c) => {
         throw new BadRequestException("No file uploaded or invalid file")
     }
 
+    const type = c.req.query("type") || "users"
+    const allowedTypes = ["users", "employees", "assets"]
+    const folder = allowedTypes.includes(type) ? type : "users"
+
     const buffer = Buffer.from(await file.arrayBuffer())
     const extension = file.name.split(".").pop() || "jpg"
-    const objectName = `users/${crypto.randomUUID()}.${extension}`
+    const objectName = `${folder}/${crypto.randomUUID()}.${extension}`
 
     const { minio } = await import("../core/helpers/minio")
     await minio.upload(objectName, buffer, file.type)
