@@ -14,6 +14,7 @@ export class UserRepository implements IUserRepository {
         const offset = (page - 1) * limit
 
         const query = this.repository.createQueryBuilder("user")
+            .leftJoinAndSelect("user.role", "role")
 
         if (q) {
             query.where(
@@ -60,6 +61,7 @@ export class UserRepository implements IUserRepository {
 
     async findByEmailWithPassword(email: string): Promise<User | null> {
         return await this.repository.createQueryBuilder("user")
+            .leftJoinAndSelect("user.role", "role")
             .where("user.email = :email", { email })
             .addSelect("user.password")
             .getOne()
@@ -67,6 +69,7 @@ export class UserRepository implements IUserRepository {
 
     async findByIdWithPassword(id: number): Promise<User | null> {
         return await this.repository.createQueryBuilder("user")
+            .leftJoinAndSelect("user.role", "role")
             .where("user.id = :id", { id })
             .addSelect("user.password")
             .getOne()
