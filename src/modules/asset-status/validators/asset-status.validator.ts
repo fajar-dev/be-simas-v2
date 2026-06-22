@@ -5,7 +5,7 @@ const VALID_STATUSES = ["active", "idle", "under_repair", "damaged", "lost", "so
 export const CreateAssetStatusValidator = z.object({
     assetId: z.number({ required_error: "Asset ID is required" }),
     status: z.enum(VALID_STATUSES, { required_error: "Status is required" }),
-    note: z.string().optional().nullable(),
+    note: z.string().trim().optional().nullable(),
 })
 
 export type CreateAssetStatusValidator = z.infer<typeof CreateAssetStatusValidator>

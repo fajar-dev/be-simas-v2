@@ -162,12 +162,13 @@ export class AssetRepository implements IAssetRepository {
         await this.repository.delete(id)
     }
 
-    async deleteLabels(assetId: number): Promise<void> {
-        await AppDataSource.getRepository(AssetLabel).delete({ assetId })
+    async deleteLabels(assetId: number, manager?: EntityManager): Promise<void> {
+        const repo = manager ? manager.getRepository(AssetLabel) : AppDataSource.getRepository(AssetLabel)
+        await repo.delete({ assetId })
     }
 
-    async saveLabels(assetId: number, labels: { key: string; value: string }[]): Promise<void> {
-        const repo = AppDataSource.getRepository(AssetLabel)
+    async saveLabels(assetId: number, labels: { key: string; value: string }[], manager?: EntityManager): Promise<void> {
+        const repo = manager ? manager.getRepository(AssetLabel) : AppDataSource.getRepository(AssetLabel)
         const entities = labels.map(l => repo.create({ key: l.key, value: l.value, assetId }))
         await repo.save(entities)
     }

@@ -102,11 +102,11 @@ export class AuthService {
 
         const resetToken = crypto.randomBytes(32).toString("hex")
         user.resetPasswordToken = resetToken
-        user.resetPasswordExpires = new Date(Date.now() + 36000000)
+        user.resetPasswordExpires = new Date(Date.now() + 30 * 60 * 1000) // 30 minutes
 
         await this.userService.save(user)
         const resetLink = `${config.app.appUrl}/auth/reset-password?email=${user.email}&token=${resetToken}`
-        const text = `Halo ${user.name},\n\nKami menerima permintaan untuk mengatur ulang kata sandi akun Anda.\n\nSilakan klik tautan berikut untuk mengatur ulang kata sandi:\n${resetLink}\n\nTautan ini akan kedaluwarsa dalam 10 jam.\n\nJika Anda tidak meminta pengaturan ulang kata sandi, abaikan email ini.\n\nTerima kasih.`
+        const text = `Halo ${user.name},\n\nKami menerima permintaan untuk mengatur ulang kata sandi akun Anda.\n\nSilakan klik tautan berikut untuk mengatur ulang kata sandi:\n${resetLink}\n\nTautan ini akan kedaluwarsa dalam 30 menit.\n\nJika Anda tidak meminta pengaturan ulang kata sandi, abaikan email ini.\n\nTerima kasih.`
         mail.sendText(user.email, "Atur Ulang Kata Sandi", text).catch(err => console.error("[ForgotPassword] Failed to send email:", err))
         return true
     }
@@ -115,6 +115,14 @@ export class AuthService {
         const user = await this.userService.getByResetToken(data.token)
         if (!user) {
             throw new BadRequestException("Invalid or expired reset token")
+        }
+
+        // Validate token has not expired
+        if (!user.resetPasswordExpires || new Date() > new Date(user.resetPasswordExpires)) {
+            user.resetPasswordToken = null as any
+            user.resetPasswordExpires = null as any
+            await this.userService.save(user)
+            throw new BadRequestException("Reset token has expired")
         }
 
         user.password = await hashPassword(data.newPassword)
@@ -130,6 +138,12 @@ export class AuthService {
         if (!user) {
             throw new BadRequestException("Invalid or expired reset token")
         }
+
+        // Validate token has not expired
+        if (!user.resetPasswordExpires || new Date() > new Date(user.resetPasswordExpires)) {
+            throw new BadRequestException("Reset token has expired")
+        }
+
         return true
     }
 

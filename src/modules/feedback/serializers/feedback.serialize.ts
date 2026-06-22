@@ -1,4 +1,4 @@
-import minio from "../../../core/helpers/minio"
+import { resolvePhotoUrl } from "../../../core/helpers/serializer-utils"
 
 export interface FeedbackItem {
     timestamp: string
@@ -13,17 +13,13 @@ export interface FeedbackItem {
 }
 
 export class FeedbackSerializer {
-    private static async resolvePhotoUrl(photo?: string | null): Promise<string | null> {
-        if (!photo) return null
-        return await minio.getPresignedUrl(photo)
-    }
 
     static async single(item: FeedbackItem) {
         return {
             timestamp: item.timestamp,
             userId: item.userId,
             name: item.name,
-            images: await Promise.all(item.image.map((photo) => this.resolvePhotoUrl(photo))),
+            images: await Promise.all(item.image.map((photo) => resolvePhotoUrl(photo))),
             url: item.url,
             category: item.category,
             message: item.message,

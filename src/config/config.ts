@@ -31,6 +31,9 @@ export const config = {
         jwtSecret: requireEnv('JWT_SECRET', isProduction ? undefined : 'dev-jwt-secret-change-me'),
         jwtRefreshSecret: requireEnv('JWT_REFRESH_SECRET', isProduction ? undefined : 'dev-jwt-refresh-secret-change-me'),
         apiKey: requireEnv('API_KEY', isProduction ? undefined : 'dev-api-key-change-me'),
+        corsOrigins: process.env.CORS_ORIGINS
+            ? process.env.CORS_ORIGINS.split(',').map(s => s.trim())
+            : (isProduction ? [] : ['*']),
     },
     database: {
         type: (process.env.DB_TYPE || 'postgres') as 'postgres' | 'mysql',

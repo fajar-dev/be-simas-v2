@@ -1,13 +1,9 @@
 import { AssetHolder } from "../entities/asset-holder.entity"
-import { minio } from "../../../core/helpers/minio"
+import { resolvePhotoUrl } from "../../../core/helpers/serializer-utils"
 import { Attachment } from "../../attachment/entities/attachment.entity"
 import { AttachmentSerializer } from "../../attachment/serializers/attachment.serialize"
 
 export class AssetHolderSerializer {
-    private static async resolvePhotoUrl(photo?: string | null): Promise<string | null> {
-        if (!photo) return null
-        return await minio.getPresignedUrl(photo)
-    }
 
     static async single(log: AssetHolder, attachments: Attachment[] = []) {
         return {
@@ -32,17 +28,17 @@ export class AssetHolderSerializer {
                 jobPosition: log.employee.jobPosition,
                 email: log.employee.email,
                 phone: log.employee.phone,
-                photo: await this.resolvePhotoUrl(log.employee.photo),
+                photo: await resolvePhotoUrl(log.employee.photo),
             } : null,
             createdBy: log.createdBy ? {
                 id: log.createdBy.id,
                 name: log.createdBy.name,
-                photo: await this.resolvePhotoUrl(log.createdBy.photo),
+                photo: await resolvePhotoUrl(log.createdBy.photo),
             } : null,
             returnedBy: log.returnedBy ? {
                 id: log.returnedBy.id,
                 name: log.returnedBy.name,
-                photo: await this.resolvePhotoUrl(log.returnedBy.photo),
+                photo: await resolvePhotoUrl(log.returnedBy.photo),
             } : null,
             attachments: await AttachmentSerializer.collection(attachments),
         }

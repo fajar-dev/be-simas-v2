@@ -1,16 +1,12 @@
-import { minio } from "../../../core/helpers/minio"
+import { resolvePhotoUrl } from "../../../core/helpers/serializer-utils"
 
 export class UserListSerializer {
-    private static async resolvePhotoUrl(photo?: string | null): Promise<string | null> {
-        if (!photo) return null
-        return await minio.getPresignedUrl(photo)
-    }
 
     static async single(row: any) {
         return {
             id: row.id,
             name: row.name,
-            photo: await this.resolvePhotoUrl(row.photo),
+            photo: await resolvePhotoUrl(row.photo),
             email: row.email || null,
             isActive: Boolean(row.isActive),
         }

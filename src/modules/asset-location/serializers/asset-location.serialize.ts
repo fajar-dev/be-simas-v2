@@ -1,13 +1,9 @@
 import { AssetLocation } from "../entities/asset-location.entity"
-import { minio } from "../../../core/helpers/minio"
+import { resolvePhotoUrl } from "../../../core/helpers/serializer-utils"
 import { Attachment } from "../../attachment/entities/attachment.entity"
 import { AttachmentSerializer } from "../../attachment/serializers/attachment.serialize"
 
 export class AssetLocationSerializer {
-    private static async resolvePhotoUrl(photo?: string | null): Promise<string | null> {
-        if (!photo) return null
-        return await minio.getPresignedUrl(photo)
-    }
 
     static async single(log: AssetLocation, attachments: Attachment[] = []) {
         return {
@@ -36,7 +32,7 @@ export class AssetLocationSerializer {
             createdBy: log.createdBy ? {
                 id: log.createdBy.id,
                 name: log.createdBy.name,
-                photo: await this.resolvePhotoUrl(log.createdBy.photo),
+                photo: await resolvePhotoUrl(log.createdBy.photo),
             } : null,
             attachments: await AttachmentSerializer.collection(attachments),
         }

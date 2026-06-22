@@ -1,17 +1,13 @@
 import { User } from "../../user/entities/user.entity"
-import { minio } from "../../../core/helpers/minio"
+import { resolvePhotoUrl } from "../../../core/helpers/serializer-utils"
 
 export class AuthSerializer {
-    private static async resolvePhotoUrl(photo?: string | null): Promise<string | null> {
-        if (!photo) return null
-        return await minio.getPresignedUrl(photo)
-    }
 
     static async single(user: User) {
         return {
             id: user.id,
             name: user.name,
-            photo: await this.resolvePhotoUrl(user.photo),
+            photo: await resolvePhotoUrl(user.photo),
             email: user.email,
             isActive: Boolean(user.isActive),
             hasPassword: !!user.password,

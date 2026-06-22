@@ -193,23 +193,26 @@ export class AssetService {
 
         this.repository.merge(asset, data)
         try {
-            const saved = await this.repository.save(asset)
-            // Handle labels: delete old, insert new
-            if (newLabels !== undefined) {
-                await this.repository.deleteLabels(id)
-                if (newLabels && newLabels.length > 0) {
-                    await this.repository.saveLabels(id, newLabels as any)
-                }
-            }
+            await withTransaction(async (manager) => {
+                await this.repository.save(asset, manager)
 
-            await assetLogService.log({
-                assetId: id,
-                module: "asset",
-                action: "update",
-                description: "Asset updated.",
-                createdByUserId: operatorId,
-                oldValue,
-                newValue: data,
+                // Handle labels: delete old, insert new
+                if (newLabels !== undefined) {
+                    await this.repository.deleteLabels(id, manager)
+                    if (newLabels && newLabels.length > 0) {
+                        await this.repository.saveLabels(id, newLabels as any, manager)
+                    }
+                }
+
+                await assetLogService.log({
+                    assetId: id,
+                    module: "asset",
+                    action: "update",
+                    description: "Asset updated.",
+                    createdByUserId: operatorId,
+                    oldValue,
+                    newValue: data,
+                }, manager)
             })
 
             return await this.getById(id)

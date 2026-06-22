@@ -1,11 +1,7 @@
 import { Employee } from "../entities/employee.entity"
-import { minio } from "../../../core/helpers/minio"
+import { resolvePhotoUrl } from "../../../core/helpers/serializer-utils"
 
 export class EmployeeSerializer {
-    private static async resolvePhotoUrl(photo?: string | null): Promise<string | null> {
-        if (!photo) return null
-        return await minio.getPresignedUrl(photo)
-    }
 
     static async single(employee: Employee) {
         return {
@@ -15,7 +11,7 @@ export class EmployeeSerializer {
             jobPosition: employee.jobPosition,
             email: employee.email,
             phone: employee.phone,
-            photo: await this.resolvePhotoUrl(employee.photo),
+            photo: await resolvePhotoUrl(employee.photo),
             createdAt: employee.createdAt,
             updatedAt: employee.updatedAt,
         }

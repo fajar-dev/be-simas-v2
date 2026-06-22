@@ -1,11 +1,7 @@
 import { AssetStatus } from "../entities/asset-status.entity"
-import { minio } from "../../../core/helpers/minio"
+import { resolvePhotoUrl } from "../../../core/helpers/serializer-utils"
 
 export class AssetStatusSerializer {
-    private static async resolvePhotoUrl(photo?: string | null): Promise<string | null> {
-        if (!photo) return null
-        return await minio.getPresignedUrl(photo)
-    }
 
     static async single(record: AssetStatus) {
         return {
@@ -17,7 +13,7 @@ export class AssetStatusSerializer {
             createdBy: record.createdBy ? {
                 id: record.createdBy.id,
                 name: record.createdBy.name,
-                photo: await this.resolvePhotoUrl(record.createdBy.photo),
+                photo: await resolvePhotoUrl(record.createdBy.photo),
             } : null,
         }
     }

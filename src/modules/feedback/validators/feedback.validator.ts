@@ -1,9 +1,9 @@
 import { z } from "zod"
 
 export const StoreFeedbackValidator = z.object({
-    message: z.string().min(1, "Message is required"),
-    type: z.string().min(1, "Type is required"),
-    url: z.string().optional(),
+    message: z.string().trim().min(1, "Message is required"),
+    type: z.string().trim().min(1, "Type is required"),
+    url: z.string().trim().optional(),
     "images[]": z.union([
         z.instanceof(File)
             .refine((file) => file.size > 0, "File cannot be empty")
