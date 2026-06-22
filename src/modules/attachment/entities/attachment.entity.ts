@@ -1,5 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from "typeorm"
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index } from "typeorm"
 
+@Index(["entityType", "entityId"])
 @Entity("attachments")
 export class Attachment {
     @PrimaryGeneratedColumn()

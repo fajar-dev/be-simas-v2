@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from "typeorm"
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, Index } from "typeorm"
 import { Asset } from "../../asset/entities/asset.entity"
 import { User } from "../../user/entities/user.entity"
 
@@ -7,6 +7,7 @@ export class AssetStatus {
     @PrimaryGeneratedColumn()
     id!: number
 
+    @Index()
     @Column({ name: "asset_id" })
     assetId!: number
 
@@ -14,6 +15,7 @@ export class AssetStatus {
     @JoinColumn({ name: "asset_id" })
     asset!: Asset
 
+    @Index()
     @Column({ type: "varchar" })
     status!: string
 

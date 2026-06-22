@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from "typeorm"
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from "typeorm"
 import { Category } from "../../category/entities/category.entity"
 
 @Entity("sub_categories")
@@ -9,12 +9,14 @@ export class SubCategory {
     @Column({ unique: true })
     code!: string
 
+    @Index()
     @Column()
     name!: string
 
     @Column({ nullable: true, type: "text" })
     description?: string
 
+    @Index()
     @Column({ name: "category_id" })
     categoryId!: number
 

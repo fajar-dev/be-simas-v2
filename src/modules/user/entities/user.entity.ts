@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from "typeorm"
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from "typeorm"
 import { Role } from "../../role/entities/role.entity"
 import { Employee } from "../../employee/entities/employee.entity"
 
@@ -7,6 +7,7 @@ export class User {
     @PrimaryGeneratedColumn()
     id!: number
 
+    @Index()
     @Column()
     name!: string
 
@@ -25,9 +26,11 @@ export class User {
     @Column({ name: "reset_password_expires", type: "timestamp", nullable: true })
     resetPasswordExpires?: Date
 
+    @Index()
     @Column({ name: "is_active", default: true })
     isActive!: boolean
 
+    @Index()
     @Column({ name: "role_id", nullable: true })
     roleId?: number
 
@@ -35,6 +38,7 @@ export class User {
     @JoinColumn({ name: "role_id" })
     role?: Role
 
+    @Index()
     @Column({ name: "employee_id", nullable: true })
     employeeId?: number | null
 

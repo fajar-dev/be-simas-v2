@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from "typeorm"
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from "typeorm"
 import { Asset } from "../../asset/entities/asset.entity"
 import { Location } from "../../location/entities/location.entity"
 import { User } from "../../user/entities/user.entity"
@@ -8,6 +8,7 @@ export class AssetLocation {
     @PrimaryGeneratedColumn()
     id!: number
 
+    @Index()
     @Column({ name: "asset_id" })
     assetId!: number
 
@@ -15,6 +16,7 @@ export class AssetLocation {
     @JoinColumn({ name: "asset_id" })
     asset!: Asset
 
+    @Index()
     @Column({ name: "location_id" })
     locationId!: number
 

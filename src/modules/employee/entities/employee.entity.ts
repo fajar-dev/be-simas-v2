@@ -1,10 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from "typeorm"
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index } from "typeorm"
 
 @Entity("employees")
 export class Employee {
     @PrimaryGeneratedColumn()
     id!: number
 
+    @Index()
     @Column()
     name!: string
 
@@ -23,6 +24,7 @@ export class Employee {
     @Column({ nullable: true })
     photo?: string
 
+    @Index()
     @Column({ name: "is_active", default: true })
     isActive!: boolean
 

@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from "typeorm"
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index } from "typeorm"
 
 @Entity("branches")
 export class Branch {
@@ -8,6 +8,7 @@ export class Branch {
     @Column({ unique: true })
     code!: string
 
+    @Index()
     @Column()
     name!: string
 

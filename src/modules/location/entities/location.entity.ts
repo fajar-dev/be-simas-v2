@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from "typeorm"
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from "typeorm"
 import { Branch } from "../../branch/entities/branch.entity"
 
 @Entity("locations")
@@ -6,12 +6,14 @@ export class Location {
     @PrimaryGeneratedColumn()
     id!: number
 
+    @Index()
     @Column()
     name!: string
 
     @Column({ nullable: true, type: "text" })
     description?: string
 
+    @Index()
     @Column({ name: "branch_id" })
     branchId!: number
 

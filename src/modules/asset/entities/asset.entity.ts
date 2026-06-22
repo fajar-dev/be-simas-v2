@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, JoinColumn } from "typeorm"
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, JoinColumn, Index } from "typeorm"
 import type { Relation } from "typeorm"
 import { SubCategory } from "../../sub-category/entities/sub-category.entity"
 import { AssetLabel } from "./asset-label.entity"
@@ -15,6 +15,7 @@ export class Asset {
     @Column({ unique: true })
     code!: string
 
+    @Index()
     @Column()
     name!: string
 
@@ -36,6 +37,7 @@ export class Asset {
     @Column({ nullable: true })
     image?: string
 
+    @Index()
     @Column({ name: "sub_category_id" })
     subCategoryId!: number
 
@@ -59,6 +61,7 @@ export class Asset {
     @Column({ name: "has_location", type: "boolean", default: true })
     hasLocation!: boolean
 
+    @Index()
     @CreateDateColumn({ name: "created_at" })
     createdAt!: Date
 
