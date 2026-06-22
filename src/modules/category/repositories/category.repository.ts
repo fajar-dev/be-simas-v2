@@ -47,6 +47,10 @@ export class CategoryRepository implements ICategoryRepository {
         return await this.repository.findOneBy({ id })
     }
 
+    async findList(): Promise<Category[]> {
+        return await this.repository.find({ order: { name: 'ASC' } })
+    }
+
     async save(data: Partial<Category>, manager?: EntityManager): Promise<Category> {
         const repo = manager ? manager.getRepository(Category) : this.repository
         return await repo.save(data)

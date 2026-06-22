@@ -3,6 +3,7 @@ import { Employee } from "../entities/employee.entity"
 
 export interface IEmployeeRepository {
     findAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: Employee[]; total: number }>
+    findList(): Promise<Employee[]>
     findById(id: number): Promise<Employee | null>
     save(data: Partial<Employee>, manager?: EntityManager): Promise<Employee>
     merge(entity: Employee, data: Partial<Employee>): Employee

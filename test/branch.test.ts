@@ -513,3 +513,79 @@ describe("DELETE /api/branch/:id", () => {
         expect(body.message).toBe("Branch not found")
     })
 })
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GET /api/branch/list — List all (no pagination)
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("GET /api/branch/list", () => {
+    test("should return all branches without pagination", async () => {
+        const { headers } = await registerAndLogin(app)
+
+        // Create multiple branches
+        for (let i = 0; i < 3; i++) {
+            await request(app, "/api/branch", {
+                method: "POST",
+                headers,
+                body: createBranchData(),
+            })
+        }
+
+        const { status, body } = await request(app, "/api/branch/list", {
+            method: "GET",
+            headers,
+        })
+
+        expect(status).toBe(200)
+        expect(body.success).toBe(true)
+        expect(body.data).toBeArrayOfSize(3)
+        // Should not have pagination meta
+        expect(body.meta).toBeUndefined()
+    })
+
+    test("should return only id and name fields", async () => {
+        const { headers } = await registerAndLogin(app)
+
+        await request(app, "/api/branch", {
+            method: "POST",
+            headers,
+            body: createBranchData(),
+        })
+
+        const { status, body } = await request(app, "/api/branch/list", {
+            method: "GET",
+            headers,
+        })
+
+        expect(status).toBe(200)
+        expect(body.data.length).toBeGreaterThan(0)
+        const item = body.data[0]
+        expect(item.id).toBeDefined()
+        expect(item.name).toBeDefined()
+        // Should NOT contain other fields
+        expect(item.code).toBeUndefined()
+        expect(item.description).toBeUndefined()
+        expect(item.address).toBeUndefined()
+        expect(item.createdAt).toBeUndefined()
+    })
+
+    test("should return branches sorted by name ASC", async () => {
+        const { headers } = await registerAndLogin(app)
+
+        await request(app, "/api/branch", { method: "POST", headers, body: createBranchData({ name: "Zebra Branch" }) })
+        await request(app, "/api/branch", { method: "POST", headers, body: createBranchData({ name: "Alpha Branch" }) })
+        await request(app, "/api/branch", { method: "POST", headers, body: createBranchData({ name: "Mango Branch" }) })
+
+        const { body } = await request(app, "/api/branch/list", { method: "GET", headers })
+
+        expect(body.data[0].name).toBe("Alpha Branch")
+        expect(body.data[1].name).toBe("Mango Branch")
+        expect(body.data[2].name).toBe("Zebra Branch")
+    })
+
+    test("should fail without auth", async () => {
+        const { status } = await request(app, "/api/branch/list")
+        expect(status).toBe(401)
+    })
+})
+

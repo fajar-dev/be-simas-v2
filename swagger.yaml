@@ -1201,6 +1201,86 @@ paths:
         "401": { description: Unauthorized }
         "422": { description: Validation error, content: { application/json: { schema: { $ref: "#/components/schemas/ValidationError" } } } }
 
+  # ── Category List (no pagination) ──────────────────────────────────────────
+  /category/list:
+    get:
+      tags: [Category]
+      summary: Get all categories (no pagination, for dropdowns)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Categories retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id: { type: integer, example: 1 }
+                            name: { type: string, example: "Electronics" }
+        "401": { description: Unauthorized }
+
+  # ── Employee List (no pagination) ──────────────────────────────────────────
+  /employee/list:
+    get:
+      tags: [Employee]
+      summary: Get all employees (no pagination, for dropdowns)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Employees retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id: { type: integer, example: 1 }
+                            name: { type: string, example: "John Doe" }
+                            employeeId: { type: string, example: "EMP-001" }
+                            photo: { type: string, nullable: true, example: "http://cdn.example.com/employees/photo.jpg" }
+        "401": { description: Unauthorized }
+
+  # ── Branch List (no pagination) ────────────────────────────────────────────
+  /branch/list:
+    get:
+      tags: [Branch]
+      summary: Get all branches (no pagination, for dropdowns)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Branches retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id: { type: integer, example: 1 }
+                            name: { type: string, example: "Jakarta Branch" }
+        "401": { description: Unauthorized }
+
   # ── Employee List ──────────────────────────────────────────────────────────
   /employee:
     get:

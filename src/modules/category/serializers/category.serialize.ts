@@ -15,4 +15,12 @@ export class CategorySerializer {
     static collection(categories: Category[]) {
         return categories.map(c => this.single(c))
     }
+
+    static listItem(category: Category) {
+        return { id: category.id, name: category.name }
+    }
+
+    static listCollection(categories: Category[]) {
+        return categories.map(c => this.listItem(c))
+    }
 }

@@ -18,6 +18,11 @@ export class BranchController {
         return ApiResponse.paginate(c, BranchSerializer.collection(data), total, page, limit, "Branches retrieved successfully")
     }
 
+    async list(c: Context) {
+        const data = await this.service.getList()
+        return ApiResponse.success(c, BranchSerializer.listCollection(data), "Branches retrieved successfully")
+    }
+
     async show(c: Context) {
         const id = Number(c.req.param("id"))
         const branch = await this.service.getById(id)

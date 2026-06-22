@@ -10,6 +10,10 @@ export class CategoryService {
         return await this.repository.findAll(page, limit, q, sortBy, order)
     }
 
+    async getList(): Promise<Category[]> {
+        return await this.repository.findList()
+    }
+
     async getById(id: number): Promise<Category> {
         const category = await this.repository.findById(id)
         if (!category) {

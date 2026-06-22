@@ -18,4 +18,12 @@ export class BranchSerializer {
     static collection(branches: Branch[]) {
         return branches.map(b => this.single(b))
     }
+
+    static listItem(branch: Branch) {
+        return { id: branch.id, name: branch.name }
+    }
+
+    static listCollection(branches: Branch[]) {
+        return branches.map(b => this.listItem(b))
+    }
 }

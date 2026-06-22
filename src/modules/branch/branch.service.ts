@@ -10,6 +10,10 @@ export class BranchService {
         return await this.repository.findAll(page, limit, q, sortBy, order)
     }
 
+    async getList(): Promise<Branch[]> {
+        return await this.repository.findList()
+    }
+
     async getById(id: number): Promise<Branch> {
         const branch = await this.repository.findById(id)
         if (!branch) {

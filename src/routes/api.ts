@@ -67,6 +67,7 @@ routes.put("/user/:id", authMiddleware, requirePermission("user:update"), zValid
 routes.delete("/user/:id", authMiddleware, requirePermission("user:delete"), (c) => userController.destroy(c))
 
 // Category
+routes.get("/category/list", authMiddleware, (c) => categoryController.list(c))
 routes.get("/category", authMiddleware, requirePermission("category:read"), (c) => categoryController.index(c))
 routes.get("/category/:id", authMiddleware, requirePermission("category:read"), (c) => categoryController.show(c))
 routes.post("/category", authMiddleware, requirePermission("category:create"), zValidator("json", CreateCategoryValidator, validationHook), (c) => categoryController.store(c))
@@ -86,6 +87,7 @@ routes.get("/feedback", authMiddleware, (c) => feedbackController.index(c))
 routes.post("/feedback", authMiddleware, zValidator("form", StoreFeedbackValidator, validationHook), (c) => feedbackController.store(c))
 
 // Employee
+routes.get("/employee/list", authMiddleware, (c) => employeeController.list(c))
 routes.get("/employee", authMiddleware, requirePermission("employee:read"), (c) => employeeController.index(c))
 routes.get("/employee/:id", authMiddleware, requirePermission("employee:read"), (c) => employeeController.show(c))
 routes.post("/employee", authMiddleware, requirePermission("employee:create"), zValidator("json", CreateEmployeeValidator, validationHook), (c) => employeeController.store(c))
@@ -93,6 +95,7 @@ routes.put("/employee/:id", authMiddleware, requirePermission("employee:update")
 routes.delete("/employee/:id", authMiddleware, requirePermission("employee:delete"), (c) => employeeController.destroy(c))
 
 // Branch
+routes.get("/branch/list", authMiddleware, (c) => branchController.list(c))
 routes.get("/branch", authMiddleware, requirePermission("branch:read"), (c) => branchController.index(c))
 routes.get("/branch/:id", authMiddleware, requirePermission("branch:read"), (c) => branchController.show(c))
 routes.post("/branch", authMiddleware, requirePermission("branch:create"), zValidator("json", CreateBranchValidator, validationHook), (c) => branchController.store(c))
@@ -109,8 +112,8 @@ routes.delete("/location/:id", authMiddleware, requirePermission("location:delet
 
 // Asset
 routes.get("/asset", authMiddleware, requirePermission("asset:read"), (c) => assetController.index(c))
-routes.get("/asset/check-code", authMiddleware, requirePermission("asset:read"), (c) => assetController.checkCode(c))
-routes.get("/asset/label-keys", authMiddleware, requirePermission("asset:read"), (c) => assetController.getLabelKeys(c))
+routes.get("/asset/check-code", authMiddleware, (c) => assetController.checkCode(c))
+routes.get("/asset/label-keys", authMiddleware, (c) => assetController.getLabelKeys(c))
 routes.get("/asset/export", authMiddleware, requirePermission("asset:export"), (c) => assetController.export(c))
 routes.get("/asset/import-template", authMiddleware, requirePermission("asset:import"), (c) => assetController.importTemplate(c))
 routes.post("/asset/import", authMiddleware, requirePermission("asset:import"), (c) => assetController.import(c))

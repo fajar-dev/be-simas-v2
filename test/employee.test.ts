@@ -579,3 +579,80 @@ describe("Employee - isActive", () => {
         expect(getRes.body.data.isActive).toBe(false)
     })
 })
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GET /api/employee/list — List all (no pagination)
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("GET /api/employee/list", () => {
+    test("should return all employees without pagination", async () => {
+        const { headers } = await registerAndLogin(app)
+
+        for (let i = 0; i < 3; i++) {
+            await request(app, "/api/employee", {
+                method: "POST",
+                headers,
+                body: createEmployeeData(),
+            })
+        }
+
+        const { status, body } = await request(app, "/api/employee/list", {
+            method: "GET",
+            headers,
+        })
+
+        expect(status).toBe(200)
+        expect(body.success).toBe(true)
+        expect(body.data).toBeArrayOfSize(3)
+        expect(body.meta).toBeUndefined()
+    })
+
+    test("should return only id, name, employeeId, photo fields", async () => {
+        const { headers } = await registerAndLogin(app)
+
+        await request(app, "/api/employee", {
+            method: "POST",
+            headers,
+            body: createEmployeeData(),
+        })
+
+        const { status, body } = await request(app, "/api/employee/list", {
+            method: "GET",
+            headers,
+        })
+
+        expect(status).toBe(200)
+        expect(body.data.length).toBeGreaterThan(0)
+        const item = body.data[0]
+        expect(item.id).toBeDefined()
+        expect(item.name).toBeDefined()
+        expect(item.employeeId).toBeDefined()
+        expect(item).toHaveProperty("photo")
+        // Should NOT contain other fields
+        expect(item.email).toBeUndefined()
+        expect(item.phone).toBeUndefined()
+        expect(item.jobPosition).toBeUndefined()
+        expect(item.isActive).toBeUndefined()
+        expect(item.createdAt).toBeUndefined()
+    })
+
+    test("should return employees sorted by name ASC", async () => {
+        const { headers } = await registerAndLogin(app)
+
+        await request(app, "/api/employee", { method: "POST", headers, body: createEmployeeData({ name: "Zara" }) })
+        await request(app, "/api/employee", { method: "POST", headers, body: createEmployeeData({ name: "Andi" }) })
+        await request(app, "/api/employee", { method: "POST", headers, body: createEmployeeData({ name: "Maria" }) })
+
+        const { body } = await request(app, "/api/employee/list", { method: "GET", headers })
+
+        expect(body.data[0].name).toBe("Andi")
+        expect(body.data[1].name).toBe("Maria")
+        expect(body.data[2].name).toBe("Zara")
+    })
+
+    test("should fail without auth", async () => {
+        const { status } = await request(app, "/api/employee/list")
+        expect(status).toBe(401)
+    })
+})
+

@@ -47,6 +47,10 @@ export class BranchRepository implements IBranchRepository {
         return await this.repository.findOneBy({ id })
     }
 
+    async findList(): Promise<Branch[]> {
+        return await this.repository.find({ order: { name: 'ASC' } })
+    }
+
     async save(data: Partial<Branch>, manager?: EntityManager): Promise<Branch> {
         const repo = manager ? manager.getRepository(Branch) : this.repository
         return await repo.save(data)

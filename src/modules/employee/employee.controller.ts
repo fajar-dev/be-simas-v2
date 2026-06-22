@@ -19,6 +19,12 @@ export class EmployeeController {
         return ApiResponse.paginate(c, serialized, total, page, limit, "Employees retrieved successfully")
     }
 
+    async list(c: Context) {
+        const data = await this.service.getList()
+        const serialized = await EmployeeSerializer.listCollection(data)
+        return ApiResponse.success(c, serialized, "Employees retrieved successfully")
+    }
+
     async show(c: Context) {
         const id = Number(c.req.param("id"))
         const employee = await this.service.getById(id)

@@ -18,6 +18,11 @@ export class CategoryController {
         return ApiResponse.paginate(c, CategorySerializer.collection(data), total, page, limit, "Categories retrieved successfully")
     }
 
+    async list(c: Context) {
+        const data = await this.service.getList()
+        return ApiResponse.success(c, CategorySerializer.listCollection(data), "Categories retrieved successfully")
+    }
+
     async show(c: Context) {
         const id = Number(c.req.param("id"))
         const category = await this.service.getById(id)
