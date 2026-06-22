@@ -18,7 +18,7 @@ export const authMiddleware = async (c: Context, next: Next) => {
         const userRepository = AppDataSource.getRepository(User)
         const user = await userRepository.findOne({
             where: { id: decoded.sub },
-            select: ["id", "name", "photo", "email", "password", "isActive", "createdAt", "updatedAt"]
+            relations: ["role", "role.permissions"]
         })
 
         if (!user) {

@@ -16,11 +16,13 @@ import { CreateAssetLocationValidator } from "../modules/asset-location/validato
 import { AssignAssetValidator, ReturnAssetValidator } from "../modules/asset-holder/validators/asset-holder.validator"
 import { StoreFeedbackValidator } from "../modules/feedback/validators/feedback.validator"
 import { CreateAssetStatusValidator } from "../modules/asset-status/validators/asset-status.validator"
+import { CreateRoleValidator, UpdateRoleValidator } from "../modules/role/validators/role.validator"
 
 // ── Middlewares ──────────────────────────────────────────────────────────────
 import { authMiddleware } from "../core/middlewares/auth.middleware"
 import { validationHook } from "../core/helpers/validator"
 import { BadRequestException } from "../core/exceptions/base"
+import { requirePermission } from "../core/middlewares/permission.middleware"
 
 // ── Modules (controllers wired with their dependencies) ──────────────────────
 import { authController } from "../modules/auth/auth.module"
@@ -39,6 +41,7 @@ import { assetHolderController } from "../modules/asset-holder/asset-holder.modu
 import { assetLogController } from "../modules/asset-log/asset-log.module"
 import { assetStatusController } from "../modules/asset-status/asset-status.module"
 import { statisticController } from "../modules/statistic/statistic.module"
+import { roleController } from "../modules/role/role.module"
 
 // ── Routes ───────────────────────────────────────────────────────────────────
 const routes = new Hono()
@@ -57,102 +60,110 @@ routes.put("/auth/password", authMiddleware, zValidator("json", UpdatePasswordVa
 routes.post("/auth/logout", authMiddleware, (c) => authController.logout(c))
 
 // User
-routes.get("/user", authMiddleware, (c) => userController.index(c))
-routes.get("/user/:id", authMiddleware, (c) => userController.show(c))
-routes.post("/user", authMiddleware, zValidator("json", CreateUserValidator, validationHook), (c) => userController.store(c))
-routes.put("/user/:id", authMiddleware, zValidator("json", UpdateUserValidator, validationHook), (c) => userController.update(c))
-routes.delete("/user/:id", authMiddleware, (c) => userController.destroy(c))
+routes.get("/user", authMiddleware, requirePermission("user:read"), (c) => userController.index(c))
+routes.get("/user/:id", authMiddleware, requirePermission("user:read"), (c) => userController.show(c))
+routes.post("/user", authMiddleware, requirePermission("user:create"), zValidator("json", CreateUserValidator, validationHook), (c) => userController.store(c))
+routes.put("/user/:id", authMiddleware, requirePermission("user:update"), zValidator("json", UpdateUserValidator, validationHook), (c) => userController.update(c))
+routes.delete("/user/:id", authMiddleware, requirePermission("user:delete"), (c) => userController.destroy(c))
 
 // Category
-routes.get("/category", authMiddleware, (c) => categoryController.index(c))
-routes.get("/category/:id", authMiddleware, (c) => categoryController.show(c))
-routes.post("/category", authMiddleware, zValidator("json", CreateCategoryValidator, validationHook), (c) => categoryController.store(c))
-routes.put("/category/:id", authMiddleware, zValidator("json", UpdateCategoryValidator, validationHook), (c) => categoryController.update(c))
-routes.delete("/category/:id", authMiddleware, (c) => categoryController.destroy(c))
+routes.get("/category", authMiddleware, requirePermission("category:read"), (c) => categoryController.index(c))
+routes.get("/category/:id", authMiddleware, requirePermission("category:read"), (c) => categoryController.show(c))
+routes.post("/category", authMiddleware, requirePermission("category:create"), zValidator("json", CreateCategoryValidator, validationHook), (c) => categoryController.store(c))
+routes.put("/category/:id", authMiddleware, requirePermission("category:update"), zValidator("json", UpdateCategoryValidator, validationHook), (c) => categoryController.update(c))
+routes.delete("/category/:id", authMiddleware, requirePermission("category:delete"), (c) => categoryController.destroy(c))
 
 // Sub Category
-routes.get("/sub-category", authMiddleware, (c) => subCategoryController.index(c))
+routes.get("/sub-category", authMiddleware, requirePermission("sub-category:read"), (c) => subCategoryController.index(c))
 routes.get("/sub-category/by-category/:categoryId", authMiddleware, (c) => subCategoryController.byCategory(c))
-routes.get("/sub-category/:id", authMiddleware, (c) => subCategoryController.show(c))
-routes.post("/sub-category", authMiddleware, zValidator("json", CreateSubCategoryValidator, validationHook), (c) => subCategoryController.store(c))
-routes.put("/sub-category/:id", authMiddleware, zValidator("json", UpdateSubCategoryValidator, validationHook), (c) => subCategoryController.update(c))
-routes.delete("/sub-category/:id", authMiddleware, (c) => subCategoryController.destroy(c))
+routes.get("/sub-category/:id", authMiddleware, requirePermission("sub-category:read"), (c) => subCategoryController.show(c))
+routes.post("/sub-category", authMiddleware, requirePermission("sub-category:create"), zValidator("json", CreateSubCategoryValidator, validationHook), (c) => subCategoryController.store(c))
+routes.put("/sub-category/:id", authMiddleware, requirePermission("sub-category:update"), zValidator("json", UpdateSubCategoryValidator, validationHook), (c) => subCategoryController.update(c))
+routes.delete("/sub-category/:id", authMiddleware, requirePermission("sub-category:delete"), (c) => subCategoryController.destroy(c))
 
 // Feedback
 routes.get("/feedback", authMiddleware, (c) => feedbackController.index(c))
 routes.post("/feedback", authMiddleware, zValidator("form", StoreFeedbackValidator, validationHook), (c) => feedbackController.store(c))
 
 // Employee
-routes.get("/employee", authMiddleware, (c) => employeeController.index(c))
-routes.get("/employee/:id", authMiddleware, (c) => employeeController.show(c))
-routes.post("/employee", authMiddleware, zValidator("json", CreateEmployeeValidator, validationHook), (c) => employeeController.store(c))
-routes.put("/employee/:id", authMiddleware, zValidator("json", UpdateEmployeeValidator, validationHook), (c) => employeeController.update(c))
-routes.delete("/employee/:id", authMiddleware, (c) => employeeController.destroy(c))
+routes.get("/employee", authMiddleware, requirePermission("employee:read"), (c) => employeeController.index(c))
+routes.get("/employee/:id", authMiddleware, requirePermission("employee:read"), (c) => employeeController.show(c))
+routes.post("/employee", authMiddleware, requirePermission("employee:create"), zValidator("json", CreateEmployeeValidator, validationHook), (c) => employeeController.store(c))
+routes.put("/employee/:id", authMiddleware, requirePermission("employee:update"), zValidator("json", UpdateEmployeeValidator, validationHook), (c) => employeeController.update(c))
+routes.delete("/employee/:id", authMiddleware, requirePermission("employee:delete"), (c) => employeeController.destroy(c))
 
 // Branch
-routes.get("/branch", authMiddleware, (c) => branchController.index(c))
-routes.get("/branch/:id", authMiddleware, (c) => branchController.show(c))
-routes.post("/branch", authMiddleware, zValidator("json", CreateBranchValidator, validationHook), (c) => branchController.store(c))
-routes.put("/branch/:id", authMiddleware, zValidator("json", UpdateBranchValidator, validationHook), (c) => branchController.update(c))
-routes.delete("/branch/:id", authMiddleware, (c) => branchController.destroy(c))
+routes.get("/branch", authMiddleware, requirePermission("branch:read"), (c) => branchController.index(c))
+routes.get("/branch/:id", authMiddleware, requirePermission("branch:read"), (c) => branchController.show(c))
+routes.post("/branch", authMiddleware, requirePermission("branch:create"), zValidator("json", CreateBranchValidator, validationHook), (c) => branchController.store(c))
+routes.put("/branch/:id", authMiddleware, requirePermission("branch:update"), zValidator("json", UpdateBranchValidator, validationHook), (c) => branchController.update(c))
+routes.delete("/branch/:id", authMiddleware, requirePermission("branch:delete"), (c) => branchController.destroy(c))
 
 // Location
-routes.get("/location", authMiddleware, (c) => locationController.index(c))
+routes.get("/location", authMiddleware, requirePermission("location:read"), (c) => locationController.index(c))
 routes.get("/location/by-branch/:branchId", authMiddleware, (c) => locationController.byBranch(c))
-routes.get("/location/:id", authMiddleware, (c) => locationController.show(c))
-routes.post("/location", authMiddleware, zValidator("json", CreateLocationValidator, validationHook), (c) => locationController.store(c))
-routes.put("/location/:id", authMiddleware, zValidator("json", UpdateLocationValidator, validationHook), (c) => locationController.update(c))
-routes.delete("/location/:id", authMiddleware, (c) => locationController.destroy(c))
+routes.get("/location/:id", authMiddleware, requirePermission("location:read"), (c) => locationController.show(c))
+routes.post("/location", authMiddleware, requirePermission("location:create"), zValidator("json", CreateLocationValidator, validationHook), (c) => locationController.store(c))
+routes.put("/location/:id", authMiddleware, requirePermission("location:update"), zValidator("json", UpdateLocationValidator, validationHook), (c) => locationController.update(c))
+routes.delete("/location/:id", authMiddleware, requirePermission("location:delete"), (c) => locationController.destroy(c))
 
 // Asset
-routes.get("/asset", authMiddleware, (c) => assetController.index(c))
-routes.get("/asset/check-code", authMiddleware, (c) => assetController.checkCode(c))
-routes.get("/asset/label-keys", authMiddleware, (c) => assetController.getLabelKeys(c))
-routes.get("/asset/export", authMiddleware, (c) => assetController.export(c))
-routes.get("/asset/import-template", authMiddleware, (c) => assetController.importTemplate(c))
-routes.post("/asset/import", authMiddleware, (c) => assetController.import(c))
-routes.get("/asset/:id", authMiddleware, (c) => assetController.show(c))
-routes.post("/asset", authMiddleware, zValidator("json", CreateAssetValidator, validationHook), (c) => assetController.store(c))
-routes.put("/asset/:id", authMiddleware, zValidator("json", UpdateAssetValidator, validationHook), (c) => assetController.update(c))
-routes.delete("/asset/:id", authMiddleware, (c) => assetController.destroy(c))
+routes.get("/asset", authMiddleware, requirePermission("asset:read"), (c) => assetController.index(c))
+routes.get("/asset/check-code", authMiddleware, requirePermission("asset:read"), (c) => assetController.checkCode(c))
+routes.get("/asset/label-keys", authMiddleware, requirePermission("asset:read"), (c) => assetController.getLabelKeys(c))
+routes.get("/asset/export", authMiddleware, requirePermission("asset:export"), (c) => assetController.export(c))
+routes.get("/asset/import-template", authMiddleware, requirePermission("asset:import"), (c) => assetController.importTemplate(c))
+routes.post("/asset/import", authMiddleware, requirePermission("asset:import"), (c) => assetController.import(c))
+routes.get("/asset/:id", authMiddleware, requirePermission("asset:read"), (c) => assetController.show(c))
+routes.post("/asset", authMiddleware, requirePermission("asset:create"), zValidator("json", CreateAssetValidator, validationHook), (c) => assetController.store(c))
+routes.put("/asset/:id", authMiddleware, requirePermission("asset:update"), zValidator("json", UpdateAssetValidator, validationHook), (c) => assetController.update(c))
+routes.delete("/asset/:id", authMiddleware, requirePermission("asset:delete"), (c) => assetController.destroy(c))
 
 // Attachment
 routes.post("/attachment", authMiddleware, (c) => attachmentController.upload(c))
 routes.delete("/attachment/:id", authMiddleware, (c) => attachmentController.destroy(c))
 
 // Asset Maintenance
-routes.get("/asset-maintenance", authMiddleware, (c) => assetMaintenanceController.index(c))
-routes.get("/asset-maintenance/:id", authMiddleware, (c) => assetMaintenanceController.show(c))
-routes.post("/asset-maintenance", authMiddleware, zValidator("json", CreateAssetMaintenanceValidator, validationHook), (c) => assetMaintenanceController.store(c))
-routes.put("/asset-maintenance/:id", authMiddleware, zValidator("json", UpdateAssetMaintenanceValidator, validationHook), (c) => assetMaintenanceController.update(c))
-routes.delete("/asset-maintenance/:id", authMiddleware, (c) => assetMaintenanceController.destroy(c))
+routes.get("/asset-maintenance", authMiddleware, requirePermission("asset-maintenance:read"), (c) => assetMaintenanceController.index(c))
+routes.get("/asset-maintenance/:id", authMiddleware, requirePermission("asset-maintenance:read"), (c) => assetMaintenanceController.show(c))
+routes.post("/asset-maintenance", authMiddleware, requirePermission("asset-maintenance:create"), zValidator("json", CreateAssetMaintenanceValidator, validationHook), (c) => assetMaintenanceController.store(c))
+routes.put("/asset-maintenance/:id", authMiddleware, requirePermission("asset-maintenance:update"), zValidator("json", UpdateAssetMaintenanceValidator, validationHook), (c) => assetMaintenanceController.update(c))
+routes.delete("/asset-maintenance/:id", authMiddleware, requirePermission("asset-maintenance:delete"), (c) => assetMaintenanceController.destroy(c))
 
 // Asset Location
-routes.get("/asset-location", authMiddleware, (c) => assetLocationController.index(c))
-routes.get("/asset-location/:id", authMiddleware, (c) => assetLocationController.show(c))
-routes.post("/asset-location", authMiddleware, zValidator("json", CreateAssetLocationValidator, validationHook), (c) => assetLocationController.store(c))
+routes.get("/asset-location", authMiddleware, requirePermission("asset-location:read"), (c) => assetLocationController.index(c))
+routes.get("/asset-location/:id", authMiddleware, requirePermission("asset-location:read"), (c) => assetLocationController.show(c))
+routes.post("/asset-location", authMiddleware, requirePermission("asset-location:create"), zValidator("json", CreateAssetLocationValidator, validationHook), (c) => assetLocationController.store(c))
 
 // Asset Holder
-routes.get("/asset-holder", authMiddleware, (c) => assetHolderController.index(c))
-routes.get("/asset-holder/active/:assetId", authMiddleware, (c) => assetHolderController.active(c))
-routes.get("/asset-holder/:id", authMiddleware, (c) => assetHolderController.show(c))
-routes.post("/asset-holder", authMiddleware, zValidator("json", AssignAssetValidator, validationHook), (c) => assetHolderController.store(c))
-routes.post("/asset-holder/:id/return", authMiddleware, zValidator("json", ReturnAssetValidator, validationHook), (c) => assetHolderController.returnAsset(c))
+routes.get("/asset-holder", authMiddleware, requirePermission("asset-holder:read"), (c) => assetHolderController.index(c))
+routes.get("/asset-holder/active/:assetId", authMiddleware, requirePermission("asset-holder:read"), (c) => assetHolderController.active(c))
+routes.get("/asset-holder/:id", authMiddleware, requirePermission("asset-holder:read"), (c) => assetHolderController.show(c))
+routes.post("/asset-holder", authMiddleware, requirePermission("asset-holder:create"), zValidator("json", AssignAssetValidator, validationHook), (c) => assetHolderController.store(c))
+routes.post("/asset-holder/:id/return", authMiddleware, requirePermission("asset-holder:return"), zValidator("json", ReturnAssetValidator, validationHook), (c) => assetHolderController.returnAsset(c))
 
 // Asset Log
 routes.get("/asset-log", authMiddleware, (c) => assetLogController.index(c))
 
 // Asset Status
-routes.get("/asset-status", authMiddleware, (c) => assetStatusController.index(c))
-routes.post("/asset-status", authMiddleware, zValidator("json", CreateAssetStatusValidator, validationHook), (c) => assetStatusController.store(c))
+routes.get("/asset-status", authMiddleware, requirePermission("asset-status:read"), (c) => assetStatusController.index(c))
+routes.post("/asset-status", authMiddleware, requirePermission("asset-status:create"), zValidator("json", CreateAssetStatusValidator, validationHook), (c) => assetStatusController.store(c))
 
 // Statistic
-routes.get("/statistic/summary", authMiddleware, (c) => statisticController.summary(c))
-routes.get("/statistic/assets-by-category", authMiddleware, (c) => statisticController.assetsByCategory(c))
-routes.get("/statistic/assets-by-location", authMiddleware, (c) => statisticController.assetsByLocation(c))
-routes.get("/statistic/assets-by-sub-category", authMiddleware, (c) => statisticController.assetsBySubCategory(c))
-routes.get("/statistic/asset-aging", authMiddleware, (c) => statisticController.assetAging(c))
-routes.get("/statistic/data-quality", authMiddleware, (c) => statisticController.dataQuality(c))
+routes.get("/statistic/summary", authMiddleware, requirePermission("dashboard:read"), (c) => statisticController.summary(c))
+routes.get("/statistic/assets-by-category", authMiddleware, requirePermission("dashboard:read"), (c) => statisticController.assetsByCategory(c))
+routes.get("/statistic/assets-by-location", authMiddleware, requirePermission("dashboard:read"), (c) => statisticController.assetsByLocation(c))
+routes.get("/statistic/assets-by-sub-category", authMiddleware, requirePermission("dashboard:read"), (c) => statisticController.assetsBySubCategory(c))
+routes.get("/statistic/asset-aging", authMiddleware, requirePermission("dashboard:read"), (c) => statisticController.assetAging(c))
+routes.get("/statistic/data-quality", authMiddleware, requirePermission("dashboard:read"), (c) => statisticController.dataQuality(c))
+
+// Role
+routes.get("/role/permissions", authMiddleware, (c) => roleController.permissions(c))
+routes.get("/role", authMiddleware, requirePermission("role:read"), (c) => roleController.index(c))
+routes.get("/role/:id", authMiddleware, requirePermission("role:read"), (c) => roleController.show(c))
+routes.post("/role", authMiddleware, requirePermission("role:create"), zValidator("json", CreateRoleValidator, validationHook), (c) => roleController.store(c))
+routes.put("/role/:id", authMiddleware, requirePermission("role:update"), zValidator("json", UpdateRoleValidator, validationHook), (c) => roleController.update(c))
+routes.delete("/role/:id", authMiddleware, requirePermission("role:delete"), (c) => roleController.destroy(c))
 
 
 // Upload

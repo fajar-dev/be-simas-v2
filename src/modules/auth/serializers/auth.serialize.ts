@@ -11,6 +11,12 @@ export class AuthSerializer {
             email: user.email,
             isActive: Boolean(user.isActive),
             hasPassword: !!user.password,
+            role: user.role ? {
+                id: user.role.id,
+                name: user.role.name,
+                isSuperAdmin: user.role.isSuperAdmin,
+                permissions: (user.role.permissions || []).map(p => ({ id: p.id, key: p.key })),
+            } : null,
         }
     }
 

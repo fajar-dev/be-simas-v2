@@ -4,7 +4,9 @@
     "dev": "bun run --hot src/index.ts",
     "build": "bun build --minify --outfile dist/index.js --target bun src/index.ts",
     "start": "bun run src/index.ts",
-    "test": "bun test --timeout 30000"
+    "test": "bun test --timeout 30000",
+    "seed:permissions": "npx tsx src/seeds/seed-permissions.ts",
+    "seed:permissions": "bun run src/seeds/seed-permissions.ts"
   },
   "dependencies": {
     "@hono/swagger-ui": "^0.6.1",

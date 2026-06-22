@@ -10,6 +10,8 @@ export class UserSerializer {
             photo: await resolvePhotoUrl(user.photo),
             email: user.email,
             isActive: Boolean(user.isActive),
+            role: user.role ? { id: user.role.id, name: user.role.name } : null,
+            roleId: user.roleId || null,
             createdAt: user.createdAt,
             updatedAt: user.updatedAt
         }
