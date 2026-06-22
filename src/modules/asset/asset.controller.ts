@@ -1,6 +1,6 @@
 import { Context } from "hono"
 import { AssetService } from "./asset.service"
-import { AssetExportService } from "./asset-export.service"
+import { AssetUtilsService } from "./asset-utils.service"
 import { AssetSerializer } from "./serializers/asset.serialize"
 import { ApiResponse } from "../../core/helpers/response"
 import { AssetFilter } from "./interfaces/asset.repository.interface"
@@ -8,7 +8,7 @@ import { AssetFilter } from "./interfaces/asset.repository.interface"
 export class AssetController {
     constructor(
         private readonly service: AssetService,
-        private readonly exportService: AssetExportService,
+        private readonly exportService: AssetUtilsService,
     ) {}
 
     async index(c: Context) {
@@ -86,12 +86,12 @@ export class AssetController {
         const labelColumnsParam = c.req.query("labelColumns")
         const labelKeys = labelColumnsParam ? labelColumnsParam.split(',').filter(Boolean) : []
 
-        const { data } = await this.service.getAll(1, 999999, q, sortBy, order, filters)
+        const data = await this.service.getAllForExport(q, sortBy, order, filters)
 
         const buffer = await this.exportService.generateExcel(data, labelKeys)
         const filename = `assets_export_${new Date().toISOString().slice(0, 10)}.xlsx`
 
-        return new Response(buffer, {
+        return new Response(new Uint8Array(buffer), {
             headers: {
                 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 'Content-Disposition': `attachment; filename="${filename}"`,

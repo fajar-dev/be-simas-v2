@@ -1,6 +1,6 @@
 import { AssetRepository } from "./repositories/asset.repository"
 import { AssetService } from "./asset.service"
-import { AssetExportService } from "./asset-export.service"
+import { AssetExportService } from "./asset-utils.service"
 import { AssetController } from "./asset.controller"
 
 const assetRepository = new AssetRepository()

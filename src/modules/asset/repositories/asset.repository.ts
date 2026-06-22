@@ -16,9 +16,7 @@ export class AssetRepository implements IAssetRepository {
         this.repository = AppDataSource.getRepository(Asset)
     }
 
-    async findAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC', filters?: AssetFilter): Promise<{ data: Asset[]; total: number }> {
-        const offset = (page - 1) * limit
-
+    private buildQuery(q: string, sortBy?: string, order?: 'ASC' | 'DESC', filters?: AssetFilter) {
         const query = this.repository.createQueryBuilder("asset")
             .leftJoinAndSelect("asset.subCategory", "subCategory")
             .leftJoinAndSelect("subCategory.category", "category")
@@ -108,9 +106,7 @@ export class AssetRepository implements IAssetRepository {
             }
         }
 
-        const total = await query.getCount()
-
-        // Whitelist of allowed sort columns
+        // Sorting
         const sortColumnMap: Record<string, string> = {
             name: "asset.name",
             code: "asset.code",
@@ -138,12 +134,20 @@ export class AssetRepository implements IAssetRepository {
             query.orderBy(sortColumn, sortOrder)
         }
 
-        const data = await query
-            .skip(offset)
-            .take(limit)
-            .getMany()
+        return query
+    }
 
+    async findAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC', filters?: AssetFilter): Promise<{ data: Asset[]; total: number }> {
+        const query = this.buildQuery(q, sortBy, order, filters)
+        const total = await query.getCount()
+        const offset = (page - 1) * limit
+        const data = await query.skip(offset).take(limit).getMany()
         return { data, total }
+    }
+
+    async findAllWithoutPagination(q: string, sortBy?: string, order?: 'ASC' | 'DESC', filters?: AssetFilter): Promise<Asset[]> {
+        const query = this.buildQuery(q, sortBy, order, filters)
+        return await query.getMany()
     }
 
     async findById(id: number): Promise<Asset | null> {

@@ -24,6 +24,12 @@ export class AssetService {
         return { data, total }
     }
 
+    async getAllForExport(q: string, sortBy?: string, order?: 'ASC' | 'DESC', filters?: AssetFilter): Promise<Asset[]> {
+        const data = await this.repository.findAllWithoutPagination(q, sortBy, order, filters)
+        await Promise.all(data.map(asset => this.populateRelations(asset)))
+        return data
+    }
+
     async getById(id: number): Promise<Asset> {
         const asset = await this.repository.findById(id)
         if (!asset) {

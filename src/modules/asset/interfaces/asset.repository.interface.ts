@@ -19,6 +19,7 @@ export interface AssetFilter {
 
 export interface IAssetRepository {
     findAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC', filters?: AssetFilter): Promise<{ data: Asset[]; total: number }>
+    findAllWithoutPagination(q: string, sortBy?: string, order?: 'ASC' | 'DESC', filters?: AssetFilter): Promise<Asset[]>
     findById(id: number): Promise<Asset | null>
     findByCode(code: string): Promise<Asset | null>
     save(data: Partial<Asset>, manager?: EntityManager): Promise<Asset>
