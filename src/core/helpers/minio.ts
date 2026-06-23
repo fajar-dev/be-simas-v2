@@ -140,6 +140,11 @@ class MinioHelper {
      */
     sanitizePath(urlOrPath: string | null | undefined, bucket: string = BUCKET): string | null {
         if (!urlOrPath) return null
+
+        // If it's an external URL (not from our MinIO), return as-is
+        if ((urlOrPath.startsWith("http://") || urlOrPath.startsWith("https://")) && !urlOrPath.includes(config.minio.endPoint)) {
+            return urlOrPath
+        }
         
         let decoded = urlOrPath
         try {

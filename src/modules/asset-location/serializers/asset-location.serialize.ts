@@ -1,5 +1,5 @@
 import { AssetLocation } from "../entities/asset-location.entity"
-import { resolvePhotoUrl } from "../../../core/helpers/serializer-utils"
+import { resolveFileUrl } from "../../../core/helpers/serializer-utils"
 import { Attachment } from "../../attachment/entities/attachment.entity"
 import { AttachmentSerializer } from "../../attachment/serializers/attachment.serialize"
 
@@ -32,7 +32,7 @@ export class AssetLocationSerializer {
             createdBy: log.createdBy ? {
                 id: log.createdBy.id,
                 name: log.createdBy.name,
-                photo: await resolvePhotoUrl(log.createdBy.photo),
+                photo: await resolveFileUrl(log.createdBy.photo),
             } : null,
             attachments: await AttachmentSerializer.collection(attachments),
         }

@@ -1,4 +1,4 @@
-import { resolvePhotoUrl } from "../../../core/helpers/serializer-utils"
+import { resolveFileUrl } from "../../../core/helpers/serializer-utils"
 
 export interface FeedbackItem {
     timestamp: string
@@ -19,7 +19,7 @@ export class FeedbackSerializer {
             timestamp: item.timestamp,
             userId: item.userId,
             name: item.name,
-            images: await Promise.all(item.image.map((photo) => resolvePhotoUrl(photo))),
+            images: await Promise.all(item.image.map((photo) => resolveFileUrl(photo))),
             url: item.url,
             category: item.category,
             message: item.message,

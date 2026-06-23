@@ -1,4 +1,4 @@
-import { resolvePhotoUrl } from "../../../core/helpers/serializer-utils"
+import { resolveFileUrl } from "../../../core/helpers/serializer-utils"
 
 export class UserListSerializer {
 
@@ -6,7 +6,7 @@ export class UserListSerializer {
         return {
             id: row.id,
             name: row.name,
-            photo: await resolvePhotoUrl(row.photo),
+            photo: await resolveFileUrl(row.photo),
             email: row.email || null,
             isActive: Boolean(row.isActive),
             role: row.role ? { id: row.role.id, name: row.role.name } : null,

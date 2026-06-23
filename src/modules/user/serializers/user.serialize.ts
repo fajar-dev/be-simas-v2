@@ -1,5 +1,5 @@
 import { User } from "../entities/user.entity"
-import { resolvePhotoUrl } from "../../../core/helpers/serializer-utils"
+import { resolveFileUrl } from "../../../core/helpers/serializer-utils"
 
 export class UserSerializer {
 
@@ -7,7 +7,7 @@ export class UserSerializer {
         return {
             id: user.id,
             name: user.name,
-            photo: await resolvePhotoUrl(user.photo),
+            photo: await resolveFileUrl(user.photo),
             email: user.email,
             isActive: Boolean(user.isActive),
             role: user.role ? { id: user.role.id, name: user.role.name } : null,
@@ -17,7 +17,7 @@ export class UserSerializer {
                 name: user.employee.name,
                 employeeId: user.employee.employeeId,
                 jobPosition: user.employee.jobPosition,
-                photo: await resolvePhotoUrl(user.employee.photo),
+                photo: await resolveFileUrl(user.employee.photo),
             } : null,
             employeeId: user.employeeId || null,
             createdAt: user.createdAt,

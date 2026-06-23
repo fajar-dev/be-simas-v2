@@ -1,5 +1,5 @@
 import { User } from "../../user/entities/user.entity"
-import { resolvePhotoUrl } from "../../../core/helpers/serializer-utils"
+import { resolveFileUrl } from "../../../core/helpers/serializer-utils"
 
 export class AuthSerializer {
 
@@ -7,7 +7,7 @@ export class AuthSerializer {
         return {
             id: user.id,
             name: user.name,
-            photo: await resolvePhotoUrl(user.photo),
+            photo: await resolveFileUrl(user.photo),
             email: user.email,
             isActive: Boolean(user.isActive),
             hasPassword: !!user.password,

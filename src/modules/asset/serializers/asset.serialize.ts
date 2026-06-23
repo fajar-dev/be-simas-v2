@@ -1,11 +1,7 @@
 import { Asset } from "../entities/asset.entity"
-import { minio } from "../../../core/helpers/minio"
+import { resolveFileUrl } from "../../../core/helpers/serializer-utils"
 
 export class AssetSerializer {
-    private static async resolveImageUrl(image?: string | null): Promise<string | null> {
-        if (!image) return null
-        return await minio.getPresignedUrl(image)
-    }
 
     private static calculateAge(purchaseDate?: string | null): string | null {
         if (!purchaseDate) return null
@@ -45,7 +41,7 @@ export class AssetSerializer {
             age: this.calculateAge(asset.purchaseDate),
             brand: asset.brand || null,
             model: asset.model || null,
-            image: await this.resolveImageUrl(asset.image),
+            image: await resolveFileUrl(asset.image),
             hasHolder: asset.hasHolder,
             hasMaintenance: asset.hasMaintenance,
             hasLocation: asset.hasLocation,
@@ -62,7 +58,7 @@ export class AssetSerializer {
             createdBy: asset.createdBy ? {
                 id: asset.createdBy.id,
                 name: asset.createdBy.name,
-                photo: asset.createdBy.photo ? await minio.getPresignedUrl(asset.createdBy.photo) : null,
+                photo: await resolveFileUrl(asset.createdBy.photo),
             } : null,
             labels: (asset.labels || []).map(l => ({
                 id: l.id,
@@ -78,7 +74,7 @@ export class AssetSerializer {
                     name: asset.activeHolder.employee.name,
                     employeeId: asset.activeHolder.employee.employeeId,
                     jobPosition: asset.activeHolder.employee.jobPosition,
-                    photo: asset.activeHolder.employee.photo ? await minio.getPresignedUrl(asset.activeHolder.employee.photo) : null,
+                    photo: await resolveFileUrl(asset.activeHolder.employee.photo),
                 } : null,
             } : null,
             lastLocation: asset.lastLocation ? {

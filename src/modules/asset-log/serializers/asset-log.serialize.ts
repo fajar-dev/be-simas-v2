@@ -1,5 +1,5 @@
 import { AssetLog } from "../entities/asset-log.entity"
-import { resolvePhotoUrl } from "../../../core/helpers/serializer-utils"
+import { resolveFileUrl } from "../../../core/helpers/serializer-utils"
 
 export class AssetLogSerializer {
 
@@ -14,7 +14,7 @@ export class AssetLogSerializer {
             createdBy: log.createdBy ? {
                 id: log.createdBy.id,
                 name: log.createdBy.name,
-                photo: await resolvePhotoUrl(log.createdBy.photo),
+                photo: await resolveFileUrl(log.createdBy.photo),
                 email: log.createdBy.email
             } : null
         }

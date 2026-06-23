@@ -1,5 +1,5 @@
 import { AssetHolder } from "../entities/asset-holder.entity"
-import { resolvePhotoUrl } from "../../../core/helpers/serializer-utils"
+import { resolveFileUrl } from "../../../core/helpers/serializer-utils"
 import { Attachment } from "../../attachment/entities/attachment.entity"
 import { AttachmentSerializer } from "../../attachment/serializers/attachment.serialize"
 
@@ -28,17 +28,17 @@ export class AssetHolderSerializer {
                 jobPosition: log.employee.jobPosition,
                 email: log.employee.email,
                 phone: log.employee.phone,
-                photo: await resolvePhotoUrl(log.employee.photo),
+                photo: await resolveFileUrl(log.employee.photo),
             } : null,
             createdBy: log.createdBy ? {
                 id: log.createdBy.id,
                 name: log.createdBy.name,
-                photo: await resolvePhotoUrl(log.createdBy.photo),
+                photo: await resolveFileUrl(log.createdBy.photo),
             } : null,
             returnedBy: log.returnedBy ? {
                 id: log.returnedBy.id,
                 name: log.returnedBy.name,
-                photo: await resolvePhotoUrl(log.returnedBy.photo),
+                photo: await resolveFileUrl(log.returnedBy.photo),
             } : null,
             attachments: await AttachmentSerializer.collection(attachments),
         }

@@ -1,5 +1,5 @@
 import { AssetStatus } from "../entities/asset-status.entity"
-import { resolvePhotoUrl } from "../../../core/helpers/serializer-utils"
+import { resolveFileUrl } from "../../../core/helpers/serializer-utils"
 
 export class AssetStatusSerializer {
 
@@ -13,7 +13,7 @@ export class AssetStatusSerializer {
             createdBy: record.createdBy ? {
                 id: record.createdBy.id,
                 name: record.createdBy.name,
-                photo: await resolvePhotoUrl(record.createdBy.photo),
+                photo: await resolveFileUrl(record.createdBy.photo),
             } : null,
         }
     }
