@@ -10,12 +10,12 @@ import { CreateSubCategoryValidator, UpdateSubCategoryValidator } from "../modul
 import { CreateEmployeeValidator, UpdateEmployeeValidator } from "../modules/employee/validators/employee.validator"
 import { CreateBranchValidator, UpdateBranchValidator } from "../modules/branch/validators/branch.validator"
 import { CreateLocationValidator, UpdateLocationValidator } from "../modules/location/validators/location.validator"
-import { CreateAssetValidator, UpdateAssetValidator } from "../modules/asset/validators/asset.validator"
+import { CreateAssetValidator, UpdateAssetValidator, BulkDeleteAssetValidator } from "../modules/asset/validators/asset.validator"
 import { CreateAssetMaintenanceValidator, UpdateAssetMaintenanceValidator } from "../modules/asset-maintenance/validators/asset-maintenance.validator"
 import { CreateAssetLocationValidator } from "../modules/asset-location/validators/asset-location.validator"
 import { AssignAssetValidator, ReturnAssetValidator } from "../modules/asset-holder/validators/asset-holder.validator"
 import { StoreFeedbackValidator } from "../modules/feedback/validators/feedback.validator"
-import { CreateAssetStatusValidator } from "../modules/asset-status/validators/asset-status.validator"
+import { CreateAssetStatusValidator, BulkCreateAssetStatusValidator } from "../modules/asset-status/validators/asset-status.validator"
 import { CreateRoleValidator, UpdateRoleValidator } from "../modules/role/validators/role.validator"
 
 // ── Middlewares ──────────────────────────────────────────────────────────────
@@ -120,6 +120,7 @@ routes.post("/asset/import", authMiddleware, requirePermission("asset:import"), 
 routes.get("/asset/:id", authMiddleware, requirePermission("asset:read"), (c) => assetController.show(c))
 routes.post("/asset", authMiddleware, requirePermission("asset:create"), zValidator("json", CreateAssetValidator, validationHook), (c) => assetController.store(c))
 routes.put("/asset/:id", authMiddleware, requirePermission("asset:update"), zValidator("json", UpdateAssetValidator, validationHook), (c) => assetController.update(c))
+routes.post("/asset/bulk-delete", authMiddleware, requirePermission("asset:delete"), zValidator("json", BulkDeleteAssetValidator, validationHook), (c) => assetController.bulkDestroy(c))
 routes.delete("/asset/:id", authMiddleware, requirePermission("asset:delete"), (c) => assetController.destroy(c))
 
 // Attachment
@@ -150,6 +151,7 @@ routes.get("/asset-log", authMiddleware, requirePermission("asset:read"), (c) =>
 
 // Asset Status
 routes.get("/asset-status", authMiddleware, requirePermission("asset-status:read"), (c) => assetStatusController.index(c))
+routes.post("/asset-status/bulk", authMiddleware, requirePermission("asset-status:create"), zValidator("json", BulkCreateAssetStatusValidator, validationHook), (c) => assetStatusController.bulkStore(c))
 routes.post("/asset-status", authMiddleware, requirePermission("asset-status:create"), zValidator("json", CreateAssetStatusValidator, validationHook), (c) => assetStatusController.store(c))
 
 // Statistic

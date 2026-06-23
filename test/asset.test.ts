@@ -813,3 +813,123 @@ describe("Asset Custom Labels - Keys & Sorting", () => {
 })
 
 
+// ═══════════════════════════════════════════════════════════════════════════
+// POST /api/asset/bulk-delete — Bulk Delete
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("POST /api/asset/bulk-delete", () => {
+    test("should fail without auth", async () => {
+        const { status, body } = await request(app, "/api/asset/bulk-delete", {
+            method: "POST",
+            body: { ids: [1, 2] },
+        })
+        expect(status).toBe(401)
+        expect(body.success).toBe(false)
+    })
+
+    test("should fail with empty ids array", async () => {
+        const { headers } = await registerAndLogin(app)
+
+        const { status, body } = await request(app, "/api/asset/bulk-delete", {
+            method: "POST",
+            headers,
+            body: { ids: [] },
+        })
+        expect(status).toBe(422)
+        expect(body.success).toBe(false)
+    })
+
+    test("should successfully bulk delete assets", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+
+        // Create 3 assets
+        const asset1 = await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, { code: "BULK-DEL-1", name: "Bulk Asset 1" }),
+        })
+        const asset2 = await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, { code: "BULK-DEL-2", name: "Bulk Asset 2" }),
+        })
+        const asset3 = await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, { code: "BULK-DEL-3", name: "Bulk Asset 3" }),
+        })
+
+        const ids = [asset1.body.data.id, asset2.body.data.id, asset3.body.data.id]
+
+        const { status, body } = await request(app, "/api/asset/bulk-delete", {
+            method: "POST",
+            headers,
+            body: { ids },
+        })
+
+        expect(status).toBe(200)
+        expect(body.success).toBe(true)
+        expect(body.data.deleted).toBe(3)
+        expect(body.data.failed).toHaveLength(0)
+        expect(body.message).toBe("3 asset(s) deleted successfully")
+
+        // Verify all are deleted
+        for (const id of ids) {
+            const { status: getStatus } = await request(app, `/api/asset/${id}`, {
+                method: "GET",
+                headers,
+            })
+            expect(getStatus).toBe(404)
+        }
+    })
+
+    test("should return failed items for assets with dependencies", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+
+        // Create 2 assets
+        const asset1 = await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, { code: "BULK-F-1", name: "Free Asset" }),
+        })
+        // Create asset with immediate holder assignment (cannot be deleted)
+        const empRes = await request(app, "/api/employee", {
+            method: "POST",
+            headers,
+            body: {
+                employeeId: "EMP-BULK",
+                name: "Bulk Test Employee",
+                jobPosition: "Tester",
+                email: "bulk@test.com",
+                phone: "08123456700",
+            },
+        })
+        const asset2 = await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, {
+                code: "BULK-F-2",
+                name: "Assigned Asset",
+                employeeId: empRes.body.data.id,
+                assignedDate: "2026-06-20",
+            }),
+        })
+
+        const ids = [asset1.body.data.id, asset2.body.data.id]
+
+        const { status, body } = await request(app, "/api/asset/bulk-delete", {
+            method: "POST",
+            headers,
+            body: { ids },
+        })
+
+        expect(status).toBe(200)
+        expect(body.success).toBe(true)
+        expect(body.data.deleted).toBe(1)
+        expect(body.data.failed).toHaveLength(1)
+        expect(body.data.failed[0].id).toBe(asset2.body.data.id)
+        expect(body.data.failed[0].message).toContain("Cannot delete asset")
+    })
+})

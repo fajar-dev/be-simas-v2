@@ -115,6 +115,12 @@ export class AssetController {
         return ApiResponse.success(c, null, "Asset deleted successfully")
     }
 
+    async bulkDestroy(c: Context) {
+        const data = c.req.valid("json" as never) as any
+        const result = await this.service.bulkDelete(data.ids)
+        return ApiResponse.success(c, result, `${result.deleted} asset(s) deleted successfully`)
+    }
+
     async export(c: Context) {
         const q = c.req.query("q") || ""
         const sortBy = c.req.query("sortBy") || undefined

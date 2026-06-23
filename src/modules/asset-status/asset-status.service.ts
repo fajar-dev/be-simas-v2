@@ -39,6 +39,20 @@ export class AssetStatusService {
         return record
     }
 
+    async bulkCreate(data: { assetIds: number[]; status: string; note?: string | null; createdByUserId?: number | null }): Promise<{ count: number }> {
+        let count = 0
+        for (const assetId of data.assetIds) {
+            await this.create({
+                assetId,
+                status: data.status,
+                note: data.note,
+                createdByUserId: data.createdByUserId,
+            })
+            count++
+        }
+        return { count }
+    }
+
     async save(data: Partial<AssetStatus>, manager?: EntityManager): Promise<AssetStatus> {
         return await this.repository.save(data, manager)
     }

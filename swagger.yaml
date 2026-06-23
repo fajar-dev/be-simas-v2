@@ -426,6 +426,28 @@ components:
         hasMaintenance: { type: boolean, example: true }
         hasLocation: { type: boolean, example: true }
 
+    BulkDeleteAssetRequest:
+      type: object
+      required: [ids]
+      properties:
+        ids:
+          type: array
+          items: { type: integer }
+          minItems: 1
+          example: [1, 2, 3]
+
+    BulkDeleteAssetResponse:
+      type: object
+      properties:
+        deleted: { type: integer, example: 2 }
+        failed:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer, example: 3 }
+              message: { type: string, example: "Cannot delete asset, it is currently assigned to an employee" }
+
     AssetResponse:
       type: object
       properties:
@@ -715,6 +737,19 @@ components:
         assetId: { type: integer, example: 1 }
         status: { type: string, enum: [active, idle, under_repair, damaged, lost, sold, disposed], example: "active" }
         note: { type: string, nullable: true, example: "Asset is operational" }
+
+    BulkCreateAssetStatusRequest:
+      type: object
+      required: [assetIds, status]
+      properties:
+        assetIds:
+          type: array
+          items: { type: integer }
+          minItems: 1
+          example: [1, 2, 3]
+          description: "Array of asset IDs to change status for"
+        status: { type: string, enum: [active, idle, under_repair, damaged, lost, sold, disposed], example: "active" }
+        note: { type: string, nullable: true, example: "Bulk status update" }
 
     AssetStatusResponse:
       type: object
@@ -2227,6 +2262,33 @@ paths:
         "409":
           description: Cannot delete - has active holder, location history, or maintenance records
 
+  # ── Asset Bulk Delete ───────────────────────────────────────────────────
+  /asset/bulk-delete:
+    post:
+      tags: [Asset]
+      summary: Bulk delete assets
+      description: Delete multiple assets at once. Assets that cannot be deleted (e.g. have active holders, location history, or maintenance records) will be reported in the `failed` array.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BulkDeleteAssetRequest" }
+      responses:
+        "200":
+          description: Bulk delete completed (some may have failed)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/BulkDeleteAssetResponse" }
+        "401": { description: Unauthorized }
+        "422": { description: Validation error }
+
   # ── Permissions ─────────────────────────────────────────────────────────
   /role/permissions:
     get:
@@ -2930,6 +2992,35 @@ paths:
                   - type: object
                     properties:
                       data: { $ref: "#/components/schemas/AssetStatusResponse" }
+        "401": { description: Unauthorized }
+        "422": { description: Validation error }
+
+  # ── Asset Status Bulk ────────────────────────────────────────────────────
+  /asset-status/bulk:
+    post:
+      tags: [Asset Status]
+      summary: Bulk update asset statuses
+      description: "Change the status of multiple assets at once. Creates a new status record for each asset."
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BulkCreateAssetStatusRequest" }
+      responses:
+        "201":
+          description: Asset statuses updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          count: { type: integer, example: 3, description: "Number of assets whose status was changed" }
         "401": { description: Unauthorized }
         "422": { description: Validation error }
 

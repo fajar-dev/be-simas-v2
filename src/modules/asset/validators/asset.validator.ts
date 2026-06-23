@@ -52,3 +52,8 @@ export const UpdateAssetValidator = z.object({
 })
 
 export type UpdateAssetValidator = z.infer<typeof UpdateAssetValidator>
+
+export const BulkDeleteAssetValidator = z.object({
+    ids: z.array(z.number({ required_error: "Asset ID is required" })).min(1, "At least one asset ID is required"),
+})
+export type BulkDeleteAssetValidator = z.infer<typeof BulkDeleteAssetValidator>

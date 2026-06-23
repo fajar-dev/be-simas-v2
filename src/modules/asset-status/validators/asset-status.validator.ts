@@ -9,3 +9,10 @@ export const CreateAssetStatusValidator = z.object({
 })
 
 export type CreateAssetStatusValidator = z.infer<typeof CreateAssetStatusValidator>
+
+export const BulkCreateAssetStatusValidator = z.object({
+    assetIds: z.array(z.number({ required_error: "Asset ID is required" })).min(1, "At least one asset ID is required"),
+    status: z.enum(VALID_STATUSES, { required_error: "Status is required" }),
+    note: z.string().trim().optional().nullable(),
+})
+export type BulkCreateAssetStatusValidator = z.infer<typeof BulkCreateAssetStatusValidator>

@@ -254,6 +254,20 @@ export class AssetService {
         await this.repository.delete(id)
     }
 
+    async bulkDelete(ids: number[]): Promise<{ deleted: number; failed: { id: number; message: string }[] }> {
+        let deleted = 0
+        const failed: { id: number; message: string }[] = []
+        for (const id of ids) {
+            try {
+                await this.delete(id)
+                deleted++
+            } catch (error: any) {
+                failed.push({ id, message: error?.message || 'Unknown error' })
+            }
+        }
+        return { deleted, failed }
+    }
+
     async save(data: Partial<Asset>, manager?: EntityManager): Promise<Asset> {
         return await this.repository.save(data, manager)
     }

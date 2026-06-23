@@ -33,4 +33,16 @@ export class AssetStatusController {
         const serialized = full ? await AssetStatusSerializer.single(full) : null
         return ApiResponse.success(c, serialized, "Asset status created successfully", 201)
     }
+
+    async bulkStore(c: Context) {
+        const user = c.get("user")
+        const data = c.req.valid("json" as never) as any
+
+        const result = await this.service.bulkCreate({
+            ...data,
+            createdByUserId: user?.id,
+        })
+
+        return ApiResponse.success(c, result, "Asset statuses updated successfully", 201)
+    }
 }
