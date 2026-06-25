@@ -275,4 +275,8 @@ export class AssetService {
     async getUniqueLabelKeys(): Promise<string[]> {
         return await this.repository.getUniqueLabelKeys()
     }
+
+    async findByBleTagMac(mac: string): Promise<Asset | null> {
+        return await this.repository.findByBleTagMac(mac)
+    }
 }

@@ -61,6 +61,9 @@ export class Asset {
     @Column({ name: "has_location", type: "boolean", default: true })
     hasLocation!: boolean
 
+    @Column({ type: "varchar", nullable: true, unique: true, name: "ble_tag_mac" })
+    bleTagMac?: string | null
+
     @Index()
     @CreateDateColumn({ name: "created_at" })
     createdAt!: Date

@@ -68,6 +68,7 @@ export class AssetLocationService {
                 date: data.date,
                 note: data.note,
                 createdByUserId: data.createdByUserId,
+                source: data.source || 'manual',
             }, manager)
 
             if (data.attachmentIds && data.attachmentIds.length > 0) {

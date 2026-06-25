@@ -13,6 +13,9 @@ export class Location {
     @Column({ nullable: true, type: "text" })
     description?: string
 
+    @Column({ type: "varchar", nullable: true, unique: true, name: "mist_zone_id" })
+    mistZoneId?: string | null
+
     @Index()
     @Column({ name: "branch_id" })
     branchId!: number

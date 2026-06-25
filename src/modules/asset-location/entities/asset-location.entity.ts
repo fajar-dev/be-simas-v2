@@ -37,6 +37,9 @@ export class AssetLocation {
     @Column({ nullable: true, type: "text" })
     note?: string
 
+    @Column({ type: "varchar", default: "manual", name: "source" })
+    source!: string
+
     @CreateDateColumn({ name: "created_at" })
     createdAt!: Date
 

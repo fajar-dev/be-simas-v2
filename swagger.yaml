@@ -366,6 +366,7 @@ components:
         branchId: { type: integer, example: 1 }
         name: { type: string, example: "Server Room" }
         description: { type: string, nullable: true, example: "Server and networking equipment room" }
+        mistZoneId: { type: string, nullable: true, example: "d4e6f7a8-1234-5678-abcd-ef0123456789" }
 
     UpdateLocationRequest:
       type: object
@@ -373,6 +374,7 @@ components:
         branchId: { type: integer, example: 1 }
         name: { type: string, example: "Server Room" }
         description: { type: string, nullable: true, example: "Updated description" }
+        mistZoneId: { type: string, nullable: true, example: "d4e6f7a8-1234-5678-abcd-ef0123456789" }
 
     LocationResponse:
       type: object
@@ -381,6 +383,7 @@ components:
         branchId: { type: integer, example: 1 }
         name: { type: string, example: "Server Room" }
         description: { type: string, nullable: true, example: "Server and networking equipment room" }
+        mistZoneId: { type: string, nullable: true, example: "d4e6f7a8-1234-5678-abcd-ef0123456789" }
         branch:
           type: object
           properties:
@@ -403,6 +406,7 @@ components:
         brand: { type: string, example: "Apple" }
         model: { type: string, example: "A2941" }
         image: { type: string, nullable: true, example: "assets/macbook.png" }
+        bleTagMac: { type: string, nullable: true, example: "aa:bb:cc:dd:ee:ff" }
         subCategoryId: { type: integer, example: 1 }
         hasHolder: { type: boolean, default: true, example: true }
         hasMaintenance: { type: boolean, default: true, example: true }
@@ -421,6 +425,7 @@ components:
         brand: { type: string, example: "Apple" }
         model: { type: string, example: "A2941" }
         image: { type: string, nullable: true, example: "assets/macbook.png" }
+        bleTagMac: { type: string, nullable: true, example: "aa:bb:cc:dd:ee:ff" }
         subCategoryId: { type: integer, example: 1 }
         hasHolder: { type: boolean, example: true }
         hasMaintenance: { type: boolean, example: true }
@@ -465,6 +470,7 @@ components:
         hasHolder: { type: boolean, example: true }
         hasMaintenance: { type: boolean, example: true }
         hasLocation: { type: boolean, example: true }
+        bleTagMac: { type: string, nullable: true, example: "aa:bb:cc:dd:ee:ff" }
         subCategory:
           type: object
           properties:
@@ -606,6 +612,7 @@ components:
         locationId: { type: integer, example: 1 }
         date: { type: string, format: date, example: "2026-06-19" }
         note: { type: string, nullable: true, example: "Relocated to Main Office IT Room" }
+        source: { type: string, example: "manual", description: "Source of the relocation: manual or ble" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         asset:
@@ -3045,3 +3052,67 @@ paths:
                 type: string
                 format: binary
         "400": { description: "Missing 'path' query parameter" }
+
+  # ── Mist BLE Webhook ────────────────────────────────────────────────────
+  /webhook/mist:
+    post:
+      tags: [Webhook]
+      summary: Receive Mist BLE zone events
+      description: |
+        Webhook endpoint for Juniper Mist to send BLE zone events.
+        When an asset's BLE tag enters a mapped zone, an asset_location record is automatically created.
+        Authentication is via X-Mist-Secret header or secret query parameter (not JWT).
+      parameters:
+        - name: X-Mist-Secret
+          in: header
+          required: false
+          description: Webhook secret for authentication
+          schema: { type: string }
+        - name: secret
+          in: query
+          required: false
+          description: Alternative webhook secret via query parameter
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                topic: { type: string, example: "zone", description: "Event topic from Mist" }
+                events:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      site_id: { type: string, example: "a1b2c3d4-5678-9abc-def0-123456789abc" }
+                      zone_id: { type: string, example: "d4e6f7a8-1234-5678-abcd-ef0123456789" }
+                      mac: { type: string, example: "aa:bb:cc:dd:ee:ff" }
+                      type: { type: string, enum: [enter, exit], example: "enter" }
+                      timestamp: { type: integer, example: 1719330000 }
+                      name: { type: string, example: "Server Room" }
+      responses:
+        "200":
+          description: Webhook processed successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          processed: { type: integer, example: 1 }
+                          results:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                mac: { type: string, example: "aa:bb:cc:dd:ee:ff" }
+                                status: { type: string, enum: [relocated, skipped, asset_not_found, zone_not_mapped, already_at_location, location_disabled, error], example: "relocated" }
+                                assetId: { type: integer, example: 1 }
+                                locationId: { type: integer, example: 1 }
+        "401": { description: "Invalid webhook secret" }

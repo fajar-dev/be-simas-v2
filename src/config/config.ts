@@ -67,4 +67,7 @@ export const config = {
     feedback: {
         scriptUrl: process.env.FEEDBACK_URL || '',
     },
+    mist: {
+        webhookSecret: process.env.MIST_WEBHOOK_SECRET || '',
+    },
 }

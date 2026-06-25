@@ -22,6 +22,7 @@ export interface IAssetRepository {
     findAllWithoutPagination(q: string, sortBy?: string, order?: 'ASC' | 'DESC', filters?: AssetFilter): Promise<Asset[]>
     findById(id: number): Promise<Asset | null>
     findByCode(code: string): Promise<Asset | null>
+    findByBleTagMac(mac: string): Promise<Asset | null>
     save(data: Partial<Asset>, manager?: EntityManager): Promise<Asset>
     merge(entity: Asset, data: Partial<Asset>): Asset
     delete(id: number): Promise<void>

@@ -5,6 +5,7 @@ export interface ILocationRepository {
     findAll(page: number, limit: number, q: string, branchId?: number, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: Location[]; total: number }>
     findByBranchId(branchId: number): Promise<Location[]>
     findById(id: number): Promise<Location | null>
+    findByMistZoneId(zoneId: string): Promise<Location | null>
     save(data: Partial<Location>, manager?: EntityManager): Promise<Location>
     merge(entity: Location, data: Partial<Location>): Location
     delete(id: number): Promise<void>

@@ -46,4 +46,8 @@ export class LocationService {
     async save(data: Partial<Location>, manager?: EntityManager): Promise<Location> {
         return await this.repository.save(data, manager)
     }
+
+    async findByMistZoneId(zoneId: string): Promise<Location | null> {
+        return await this.repository.findByMistZoneId(zoneId)
+    }
 }

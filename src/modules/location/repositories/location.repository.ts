@@ -68,6 +68,13 @@ export class LocationRepository implements ILocationRepository {
         return await repo.save(data)
     }
 
+    async findByMistZoneId(zoneId: string): Promise<Location | null> {
+        return await this.repository.findOne({
+            where: { mistZoneId: zoneId },
+            relations: ["branch"]
+        })
+    }
+
     merge(entity: Location, data: Partial<Location>): Location {
         return this.repository.merge(entity, data)
     }

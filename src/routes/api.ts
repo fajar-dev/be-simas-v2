@@ -42,6 +42,7 @@ import { assetLogController } from "../modules/asset-log/asset-log.module"
 import { assetStatusController } from "../modules/asset-status/asset-status.module"
 import { statisticController } from "../modules/statistic/statistic.module"
 import { roleController } from "../modules/role/role.module"
+import { mistWebhookController } from "../modules/mist-webhook/mist-webhook.module"
 
 // ── Routes ───────────────────────────────────────────────────────────────────
 const routes = new Hono()
@@ -203,5 +204,8 @@ routes.get("/proxy", async (c) => {
     const { minio } = await import("../core/helpers/minio")
     return minio.proxyHandler(path)
 })
+
+// Mist BLE Webhook (no auth - uses its own secret verification)
+routes.post("/webhook/mist", (c) => mistWebhookController.handleWebhook(c))
 
 export default routes
