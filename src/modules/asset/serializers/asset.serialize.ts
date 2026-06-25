@@ -45,6 +45,7 @@ export class AssetSerializer {
             hasHolder: asset.hasHolder,
             hasMaintenance: asset.hasMaintenance,
             hasLocation: asset.hasLocation,
+            bleTagMac: asset.bleTagMac || null,
             subCategory: asset.subCategory ? {
                 id: asset.subCategory.id,
                 name: asset.subCategory.name,
