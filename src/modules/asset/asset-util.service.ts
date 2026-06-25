@@ -21,6 +21,7 @@ export class AssetUtilService {
             { header: 'Sub Category', key: 'subCategory', width: 20 },
             { header: 'Brand', key: 'brand', width: 15 },
             { header: 'Model', key: 'model', width: 15 },
+            { header: 'BLE Tag MAC', key: 'bleTagMac', width: 20 },
             { header: 'Price', key: 'price', width: 15 },
             { header: 'Purchase Date', key: 'purchaseDate', width: 15 },
             { header: 'Status', key: 'status', width: 15 },
@@ -52,7 +53,7 @@ export class AssetUtilService {
         const subHeaderRow = sheet.getRow(2)
 
         // Single-column headers: merge vertically (row 1 + row 2)
-        const singleCols = ['no', 'image', 'code', 'name', 'description', 'category', 'subCategory', 'brand', 'model', 'price', 'purchaseDate', 'status']
+        const singleCols = ['no', 'image', 'code', 'name', 'description', 'category', 'subCategory', 'brand', 'model', 'bleTagMac', 'price', 'purchaseDate', 'status']
         singleCols.forEach(key => {
             const colIdx = columns.findIndex(c => c.key === key) + 1
             const header = columns[colIdx - 1].header
@@ -104,6 +105,7 @@ export class AssetUtilService {
                 subCategory: asset.subCategory?.name || '',
                 brand: asset.brand || '',
                 model: asset.model || '',
+                bleTagMac: asset.bleTagMac || '',
                 price: asset.price ?? '',
                 purchaseDate: asset.purchaseDate || '',
                 status: asset.lastStatus?.status || '',
@@ -176,6 +178,7 @@ export class AssetUtilService {
             { header: 'Sub Category Code *', key: 'subCategoryCode', width: 22 },
             { header: 'Brand', key: 'brand', width: 15 },
             { header: 'Model', key: 'model', width: 15 },
+            { header: 'BLE Tag MAC', key: 'bleTagMac', width: 20 },
             { header: 'Price', key: 'price', width: 15 },
             { header: 'Purchase Date', key: 'purchaseDate', width: 18 },
             { header: 'Status', key: 'status', width: 15 },
@@ -197,6 +200,7 @@ export class AssetUtilService {
             subCategoryCode: 'SC-001',
             brand: 'Dell',
             model: 'XPS 15',
+            bleTagMac: 'AA:BB:CC:DD:EE:FF',
             price: 15000000,
             purchaseDate: '2024-01-15',
             status: 'active',
@@ -361,6 +365,7 @@ export class AssetUtilService {
             else if (val.includes('sub category code')) colMap['subCategoryCode'] = colNumber
             else if (val === 'brand') colMap['brand'] = colNumber
             else if (val === 'model') colMap['model'] = colNumber
+            else if (val.includes('ble tag mac') || val.includes('ble mac') || val.includes('bletagmac')) colMap['bleTagMac'] = colNumber
             else if (val === 'price') colMap['price'] = colNumber
             else if (val.includes('purchase date')) colMap['purchaseDate'] = colNumber
             else if (val === 'status') colMap['status'] = colNumber
@@ -417,6 +422,7 @@ export class AssetUtilService {
             const description = getCellValue(row, 'description')
             const brand = getCellValue(row, 'brand')
             const model = getCellValue(row, 'model')
+            const bleTagMac = getCellValue(row, 'bleTagMac')
             const status = getCellValue(row, 'status')
 
             try {
@@ -427,6 +433,7 @@ export class AssetUtilService {
                     subCategoryId: subCategory.id,
                     brand: brand || undefined,
                     model: model || undefined,
+                    bleTagMac: bleTagMac || undefined,
                     price: !isNaN(price as number) ? price : undefined,
                     purchaseDate: purchaseDate || undefined,
                     status: status || undefined,
