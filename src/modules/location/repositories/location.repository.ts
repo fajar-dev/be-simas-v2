@@ -18,7 +18,7 @@ export class LocationRepository implements ILocationRepository {
 
         if (q) {
             query.where(
-                "(location.name LIKE :q OR location.description LIKE :q OR branch.name LIKE :q)",
+                "(location.name LIKE :q OR location.description LIKE :q OR location.mistZoneId LIKE :q OR branch.name LIKE :q)",
                 { q: `%${q}%` }
             )
         }

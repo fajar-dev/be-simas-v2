@@ -28,7 +28,7 @@ export class AssetLocationRepository implements IAssetLocationRepository {
 
         if (q) {
             query.where(
-                "(assetLocation.note LIKE :q OR asset.name LIKE :q OR asset.code LIKE :q OR location.name LIKE :q)",
+                "(assetLocation.note LIKE :q OR asset.name LIKE :q OR asset.code LIKE :q OR location.name LIKE :q OR location.mistZoneId LIKE :q)",
                 { q: `%${q}%` }
             )
         }

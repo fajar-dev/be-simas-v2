@@ -32,7 +32,7 @@ export class AssetRepository implements IAssetRepository {
 
         if (q) {
             query.where(
-                "(asset.name LIKE :q OR asset.code LIKE :q OR asset.brand LIKE :q OR asset.model LIKE :q OR asset.bleTagMac LIKE :q OR asset.description LIKE :q OR subCategory.name LIKE :q OR category.name LIKE :q OR activeEmployee.name LIKE :q OR activeEmployee.employeeId LIKE :q OR lastLoc.name LIKE :q OR lastBranch.name LIKE :q OR labels.value LIKE :q)",
+                "(asset.name LIKE :q OR asset.code LIKE :q OR asset.brand LIKE :q OR asset.model LIKE :q OR asset.bleTagMac LIKE :q OR asset.description LIKE :q OR subCategory.name LIKE :q OR category.name LIKE :q OR activeEmployee.name LIKE :q OR activeEmployee.employeeId LIKE :q OR lastLoc.name LIKE :q OR lastLoc.mistZoneId LIKE :q OR lastBranch.name LIKE :q OR labels.value LIKE :q)",
                 { q: `%${q}%` }
             )
         }
