@@ -6,6 +6,7 @@ export class LocationSerializer {
             id: location.id,
             name: location.name,
             description: location.description || null,
+            mistZoneId: location.mistZoneId || null,
             branch: location.branch ? {
                 id: location.branch.id,
                 code: location.branch.code,
