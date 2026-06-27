@@ -96,6 +96,26 @@ async function seed() {
         console.log(`  Assigned Super Admin to user: ${user.name}`)
     }
 
+    // Create or update Employee role
+    const employeePermissionKeys = [
+        'asset:read',
+        'asset-holder:read',
+        'asset-location:read',
+        'asset-maintenance:read',
+        'asset-status:read',
+        'dashboard:read',
+    ]
+    const employeePermissions = allPermissions.filter(p => employeePermissionKeys.includes(p.key))
+
+    let employeeRole = await roleRepo.findOne({ where: { name: 'Employee' } })
+    if (!employeeRole) {
+        employeeRole = roleRepo.create({ name: 'Employee', isSuperAdmin: false })
+    }
+    employeeRole.isSuperAdmin = false
+    employeeRole.permissions = employeePermissions
+    await roleRepo.save(employeeRole)
+    console.log(`Employee role ready with ${employeePermissions.length} permissions: ${employeePermissionKeys.join(', ')}`)
+
     console.log('Seed completed!')
     process.exit(0)
 }
