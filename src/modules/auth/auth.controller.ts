@@ -1,11 +1,16 @@
 import { Context } from "hono"
 import { AuthService } from "./auth.service"
+import { QrCodeAuthService } from "./qrcode-auth.service"
 import { ApiResponse } from "../../core/helpers/response"
 import { AuthSerializer } from "./serializers/auth.serialize"
+import { QrCodeAuthSerializer } from "./serializers/qrcode-auth.serialize"
 import { BadRequestException } from "../../core/exceptions/base"
 
 export class AuthController {
-    constructor(private readonly service: AuthService) {}
+    constructor(
+        private readonly service: AuthService,
+        private readonly qrCodeService: QrCodeAuthService,
+    ) {}
 
     async register(c: Context) {
         const body = c.req.valid("json" as never)
@@ -93,5 +98,35 @@ export class AuthController {
         const body = c.req.valid("json" as never)
         await this.service.updatePassword(user.id, body)
         return ApiResponse.success(c, null, "Password updated successfully")
+    }
+
+    // ── QR Code Login ────────────────────────────────────────────────────
+
+    async generateQrCode(c: Context) {
+        const data = await this.qrCodeService.generateQrCode()
+        return ApiResponse.success(c, QrCodeAuthSerializer.generate(data), "QR Code generated successfully")
+    }
+
+    async qrCodeStatus(c: Context) {
+        const token = c.req.param("token")
+        if (!token) throw new BadRequestException("QR Code token is required")
+
+        const body = await this.qrCodeService.checkStatus(token)
+        const data = QrCodeAuthSerializer.status(body)
+
+        return ApiResponse.success(c, data, body.message || "OK")
+    }
+
+    async qrCodeLogin(c: Context) {
+        const body = await c.req.json()
+        if (!body.panelToken) throw new BadRequestException("Panel token is required")
+
+        const data = await this.qrCodeService.exchangeToken(body.panelToken)
+        const serializedUser = await AuthSerializer.single(data.user)
+        return ApiResponse.success(c, {
+            user: serializedUser,
+            accessToken: data.accessToken,
+            refreshToken: data.refreshToken,
+        }, "Logged in successfully via QR Code")
     }
 }

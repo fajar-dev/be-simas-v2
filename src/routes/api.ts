@@ -60,6 +60,11 @@ routes.put("/auth/profile", authMiddleware, zValidator("json", UpdateProfileVali
 routes.put("/auth/password", authMiddleware, zValidator("json", UpdatePasswordValidator, validationHook), (c) => authController.updatePassword(c))
 routes.post("/auth/logout", authMiddleware, (c) => authController.logout(c))
 
+// Auth - QR Code Login (public, no auth required)
+routes.get("/auth/qrcode/generate", (c) => authController.generateQrCode(c))
+routes.get("/auth/qrcode/:token/status", (c) => authController.qrCodeStatus(c))
+routes.post("/auth/qrcode/login", (c) => authController.qrCodeLogin(c))
+
 // User
 routes.get("/user", authMiddleware, requirePermission("user:read"), (c) => userController.index(c))
 routes.get("/user/:id", authMiddleware, requirePermission("user:read"), (c) => userController.show(c))

@@ -70,4 +70,9 @@ export const config = {
     mist: {
         webhookSecret: process.env.MIST_WEBHOOK_SECRET || '',
     },
+    nusawork: {
+        apiUrl: process.env.NUSAWORK_API_URL || '',
+        clientId: process.env.NUSAWORK_CLIENT_ID || '',
+        clientSecret: process.env.NUSAWORK_CLIENT_SECRET || '',
+    }
 }
