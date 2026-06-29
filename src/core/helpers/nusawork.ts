@@ -40,6 +40,19 @@ export class NusaworkHelper {
 
         return (res?.data?.data as any[]) ?? []
     }
+
+    async getBranch(): Promise<any[]> {
+        const token = await this.getToken()
+
+        const res = await this.http.get<any>('/emp/api/branch', {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        })
+
+        return (res?.data?.data as any[]) ?? []
+    }
 }
 
 export const nusaworkHelper = new NusaworkHelper()
