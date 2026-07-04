@@ -17,6 +17,8 @@ import { AssignAssetValidator, ReturnAssetValidator } from "../modules/asset-hol
 import { StoreFeedbackValidator } from "../modules/feedback/validators/feedback.validator"
 import { CreateAssetStatusValidator, BulkCreateAssetStatusValidator } from "../modules/asset-status/validators/asset-status.validator"
 import { CreateRoleValidator, UpdateRoleValidator } from "../modules/role/validators/role.validator"
+import { BorrowBookValidator, ReturnBookValidator } from "../modules/book/validators/book.validator"
+import { DecodeBarcodeValidator } from "../modules/ai/validators/ai.validator"
 
 // ── Middlewares ──────────────────────────────────────────────────────────────
 import { authMiddleware } from "../core/middlewares/auth.middleware"
@@ -42,7 +44,9 @@ import { assetLogController } from "../modules/asset-log/asset-log.module"
 import { assetStatusController } from "../modules/asset-status/asset-status.module"
 import { statisticController } from "../modules/statistic/statistic.module"
 import { roleController } from "../modules/role/role.module"
+import { bookController } from "../modules/book/book.module"
 import { mistWebhookController } from "../modules/mist-webhook/mist-webhook.module"
+import { aiController } from "../modules/ai/ai.module"
 
 // ── Routes ───────────────────────────────────────────────────────────────────
 const routes = new Hono()
@@ -176,6 +180,11 @@ routes.post("/role", authMiddleware, requirePermission("role:create"), zValidato
 routes.put("/role/:id", authMiddleware, requirePermission("role:update"), zValidator("json", UpdateRoleValidator, validationHook), (c) => roleController.update(c))
 routes.delete("/role/:id", authMiddleware, requirePermission("role:delete"), (c) => roleController.destroy(c))
 
+// Book (Borrow/Return)
+routes.get("/book/my-books", authMiddleware, (c) => bookController.myBooks(c))
+routes.post("/book/borrow", authMiddleware, zValidator("json", BorrowBookValidator, validationHook), (c) => bookController.borrow(c))
+routes.post("/book/return", authMiddleware, zValidator("json", ReturnBookValidator, validationHook), (c) => bookController.returnBook(c))
+
 
 // Upload
 routes.post("/upload", authMiddleware, async (c) => {
@@ -209,6 +218,9 @@ routes.get("/proxy", async (c) => {
     const { minio } = await import("../core/helpers/minio")
     return minio.proxyHandler(path)
 })
+
+// AI - Barcode/QR Code Decoder
+routes.post("/ai/decode-barcode", authMiddleware, zValidator("form", DecodeBarcodeValidator, validationHook), (c) => aiController.decodeBarcode(c))
 
 // Mist BLE Webhook (no auth - uses its own secret verification)
 routes.post("/webhook/mist", (c) => mistWebhookController.handleWebhook(c))

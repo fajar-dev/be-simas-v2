@@ -11,6 +11,7 @@
     "sync:branch": "bun run src/jobs/sync-branch.job.ts"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@hono/swagger-ui": "^0.6.1",
     "@hono/zod-validator": "^0.7.6",
     "@types/qrcode": "^1.5.6",
