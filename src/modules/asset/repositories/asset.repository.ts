@@ -64,6 +64,12 @@ export class AssetRepository implements IAssetRepository {
         if (filters?.holderId) {
             query.andWhere("activeHolder.employeeId = :holderId", { holderId: filters.holderId })
         }
+        if (filters?.bleTagStatus === 'has_ble_tag') {
+            query.andWhere("asset.bleTagMac IS NOT NULL AND asset.bleTagMac != ''")
+        }
+        if (filters?.bleTagStatus === 'no_ble_tag') {
+            query.andWhere("(asset.bleTagMac IS NULL OR asset.bleTagMac = '')")
+        }
         if (filters?.priceMin !== undefined || filters?.priceMax !== undefined) {
             query.andWhere("asset.price IS NOT NULL AND asset.price > 0")
         }
