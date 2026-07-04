@@ -6,9 +6,6 @@ export class AiService {
     private genAI: GoogleGenerativeAI
 
     constructor() {
-        if (!config.gemini.apiKey) {
-            throw new Error("GEMINI_API_KEY is not configured")
-        }
         this.genAI = new GoogleGenerativeAI(config.gemini.apiKey)
     }
 
@@ -22,7 +19,7 @@ export class AiService {
         const buffer = Buffer.from(await file.arrayBuffer())
         const base64Data = buffer.toString("base64")
 
-        const model = this.genAI.getGenerativeModel({ model: "gemini-2.0-flash" })
+        const model = this.genAI.getGenerativeModel({ model: config.gemini.model })
 
         const prompt = `Analyze this image carefully. Your task is to:
 

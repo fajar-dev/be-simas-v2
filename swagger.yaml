@@ -3116,3 +3116,64 @@ paths:
                                 assetId: { type: integer, example: 1 }
                                 locationId: { type: integer, example: 1 }
         "401": { description: "Invalid webhook secret" }
+
+  # ── AI ──────────────────────────────────────────────────────────────────────
+  /ai/decode-barcode:
+    post:
+      tags: [AI]
+      summary: Decode barcode/QR code from image
+      description: |
+        Upload an image containing a barcode or QR code. The AI (Gemini) will analyze
+        the image and return the decoded content. Returns 400 if no code is found or
+        the image is too blurry.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image]
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: "Image file containing a barcode or QR code (max 10MB, image/* only)"
+      responses:
+        "200":
+          description: Successfully decoded barcode/QR code
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          type:
+                            type: string
+                            enum: [barcode, qrcode]
+                            example: "barcode"
+                            description: "Type of code detected"
+                          content:
+                            type: string
+                            example: "AST-001"
+                            description: "Decoded content from the barcode/QR code"
+        "400":
+          description: "Bad request — no code found, image unclear, or invalid file"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      success: { type: boolean, example: false }
+                      statusCode: { type: integer, example: 400 }
+                      message:
+                        type: string
+                        example: "No barcode or QR code found in the image"
+        "401": { description: "Unauthorized — missing or invalid token" }
