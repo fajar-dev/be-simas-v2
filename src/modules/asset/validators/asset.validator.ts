@@ -32,6 +32,9 @@ export const CreateAssetValidator = z.object({
     locationDate: z.string().trim().optional().nullable(),
     locationNote: z.string().trim().optional().nullable(),
     locationAttachmentIds: z.array(z.number()).optional().nullable(),
+
+    // Optional asset attachments
+    attachmentIds: z.array(z.number()).optional().nullable(),
 })
 
 export type CreateAssetValidator = z.infer<typeof CreateAssetValidator>
@@ -51,6 +54,7 @@ export const UpdateAssetValidator = z.object({
     hasHolder: z.boolean().optional(),
     hasMaintenance: z.boolean().optional(),
     hasLocation: z.boolean().optional(),
+    attachmentIds: z.array(z.number()).optional().nullable(),
 })
 
 export type UpdateAssetValidator = z.infer<typeof UpdateAssetValidator>

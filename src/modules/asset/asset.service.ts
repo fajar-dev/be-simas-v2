@@ -76,6 +76,7 @@ export class AssetService {
             locationAttachmentIds,
             status: initialStatus,
             statusNote,
+            attachmentIds,
             ...assetData
         } = data
 
@@ -178,6 +179,11 @@ export class AssetService {
                     }, manager)
                 }
 
+                // 5. If attachmentIds is provided, associate with Asset
+                if (attachmentIds && attachmentIds.length > 0) {
+                    await attachmentService.associate(attachmentIds, "Asset", asset.id, manager)
+                }
+
                 return asset
             })
 
@@ -204,6 +210,10 @@ export class AssetService {
         const newLabels = data.labels
         delete data.labels
 
+        // Extract attachment IDs before merge
+        const attachmentIds = data.attachmentIds
+        delete data.attachmentIds
+
         this.repository.merge(asset, data)
         try {
             await withTransaction(async (manager) => {
@@ -214,6 +224,14 @@ export class AssetService {
                     await this.repository.deleteLabels(id, manager)
                     if (newLabels && newLabels.length > 0) {
                         await this.repository.saveLabels(id, newLabels as any, manager)
+                    }
+                }
+
+                // Handle attachments: disassociate orphans and associate new
+                if (attachmentIds !== undefined) {
+                    await attachmentService.disassociateOrphans("Asset", id, attachmentIds || [], manager)
+                    if (attachmentIds && attachmentIds.length > 0) {
+                        await attachmentService.associate(attachmentIds, "Asset", id, manager)
                     }
                 }
 

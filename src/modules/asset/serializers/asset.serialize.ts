@@ -1,5 +1,6 @@
 import { Asset } from "../entities/asset.entity"
 import { resolveFileUrl } from "../../../core/helpers/serializer-utils"
+import { attachmentService } from "../../attachment/attachment.module"
 
 export class AssetSerializer {
 
@@ -96,6 +97,16 @@ export class AssetSerializer {
                 note: asset.lastStatus.note || null,
                 createdAt: asset.lastStatus.createdAt,
             } : null,
+            attachments: await (async () => {
+                const atts = await attachmentService.getForEntity("Asset", asset.id)
+                return Promise.all(atts.map(async a => ({
+                    id: a.id,
+                    originalName: a.originalName,
+                    mimeType: a.mimeType,
+                    size: a.size,
+                    url: await resolveFileUrl(a.filename),
+                })))
+            })(),
         }
     }
 
