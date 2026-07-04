@@ -10,7 +10,7 @@ export class EmployeeRepository implements IEmployeeRepository {
         this.repository = AppDataSource.getRepository(Employee)
     }
 
-    async findAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: Employee[]; total: number }> {
+    async findAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC', isActive?: boolean): Promise<{ data: Employee[]; total: number }> {
         const offset = (page - 1) * limit
 
         const query = this.repository.createQueryBuilder("employee")
@@ -20,6 +20,10 @@ export class EmployeeRepository implements IEmployeeRepository {
                 "(employee.name LIKE :q OR employee.employeeId LIKE :q OR employee.email LIKE :q OR employee.jobPosition LIKE :q)",
                 { q: `%${q}%` }
             )
+        }
+
+        if (isActive !== undefined) {
+            query.andWhere("employee.isActive = :isActive", { isActive })
         }
 
         const total = await query.getCount()

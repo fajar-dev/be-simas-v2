@@ -26,7 +26,7 @@ export class UserRepository implements IUserRepository {
         }
 
         if (filters.isActive !== undefined && filters.isActive !== "") {
-            query.andWhere("user.isActive = :isActive", { isActive: filters.isActive === "1" })
+            query.andWhere("user.isActive = :isActive", { isActive: filters.isActive === "true" || filters.isActive === "1" })
         }
 
         // Get total count before pagination

@@ -10,8 +10,8 @@ import { minio } from "../../core/helpers/minio"
 export class EmployeeService {
     constructor(private readonly repository: IEmployeeRepository) {}
 
-    async getAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: Employee[]; total: number }> {
-        return await this.repository.findAll(page, limit, q, sortBy, order)
+    async getAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC', isActive?: boolean): Promise<{ data: Employee[]; total: number }> {
+        return await this.repository.findAll(page, limit, q, sortBy, order, isActive)
     }
 
     async getList(isActive?: boolean): Promise<Employee[]> {

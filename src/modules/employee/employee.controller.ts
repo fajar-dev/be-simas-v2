@@ -12,8 +12,10 @@ export class EmployeeController {
         const q = c.req.query("q") || ""
         const sortBy = c.req.query("sortBy") || undefined
         const order = (c.req.query("order") || "DESC").toUpperCase() as 'ASC' | 'DESC'
+        const isActiveParam = c.req.query("isActive")
+        const isActive = isActiveParam !== undefined && isActiveParam !== '' ? isActiveParam === "true" : undefined
 
-        const { data, total } = await this.service.getAll(page, limit, q, sortBy, order)
+        const { data, total } = await this.service.getAll(page, limit, q, sortBy, order, isActive)
 
         const serialized = await EmployeeSerializer.collection(data)
         return ApiResponse.paginate(c, serialized, total, page, limit, "Employees retrieved successfully")
