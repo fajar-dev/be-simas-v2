@@ -10,6 +10,11 @@ export class AuthSerializer {
             photo: await resolveFileUrl(user.photo),
             email: user.email,
             isActive: Boolean(user.isActive),
+            employee: user.employee ? {
+                id: user.employee.id,
+                employeeId: user.employee.employeeId,
+                name: user.employee.name,
+            } : null,
             hasPassword: !!user.password,
             role: user.role ? {
                 id: user.role.id,
