@@ -739,6 +739,32 @@ describe("GET /api/asset - filtering", () => {
         expect(resRange.body.data.length).toBe(1)
         expect(resRange.body.data[0].name).toBe("Asset B")
     })
+
+    test("should filter assets by bleTagStatus", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, { name: "Asset With BLE", bleTagMac: "AA:BB:CC:DD:EE:FF" }),
+        })
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, { name: "Asset No BLE" }),
+        })
+
+        // Filter has_ble_tag
+        const resBle = await request(app, "/api/asset?bleTagStatus=has_ble_tag", { method: "GET", headers })
+        expect(resBle.body.data.length).toBe(1)
+        expect(resBle.body.data[0].name).toBe("Asset With BLE")
+
+        // Filter no_ble_tag
+        const resNoBle = await request(app, "/api/asset?bleTagStatus=no_ble_tag", { method: "GET", headers })
+        expect(resNoBle.body.data.length).toBe(1)
+        expect(resNoBle.body.data[0].name).toBe("Asset No BLE")
+    })
 })
 
 describe("Asset Custom Labels - Keys & Sorting", () => {

@@ -606,6 +606,31 @@ describe("Employee - isActive", () => {
         })
         expect(getRes.body.data.isActive).toBe(false)
     })
+
+    test("should filter employees by isActive on paginated index", async () => {
+        const { headers } = await registerAndLogin(app)
+
+        await request(app, "/api/employee", { method: "POST", headers, body: createEmployeeData({ name: "Active1", isActive: true }) })
+        await request(app, "/api/employee", { method: "POST", headers, body: createEmployeeData({ name: "Active2", isActive: true }) })
+        await request(app, "/api/employee", { method: "POST", headers, body: createEmployeeData({ name: "Inactive1", isActive: false }) })
+
+        // Filter active only
+        const activeRes = await request(app, "/api/employee?isActive=true", { method: "GET", headers })
+        expect(activeRes.status).toBe(200)
+        expect(activeRes.body.data.length).toBe(2)
+        expect(activeRes.body.data.every((e: any) => e.isActive === true)).toBe(true)
+
+        // Filter inactive only
+        const inactiveRes = await request(app, "/api/employee?isActive=false", { method: "GET", headers })
+        expect(inactiveRes.status).toBe(200)
+        expect(inactiveRes.body.data.length).toBe(1)
+        expect(inactiveRes.body.data[0].name).toBe("Inactive1")
+
+        // No filter = all
+        const allRes = await request(app, "/api/employee", { method: "GET", headers })
+        expect(allRes.status).toBe(200)
+        expect(allRes.body.data.length).toBe(3)
+    })
 })
 
 // ═══════════════════════════════════════════════════════════════════════════

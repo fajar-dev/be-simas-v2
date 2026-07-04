@@ -1068,7 +1068,7 @@ paths:
           schema: { type: string }
         - name: isActive
           in: query
-          description: Filter by status (1 = active, 0 = inactive)
+          description: "Filter by status (true = active, false = inactive, or 1/0)"
           schema: { type: string }
         - name: sortBy
           in: query
@@ -1673,6 +1673,10 @@ paths:
           in: query
           description: Sort order
           schema: { type: string, enum: [ASC, DESC], default: DESC }
+        - name: isActive
+          in: query
+          description: "Filter by active status (true = active, false = inactive)"
+          schema: { type: string, enum: [true, false] }
       responses:
         "200":
           description: Employees retrieved successfully
@@ -2126,6 +2130,10 @@ paths:
           in: query
           description: "Filter by active holder employee ID"
           schema: { type: integer }
+        - name: bleTagStatus
+          in: query
+          description: "Filter by BLE tag status"
+          schema: { type: string, enum: [has_ble_tag, no_ble_tag] }
         - name: priceMin
           in: query
           description: "Filter minimum price (excludes NULL prices)"
