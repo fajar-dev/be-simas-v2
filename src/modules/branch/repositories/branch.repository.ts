@@ -37,6 +37,7 @@ export class BranchRepository implements IBranchRepository {
             code: "branch.code",
             name: "branch.name",
             description: "branch.description",
+            assetCount: "assetCount",
         }
 
         const sortColumn = sortColumnMap[sortBy || ''] || "branch.id"

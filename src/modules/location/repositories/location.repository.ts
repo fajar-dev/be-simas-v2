@@ -41,6 +41,7 @@ export class LocationRepository implements ILocationRepository {
             name: "location.name",
             branch: "branch.name",
             description: "location.description",
+            assetCount: "assetCount",
         }
 
         const sortColumn = sortColumnMap[sortBy || ''] || "location.id"

@@ -42,6 +42,7 @@ export class EmployeeRepository implements IEmployeeRepository {
             jobPosition: "employee.jobPosition",
             email: "employee.email",
             phone: "employee.phone",
+            assetCount: "assetCount",
         }
 
         const sortColumn = sortColumnMap[sortBy || ''] || "employee.id"

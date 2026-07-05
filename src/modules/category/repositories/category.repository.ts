@@ -36,6 +36,7 @@ export class CategoryRepository implements ICategoryRepository {
             code: "category.code",
             name: "category.name",
             description: "category.description",
+            assetCount: "assetCount",
         }
 
         const sortColumn = sortColumnMap[sortBy || ''] || "category.id"

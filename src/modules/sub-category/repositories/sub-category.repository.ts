@@ -41,6 +41,7 @@ export class SubCategoryRepository implements ISubCategoryRepository {
             name: "sub_category.name",
             category: "category.name",
             description: "sub_category.description",
+            assetCount: "assetCount",
         }
 
         const sortColumn = sortColumnMap[sortBy || ''] || "sub_category.id"
