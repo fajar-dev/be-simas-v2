@@ -15,6 +15,13 @@ export class LocationRepository implements ILocationRepository {
 
         const query = this.repository.createQueryBuilder("location")
             .leftJoinAndSelect("location.branch", "branch")
+            .addSelect(subQuery => {
+                return subQuery
+                    .select("COUNT(DISTINCT al.asset_id)", "count")
+                    .from("asset_locations", "al")
+                    .where("al.location_id = location.id")
+                    .andWhere("al.id = (SELECT MAX(al2.id) FROM asset_locations al2 WHERE al2.asset_id = al.asset_id)")
+            }, "assetCount")
 
         if (q) {
             query.where(
@@ -43,9 +50,14 @@ export class LocationRepository implements ILocationRepository {
             .orderBy(sortColumn, sortOrder)
             .skip(offset)
             .take(limit)
-            .getMany()
+            .getRawAndEntities()
 
-        return { data, total }
+        const result = data.entities.map((entity, i) => {
+            (entity as any).assetCount = parseInt(data.raw[i].assetCount || '0', 10)
+            return entity
+        })
+
+        return { data: result, total }
     }
 
     async findByBranchId(branchId: number): Promise<Location[]> {

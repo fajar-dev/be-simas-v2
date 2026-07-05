@@ -14,6 +14,13 @@ export class EmployeeRepository implements IEmployeeRepository {
         const offset = (page - 1) * limit
 
         const query = this.repository.createQueryBuilder("employee")
+            .addSelect(subQuery => {
+                return subQuery
+                    .select("COUNT(ah.id)", "count")
+                    .from("asset_holders", "ah")
+                    .where("ah.employee_id = employee.id")
+                    .andWhere("ah.returned_date IS NULL")
+            }, "assetCount")
 
         if (q) {
             query.where(
@@ -44,9 +51,14 @@ export class EmployeeRepository implements IEmployeeRepository {
             .orderBy(sortColumn, sortOrder)
             .skip(offset)
             .take(limit)
-            .getMany()
+            .getRawAndEntities()
 
-        return { data, total }
+        const result = data.entities.map((entity, i) => {
+            (entity as any).assetCount = parseInt(data.raw[i].assetCount || '0', 10)
+            return entity
+        })
+
+        return { data: result, total }
     }
 
     async findById(id: number): Promise<Employee | null> {

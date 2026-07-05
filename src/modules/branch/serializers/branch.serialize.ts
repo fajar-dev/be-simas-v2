@@ -10,6 +10,7 @@ export class BranchSerializer {
             address: branch.address || null,
             email: branch.email || null,
             phone: branch.phone || null,
+            assetCount: (branch as any).assetCount ?? 0,
             createdAt: branch.createdAt,
             updatedAt: branch.updatedAt,
         }

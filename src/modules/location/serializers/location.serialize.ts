@@ -12,6 +12,7 @@ export class LocationSerializer {
                 code: location.branch.code,
                 name: location.branch.name,
             } : null,
+            assetCount: (location as any).assetCount ?? 0,
             createdAt: location.createdAt,
             updatedAt: location.updatedAt,
         }

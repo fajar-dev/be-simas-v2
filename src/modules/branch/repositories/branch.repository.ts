@@ -14,6 +14,14 @@ export class BranchRepository implements IBranchRepository {
         const offset = (page - 1) * limit
 
         const query = this.repository.createQueryBuilder("branch")
+            .addSelect(subQuery => {
+                return subQuery
+                    .select("COUNT(DISTINCT al.asset_id)", "count")
+                    .from("asset_locations", "al")
+                    .innerJoin("locations", "loc", "loc.id = al.location_id")
+                    .where("loc.branch_id = branch.id")
+                    .andWhere("al.id = (SELECT MAX(al2.id) FROM asset_locations al2 WHERE al2.asset_id = al.asset_id)")
+            }, "assetCount")
 
         if (q) {
             query.where(
@@ -38,9 +46,14 @@ export class BranchRepository implements IBranchRepository {
             .orderBy(sortColumn, sortOrder)
             .skip(offset)
             .take(limit)
-            .getMany()
+            .getRawAndEntities()
 
-        return { data, total }
+        const result = data.entities.map((entity, i) => {
+            (entity as any).assetCount = parseInt(data.raw[i].assetCount || '0', 10)
+            return entity
+        })
+
+        return { data: result, total }
     }
 
     async findById(id: number): Promise<Branch | null> {
