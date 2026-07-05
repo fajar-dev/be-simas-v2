@@ -618,3 +618,41 @@ describe("GET /api/branch/list", () => {
     })
 })
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Branch - assetCount
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("Branch - assetCount", () => {
+    test("should return assetCount in list response", async () => {
+        const { headers } = await registerAndLogin(app)
+
+        // Create branch, location, and asset with last location
+        const branchRes = await request(app, "/api/branch", {
+            method: "POST", headers,
+            body: { name: "Count Branch", code: "BR-CNT" }
+        })
+        const branchId = branchRes.body.data.id
+
+        const locRes = await request(app, "/api/location", {
+            method: "POST", headers,
+            body: { name: "Count Location", branchId }
+        })
+        const locationId = locRes.body.data.id
+
+        // Create category & sub-category for asset
+        const catRes = await request(app, "/api/category", { method: "POST", headers, body: { name: "Cat CNT" } })
+        const subCatRes = await request(app, "/api/sub-category", { method: "POST", headers, body: { name: "SubCat CNT", categoryId: catRes.body.data.id } })
+
+        // Create asset and relocate to branch's location
+        const assetRes = await request(app, "/api/asset", {
+            method: "POST", headers,
+            body: { code: "AST-BCNT", name: "Branch Count Asset", subCategoryId: subCatRes.body.data.id, locationId, locationDate: "2026-01-01" }
+        })
+
+        // Fetch branches and check assetCount
+        const { body } = await request(app, "/api/branch", { method: "GET", headers })
+        const branch = body.data.find((b: any) => b.id === branchId)
+        expect(branch).toBeDefined()
+        expect(branch.assetCount).toBe(1)
+    })
+})

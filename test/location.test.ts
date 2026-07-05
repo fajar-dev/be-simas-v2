@@ -645,3 +645,33 @@ describe("DELETE /api/location/:id", () => {
         expect(body.message).toContain("Cannot delete location")
     })
 })
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Location - assetCount
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("Location - assetCount", () => {
+    test("should return assetCount in list response", async () => {
+        const { headers } = await registerAndLogin(app)
+
+        const branchRes = await request(app, "/api/branch", { method: "POST", headers, body: { name: "Loc Branch", code: "BR-LOC" } })
+        const locRes = await request(app, "/api/location", {
+            method: "POST", headers,
+            body: { name: "Count Loc", branchId: branchRes.body.data.id }
+        })
+        const locationId = locRes.body.data.id
+
+        const catRes = await request(app, "/api/category", { method: "POST", headers, body: { name: "Cat LCNT" } })
+        const subCatRes = await request(app, "/api/sub-category", { method: "POST", headers, body: { name: "SubCat LCNT", categoryId: catRes.body.data.id } })
+
+        await request(app, "/api/asset", {
+            method: "POST", headers,
+            body: { code: "AST-LCNT", name: "Loc Count Asset", subCategoryId: subCatRes.body.data.id, locationId, locationDate: "2026-01-01" }
+        })
+
+        const { body } = await request(app, "/api/location", { method: "GET", headers })
+        const loc = body.data.find((l: any) => l.id === locationId)
+        expect(loc).toBeDefined()
+        expect(loc.assetCount).toBe(1)
+    })
+})

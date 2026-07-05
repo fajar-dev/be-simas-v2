@@ -733,3 +733,34 @@ describe("GET /api/employee/list", () => {
     })
 })
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Employee - assetCount
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("Employee - assetCount", () => {
+    test("should return assetCount in list response based on active holder", async () => {
+        const { headers } = await registerAndLogin(app)
+
+        // Create employee
+        const empRes = await request(app, "/api/employee", {
+            method: "POST", headers,
+            body: createEmployeeData({ name: "Holder Employee" })
+        })
+        const employeeId = empRes.body.data.id
+
+        // Create category, sub-category, and asset assigned to employee
+        const catRes = await request(app, "/api/category", { method: "POST", headers, body: { name: "Cat ECNT" } })
+        const subCatRes = await request(app, "/api/sub-category", { method: "POST", headers, body: { name: "SubCat ECNT", categoryId: catRes.body.data.id } })
+
+        await request(app, "/api/asset", {
+            method: "POST", headers,
+            body: { code: "AST-ECNT", name: "Emp Count Asset", subCategoryId: subCatRes.body.data.id, employeeId, assignedDate: "2026-01-01" }
+        })
+
+        // Fetch employees and check assetCount
+        const { body } = await request(app, "/api/employee", { method: "GET", headers })
+        const emp = body.data.find((e: any) => e.id === employeeId)
+        expect(emp).toBeDefined()
+        expect(emp.assetCount).toBe(1)
+    })
+})
