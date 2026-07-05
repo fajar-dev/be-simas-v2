@@ -118,6 +118,11 @@ export class AssetSerializer {
                 status: asset.lastStatus.status,
                 note: asset.lastStatus.note || null,
                 createdAt: asset.lastStatus.createdAt,
+                createdBy: asset.lastStatus.createdBy ? {
+                    id: asset.lastStatus.createdBy.id,
+                    name: asset.lastStatus.createdBy.name,
+                    photo: await resolveFileUrl(asset.lastStatus.createdBy.photo),
+                } : null,
             } : null,
             attachments: await (async () => {
                 const atts = await attachmentService.getForEntity("Asset", asset.id)

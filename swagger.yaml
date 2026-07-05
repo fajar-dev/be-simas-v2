@@ -546,6 +546,13 @@ components:
             status: { type: string, example: "active" }
             note: { type: string, nullable: true, example: "Asset is ready for use" }
             createdAt: { type: string, format: date-time }
+            createdBy:
+              type: object
+              nullable: true
+              properties:
+                id: { type: integer, example: 1 }
+                name: { type: string, example: "Budi Santoso" }
+                photo: { type: string, nullable: true, example: "http://cdn.test.com/stock/photos/user1.jpg" }
 
     AttachmentResponse:
       type: object
@@ -568,6 +575,7 @@ components:
         assetId: { type: integer, example: 1 }
         date: { type: string, format: date, example: "2026-06-19" }
         note: { type: string, example: "Routine hardware checkup" }
+        cost: { type: number, nullable: true, example: 500000, description: "Expenditure amount (Rp)" }
         attachmentIds:
           type: array
           items: { type: integer }
@@ -579,6 +587,7 @@ components:
         assetId: { type: integer, example: 1 }
         date: { type: string, format: date, example: "2026-06-19" }
         note: { type: string, example: "Routine hardware checkup" }
+        cost: { type: number, nullable: true, example: 500000, description: "Expenditure amount (Rp)" }
         attachmentIds:
           type: array
           items: { type: integer }
@@ -591,6 +600,7 @@ components:
         assetId: { type: integer, example: 1 }
         date: { type: string, format: date, example: "2026-06-19" }
         note: { type: string, example: "Routine hardware checkup" }
+        cost: { type: number, nullable: true, example: 500000 }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         asset:

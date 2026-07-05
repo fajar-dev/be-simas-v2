@@ -11,6 +11,7 @@ export class AssetMaintenanceSerializer {
             assetId: maintenance.assetId,
             date: maintenance.date,
             note: maintenance.note,
+            cost: Number(maintenance.cost ?? 0),
             createdAt: maintenance.createdAt,
             updatedAt: maintenance.updatedAt,
             asset: maintenance.asset ? {

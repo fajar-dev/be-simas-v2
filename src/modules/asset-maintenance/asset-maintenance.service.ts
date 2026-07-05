@@ -51,6 +51,7 @@ export class AssetMaintenanceService {
                 assetId: data.assetId,
                 date: data.date,
                 note: data.note,
+                cost: data.cost,
                 createdByUserId: data.createdByUserId,
             }, manager)
 
@@ -90,6 +91,7 @@ export class AssetMaintenanceService {
                 assetId: data.assetId,
                 date: data.date,
                 note: data.note,
+                cost: data.cost,
             })
             
             await this.repository.save(maintenance, manager)

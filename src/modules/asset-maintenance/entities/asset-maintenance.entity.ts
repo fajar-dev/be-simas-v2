@@ -28,6 +28,9 @@ export class AssetMaintenance {
     @Column({ type: "text" })
     note!: string
 
+    @Column({ type: "decimal", precision: 15, scale: 2, default: 0 })
+    cost!: number
+
     @CreateDateColumn({ name: "created_at" })
     createdAt!: Date
 

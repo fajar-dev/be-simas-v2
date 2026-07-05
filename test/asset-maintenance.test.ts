@@ -79,10 +79,49 @@ describe("Asset Maintenance API Tests", () => {
         expect(res.body.data.assetId).toBe(assetId)
         expect(res.body.data.date).toBe("2026-06-19")
         expect(res.body.data.note).toBe(payload.note)
+        expect(res.body.data.cost).toBe(0)
         expect(res.body.data.asset.name).toBe("Laptop HP")
         expect(res.body.data.createdBy.name).toBe("Test User")
         expect(res.body.data.createdBy.photo).toBeNull()
         expect(res.body.data.attachments).toHaveLength(0)
+    })
+
+    test("POST /api/asset-maintenance - create with cost", async () => {
+        const payload = {
+            assetId,
+            date: "2026-06-20",
+            note: "Replaced broken screen",
+            cost: 1500000.50,
+        }
+
+        const res = await request(app, "/api/asset-maintenance", {
+            method: "POST",
+            headers: authHeaders,
+            body: payload,
+        })
+
+        expect(res.status).toBe(201)
+        expect(res.body.success).toBe(true)
+        expect(res.body.data.cost).toBe(1500000.50)
+        expect(typeof res.body.data.cost).toBe("number")
+        expect(res.body.data.note).toBe(payload.note)
+    })
+
+    test("POST /api/asset-maintenance - create without cost returns 0", async () => {
+        const payload = {
+            assetId,
+            date: "2026-06-21",
+            note: "Routine inspection, no cost",
+        }
+
+        const res = await request(app, "/api/asset-maintenance", {
+            method: "POST",
+            headers: authHeaders,
+            body: payload,
+        })
+
+        expect(res.status).toBe(201)
+        expect(res.body.data.cost).toBe(0)
     })
 
     test("POST /api/asset-maintenance - validate missing assetId", async () => {
@@ -137,11 +176,11 @@ describe("Asset Maintenance API Tests", () => {
     })
 
     test("GET /api/asset-maintenance - retrieve list and filter", async () => {
-        // Create one record
+        // Create one record with cost
         await request(app, "/api/asset-maintenance", {
             method: "POST",
             headers: authHeaders,
-            body: { assetId, date: "2026-06-19", note: "Periodic test" },
+            body: { assetId, date: "2026-06-19", note: "Periodic test", cost: 250000 },
         })
 
         const res = await request(app, `/api/asset-maintenance?assetId=${assetId}`, {
@@ -150,6 +189,7 @@ describe("Asset Maintenance API Tests", () => {
         expect(res.status).toBe(200)
         expect(res.body.data).toHaveLength(1)
         expect(res.body.data[0].note).toBe("Periodic test")
+        expect(res.body.data[0].cost).toBe(250000)
         expect(res.body.data[0].createdBy.name).toBe("Test User")
         expect(res.body.data[0].createdBy.photo).toBeNull()
     })
@@ -182,20 +222,54 @@ describe("Asset Maintenance API Tests", () => {
         })
         const attId2 = (await up2.json() as any).data.id
 
-        // 3. Update maintenance: remove attachment 1, add attachment 2
+        // 3. Update maintenance: remove attachment 1, add attachment 2, set cost
         const updateRes = await request(app, `/api/asset-maintenance/${maintenanceId}`, {
             method: "PUT",
             headers: authHeaders,
             body: {
                 note: "Updated note text",
+                cost: 750000,
                 attachmentIds: [attId2], // doc2.txt
             },
         })
 
         expect(updateRes.status).toBe(200)
         expect(updateRes.body.data.note).toBe("Updated note text")
+        expect(updateRes.body.data.cost).toBe(750000)
         expect(updateRes.body.data.attachments).toHaveLength(1)
         expect(updateRes.body.data.attachments[0].originalName).toBe("doc2.txt")
+    })
+
+    test("PUT /api/asset-maintenance/:id - update cost field", async () => {
+        // 1. Create maintenance without cost
+        const createRes = await request(app, "/api/asset-maintenance", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, date: "2026-06-19", note: "No cost initially" },
+        })
+        const maintenanceId = createRes.body.data.id
+        expect(createRes.body.data.cost).toBe(0)
+
+        // 2. Update with cost
+        const updateRes = await request(app, `/api/asset-maintenance/${maintenanceId}`, {
+            method: "PUT",
+            headers: authHeaders,
+            body: { cost: 500000.75 },
+        })
+
+        expect(updateRes.status).toBe(200)
+        expect(updateRes.body.data.cost).toBe(500000.75)
+        expect(typeof updateRes.body.data.cost).toBe("number")
+
+        // 3. Update cost to 0
+        const zeroRes = await request(app, `/api/asset-maintenance/${maintenanceId}`, {
+            method: "PUT",
+            headers: authHeaders,
+            body: { cost: 0 },
+        })
+
+        expect(zeroRes.status).toBe(200)
+        expect(zeroRes.body.data.cost).toBe(0)
     })
 
     test("DELETE /api/asset-maintenance/:id - delete record and files", async () => {

@@ -483,6 +483,46 @@ describe("GET /api/asset/:id", () => {
         expect(body.success).toBe(false)
         expect(body.message).toBe("Asset not found")
     })
+
+    test("should include lastStatus with createdBy in asset response", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+
+        // Create asset with an initial status
+        const createRes = await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, {
+                code: "AST-LSTATUS",
+                name: "Status Asset",
+                status: "active",
+                statusNote: "Ready for use",
+            }),
+        })
+        expect(createRes.status).toBe(201)
+        const assetId = createRes.body.data.id
+
+        // Fetch full asset detail
+        const { status, body } = await request(app, `/api/asset/${assetId}`, {
+            method: "GET",
+            headers,
+        })
+
+        expect(status).toBe(200)
+        expect(body.data.lastStatus).toBeDefined()
+        expect(body.data.lastStatus).not.toBeNull()
+        expect(body.data.lastStatus.id).toBeDefined()
+        expect(body.data.lastStatus.status).toBe("active")
+        expect(body.data.lastStatus.note).toBe("Ready for use")
+        expect(body.data.lastStatus.createdAt).toBeDefined()
+
+        // createdBy should be present and match the logged-in user
+        expect(body.data.lastStatus.createdBy).toBeDefined()
+        expect(body.data.lastStatus.createdBy).not.toBeNull()
+        expect(body.data.lastStatus.createdBy.id).toBeDefined()
+        expect(body.data.lastStatus.createdBy.name).toBe("Test User")
+        expect(body.data.lastStatus.createdBy).toHaveProperty("photo")
+    })
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
