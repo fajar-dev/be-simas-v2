@@ -31,7 +31,23 @@ export class AssetSerializer {
         return parts.length > 0 ? parts.join(' ') : '0 days'
     }
 
+    private static calculateDepreciation(price?: number | null, usefulLife?: number | null, purchaseDate?: string | null) {
+        const round2 = (n: number) => Math.round(n * 100) / 100
+        const monthlyDepreciation = (price && usefulLife) ? round2(price / (usefulLife * 12)) : null
+        if (!monthlyDepreciation || !purchaseDate || !price) {
+            return { monthlyDepreciation, accumulatedDepreciation: null, bookValue: null }
+        }
+        const start = new Date(purchaseDate)
+        const now = new Date()
+        const monthsElapsed = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth())
+        const elapsed = Math.max(0, monthsElapsed)
+        const accumulatedDepreciation = round2(Math.min(monthlyDepreciation * elapsed, price))
+        const bookValue = round2(Math.max(price - accumulatedDepreciation, 0))
+        return { monthlyDepreciation, accumulatedDepreciation, bookValue }
+    }
+
     static async single(asset: Asset) {
+        const depreciation = this.calculateDepreciation(asset.price, asset.usefulLife, asset.purchaseDate)
         return {
             id: asset.id,
             code: asset.code,
@@ -47,6 +63,12 @@ export class AssetSerializer {
             hasMaintenance: asset.hasMaintenance,
             hasLocation: asset.hasLocation,
             bleTagMac: asset.bleTagMac || null,
+            usefulLife: asset.usefulLife ?? null,
+            depreciation: depreciation.monthlyDepreciation ? {
+                monthlyDepreciation: depreciation.monthlyDepreciation,
+                accumulatedDepreciation: depreciation.accumulatedDepreciation,
+                bookValue: depreciation.bookValue,
+            } : null,
             subCategory: asset.subCategory ? {
                 id: asset.subCategory.id,
                 name: asset.subCategory.name,

@@ -135,6 +135,14 @@ export class AssetRepository implements IAssetRepository {
             query.leftJoin(AssetLabel, "sortByLabel", "sortByLabel.assetId = asset.id AND sortByLabel.key = :sortByLabelKey", { sortByLabelKey: labelKey })
             query.addSelect("sortByLabel.value")
             query.orderBy("sortByLabel.value", sortOrder)
+        } else if (sortBy === 'bookValue') {
+            query.addSelect(
+                `CASE WHEN asset.price IS NOT NULL AND asset.useful_life IS NOT NULL AND asset.purchase_date IS NOT NULL
+                    THEN GREATEST(asset.price - ROUND(asset.price / (asset.useful_life * 12)) * (TIMESTAMPDIFF(MONTH, asset.purchase_date, NOW())), 0)
+                    ELSE NULL END`,
+                "computedBookValue"
+            )
+            query.orderBy("computedBookValue", sortOrder)
         } else {
             const sortColumn = sortColumnMap[sortBy || ''] || "asset.id"
             query.orderBy(sortColumn, sortOrder)

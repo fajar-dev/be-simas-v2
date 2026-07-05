@@ -61,6 +61,9 @@ export class Asset {
     @Column({ name: "has_location", type: "boolean", default: true })
     hasLocation!: boolean
 
+    @Column({ name: "useful_life", type: "integer", nullable: true })
+    usefulLife?: number | null
+
     @Column({ type: "varchar", nullable: true, unique: true, name: "ble_tag_mac" })
     bleTagMac?: string | null
 
