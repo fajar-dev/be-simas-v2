@@ -3299,3 +3299,241 @@ paths:
                         type: string
                         example: "No barcode or QR code found in the image"
         "401": { description: "Unauthorized — missing or invalid token" }
+
+  # ── Statistic ────────────────────────────────────────────────────────────
+  /statistic/summary:
+    get:
+      tags: [Statistic]
+      summary: Get dashboard summary statistics
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          description: "Comma-separated asset statuses to filter (e.g. \"active,idle\")"
+          schema: { type: string, example: "active,idle" }
+      responses:
+        "200":
+          description: Summary statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          totalAssets: { type: integer, example: 150 }
+                          totalPrice: { type: number, example: 5000000000 }
+                          totalBookValue: { type: number, example: 3500000000 }
+                          totalDepreciation: { type: number, example: 1500000000 }
+                          totalCategories: { type: integer, example: 10 }
+                          totalSubCategories: { type: integer, example: 25 }
+                          totalLocations: { type: integer, example: 15 }
+                          totalBranches: { type: integer, example: 5 }
+                          totalActiveEmployees: { type: integer, example: 80 }
+        "401": { description: Unauthorized }
+
+  /statistic/assets-by-category:
+    get:
+      tags: [Statistic]
+      summary: Get assets grouped by category
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          description: "Comma-separated asset statuses to filter (e.g. \"active,idle\")"
+          schema: { type: string, example: "active,idle" }
+      responses:
+        "200":
+          description: Assets by category retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            name: { type: string, example: "Electronics" }
+                            count: { type: integer, example: 45 }
+                            totalPrice: { type: number, example: 2000000000 }
+                            totalBookValue: { type: number, example: 1400000000 }
+        "401": { description: Unauthorized }
+
+  /statistic/assets-by-location:
+    get:
+      tags: [Statistic]
+      summary: Get assets grouped by location
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          description: "Comma-separated asset statuses to filter (e.g. \"active,idle\")"
+          schema: { type: string, example: "active,idle" }
+      responses:
+        "200":
+          description: Assets by location retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            name: { type: string, example: "Server Room" }
+                            count: { type: integer, example: 30 }
+                            totalPrice: { type: number, example: 1500000000 }
+                            totalBookValue: { type: number, example: 1050000000 }
+        "401": { description: Unauthorized }
+
+  /statistic/assets-by-sub-category:
+    get:
+      tags: [Statistic]
+      summary: Get assets grouped by sub-category
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          description: "Comma-separated asset statuses to filter (e.g. \"active,idle\")"
+          schema: { type: string, example: "active,idle" }
+      responses:
+        "200":
+          description: Assets by sub-category retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            name: { type: string, example: "Laptops" }
+                            count: { type: integer, example: 20 }
+                            totalPrice: { type: number, example: 800000000 }
+        "401": { description: Unauthorized }
+
+  /statistic/asset-aging:
+    get:
+      tags: [Statistic]
+      summary: Get asset age distribution
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          description: "Comma-separated asset statuses to filter (e.g. \"active,idle\")"
+          schema: { type: string, example: "active,idle" }
+      responses:
+        "200":
+          description: Asset aging distribution retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            label: { type: string, example: "0-2 Years" }
+                            count: { type: integer, example: 50 }
+                        example:
+                          - { label: "0-2 Years", count: 50 }
+                          - { label: "3-5 Years", count: 65 }
+                          - { label: ">5 Years", count: 35 }
+        "401": { description: Unauthorized }
+
+  /statistic/data-quality:
+    get:
+      tags: [Statistic]
+      summary: Get missing data quality overview
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          description: "Comma-separated asset statuses to filter (e.g. \"active,idle\")"
+          schema: { type: string, example: "active,idle" }
+      responses:
+        "200":
+          description: Data quality overview retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            label: { type: string, example: "Missing Price" }
+                            count: { type: integer, example: 12 }
+        "401": { description: Unauthorized }
+
+  /statistic/depreciation:
+    get:
+      tags: [Statistic]
+      summary: Get depreciation overview
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Depreciation overview retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          summary:
+                            type: object
+                            properties:
+                              totalWithDepreciation: { type: integer, example: 100 }
+                              totalMonthlyDepreciation: { type: number, example: 25000000 }
+                              totalAccumulatedDepreciation: { type: number, example: 300000000 }
+                              totalBookValue: { type: number, example: 3500000000 }
+                          statusBreakdown:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                label: { type: string, example: "active" }
+                                count: { type: integer, example: 75 }
+                          byCategory:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                name: { type: string, example: "Electronics" }
+                                originalPrice: { type: number, example: 2000000000 }
+                                bookValue: { type: number, example: 1400000000 }
+        "401": { description: Unauthorized }

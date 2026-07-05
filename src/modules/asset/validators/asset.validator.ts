@@ -34,6 +34,10 @@ export const CreateAssetValidator = z.object({
     locationNote: z.string().trim().optional().nullable(),
     locationAttachmentIds: z.array(z.number()).optional().nullable(),
 
+    // Optional initial status
+    status: z.string().trim().optional().nullable(),
+    statusNote: z.string().trim().optional().nullable(),
+
     // Optional asset attachments
     attachmentIds: z.array(z.number()).optional().nullable(),
 }).superRefine((data, ctx) => {

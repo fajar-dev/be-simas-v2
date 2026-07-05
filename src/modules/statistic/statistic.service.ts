@@ -4,14 +4,44 @@ import { Category } from "../category/entities/category.entity"
 import { SubCategory } from "../sub-category/entities/sub-category.entity"
 import { Location } from "../location/entities/location.entity"
 import { Branch } from "../branch/entities/branch.entity"
+import { Employee } from "../employee/entities/employee.entity"
+import { SelectQueryBuilder } from "typeorm"
 
 export class StatisticService {
-    async getSummary() {
+    private applyStatusFilter(query: SelectQueryBuilder<Asset>, statuses?: string[]) {
+        if (statuses?.length) {
+            query.andWhere(
+                `(SELECT s.status FROM asset_statuses s WHERE s.asset_id = asset.id ORDER BY s.id DESC LIMIT 1) IN (:...statuses)`,
+                { statuses }
+            )
+        }
+        return query
+    }
+
+    async getSummary(statuses?: string[]) {
         const assetRepo = AppDataSource.getRepository(Asset)
         const categoryRepo = AppDataSource.getRepository(Category)
         const subCategoryRepo = AppDataSource.getRepository(SubCategory)
         const locationRepo = AppDataSource.getRepository(Location)
         const branchRepo = AppDataSource.getRepository(Branch)
+        const employeeRepo = AppDataSource.getRepository(Employee)
+
+        const assetCountQuery = assetRepo.createQueryBuilder("asset")
+        this.applyStatusFilter(assetCountQuery, statuses)
+
+        const priceQuery = assetRepo.createQueryBuilder("asset")
+            .select("COALESCE(SUM(asset.price), 0)", "totalPrice")
+        this.applyStatusFilter(priceQuery, statuses)
+
+        const bookValueQuery = assetRepo.createQueryBuilder("asset")
+            .select(`COALESCE(SUM(
+                CASE
+                    WHEN asset.useful_life IS NOT NULL AND asset.price IS NOT NULL AND asset.price > 0 AND asset.purchase_date IS NOT NULL AND asset.purchase_date != ''
+                    THEN GREATEST(asset.price - LEAST(ROUND(asset.price / (asset.useful_life * 12), 2) * TIMESTAMPDIFF(MONTH, asset.purchase_date, NOW()), asset.price), 0)
+                    ELSE COALESCE(asset.price, 0)
+                END
+            ), 0)`, "totalBookValue")
+        this.applyStatusFilter(bookValueQuery, statuses)
 
         const [
             totalAssets,
@@ -19,37 +49,53 @@ export class StatisticService {
             totalSubCategories,
             totalLocations,
             totalBranches,
+            totalActiveEmployees,
             priceResult,
+            bookValueResult,
         ] = await Promise.all([
-            assetRepo.count(),
+            assetCountQuery.getCount(),
             categoryRepo.count(),
             subCategoryRepo.count(),
             locationRepo.count(),
             branchRepo.count(),
-            assetRepo
-                .createQueryBuilder("asset")
-                .select("COALESCE(SUM(asset.price), 0)", "totalPrice")
-                .getRawOne(),
+            employeeRepo.count({ where: { isActive: true } }),
+            priceQuery.getRawOne(),
+            bookValueQuery.getRawOne(),
         ])
+
+        const totalPrice = Number(priceResult?.totalPrice || 0)
+        const totalBookValue = Number(bookValueResult?.totalBookValue || 0)
 
         return {
             totalAssets,
-            totalPrice: Number(priceResult?.totalPrice || 0),
+            totalPrice,
+            totalBookValue,
+            totalDepreciation: Number((totalPrice - totalBookValue).toFixed(2)),
             totalCategories,
             totalSubCategories,
             totalLocations,
             totalBranches,
+            totalActiveEmployees,
         }
     }
 
-    async getAssetsByCategory() {
-        const result = await AppDataSource.getRepository(Asset)
+    async getAssetsByCategory(statuses?: string[]) {
+        const query = AppDataSource.getRepository(Asset)
             .createQueryBuilder("asset")
             .innerJoin("asset.subCategory", "subCategory")
             .innerJoin("subCategory.category", "category")
             .select("category.name", "name")
             .addSelect("COUNT(asset.id)", "count")
             .addSelect("COALESCE(SUM(asset.price), 0)", "totalPrice")
+            .addSelect(`COALESCE(SUM(
+                CASE
+                    WHEN asset.useful_life IS NOT NULL AND asset.price IS NOT NULL AND asset.price > 0 AND asset.purchase_date IS NOT NULL AND asset.purchase_date != ''
+                    THEN GREATEST(asset.price - LEAST(ROUND(asset.price / (asset.useful_life * 12), 2) * TIMESTAMPDIFF(MONTH, asset.purchase_date, NOW()), asset.price), 0)
+                    ELSE COALESCE(asset.price, 0)
+                END
+            ), 0)`, "totalBookValue")
+        this.applyStatusFilter(query, statuses)
+        const result = await query
             .groupBy("category.id")
             .addGroupBy("category.name")
             .getRawMany()
@@ -58,11 +104,12 @@ export class StatisticService {
             name: row.name,
             count: Number(row.count),
             totalPrice: Number(row.totalPrice),
+            totalBookValue: Number(row.totalBookValue),
         }))
     }
 
-    async getAssetsByLocation() {
-        const result = await AppDataSource.getRepository(Asset)
+    async getAssetsByLocation(statuses?: string[]) {
+        const query = AppDataSource.getRepository(Asset)
             .createQueryBuilder("asset")
             .innerJoin(
                 (qb) =>
@@ -87,6 +134,15 @@ export class StatisticService {
             .select("location.name", "name")
             .addSelect("COUNT(asset.id)", "count")
             .addSelect("COALESCE(SUM(asset.price), 0)", "totalPrice")
+            .addSelect(`COALESCE(SUM(
+                CASE
+                    WHEN asset.useful_life IS NOT NULL AND asset.price IS NOT NULL AND asset.price > 0 AND asset.purchase_date IS NOT NULL AND asset.purchase_date != ''
+                    THEN GREATEST(asset.price - LEAST(ROUND(asset.price / (asset.useful_life * 12), 2) * TIMESTAMPDIFF(MONTH, asset.purchase_date, NOW()), asset.price), 0)
+                    ELSE COALESCE(asset.price, 0)
+                END
+            ), 0)`, "totalBookValue")
+        this.applyStatusFilter(query, statuses)
+        const result = await query
             .groupBy("location.id")
             .addGroupBy("location.name")
             .getRawMany()
@@ -95,16 +151,19 @@ export class StatisticService {
             name: row.name,
             count: Number(row.count),
             totalPrice: Number(row.totalPrice),
+            totalBookValue: Number(row.totalBookValue),
         }))
     }
 
-    async getAssetsBySubCategory() {
-        const result = await AppDataSource.getRepository(Asset)
+    async getAssetsBySubCategory(statuses?: string[]) {
+        const query = AppDataSource.getRepository(Asset)
             .createQueryBuilder("asset")
             .innerJoin("asset.subCategory", "subCategory")
             .select("subCategory.name", "name")
             .addSelect("COUNT(asset.id)", "count")
             .addSelect("COALESCE(SUM(asset.price), 0)", "totalPrice")
+        this.applyStatusFilter(query, statuses)
+        const result = await query
             .groupBy("subCategory.id")
             .addGroupBy("subCategory.name")
             .orderBy("count", "DESC")
@@ -117,7 +176,7 @@ export class StatisticService {
         }))
     }
 
-    async getAssetAging() {
+    async getAssetAging(statuses?: string[]) {
         const assetRepo = AppDataSource.getRepository(Asset)
         const now = new Date()
 
@@ -128,16 +187,17 @@ export class StatisticService {
 
         const fmt = (d: Date) => d.toISOString().split("T")[0]
 
+        const q1 = assetRepo.createQueryBuilder("asset").where("asset.purchase_date >= :date", { date: fmt(twoYearsAgo) })
+        const q2 = assetRepo.createQueryBuilder("asset").where("asset.purchase_date < :from AND asset.purchase_date >= :to", { from: fmt(twoYearsAgo), to: fmt(fiveYearsAgo) })
+        const q3 = assetRepo.createQueryBuilder("asset").where("asset.purchase_date < :date", { date: fmt(fiveYearsAgo) })
+        this.applyStatusFilter(q1, statuses)
+        this.applyStatusFilter(q2, statuses)
+        this.applyStatusFilter(q3, statuses)
+
         const [zeroToTwo, threeToFive, overFive] = await Promise.all([
-            assetRepo.createQueryBuilder("asset")
-                .where("asset.purchase_date >= :date", { date: fmt(twoYearsAgo) })
-                .getCount(),
-            assetRepo.createQueryBuilder("asset")
-                .where("asset.purchase_date < :from AND asset.purchase_date >= :to", { from: fmt(twoYearsAgo), to: fmt(fiveYearsAgo) })
-                .getCount(),
-            assetRepo.createQueryBuilder("asset")
-                .where("asset.purchase_date < :date", { date: fmt(fiveYearsAgo) })
-                .getCount(),
+            q1.getCount(),
+            q2.getCount(),
+            q3.getCount(),
         ])
 
         return [
@@ -147,25 +207,22 @@ export class StatisticService {
         ]
     }
 
-    async getDataQuality() {
+    async getDataQuality(statuses?: string[]) {
         const assetRepo = AppDataSource.getRepository(Asset)
 
-        const [withoutImage, withoutPrice, withoutBrand, withoutModel, withoutPurchaseDate] = await Promise.all([
-            assetRepo.createQueryBuilder("asset")
-                .where("asset.image IS NULL OR asset.image = ''")
-                .getCount(),
-            assetRepo.createQueryBuilder("asset")
-                .where("asset.price IS NULL OR asset.price = 0")
-                .getCount(),
-            assetRepo.createQueryBuilder("asset")
-                .where("asset.brand IS NULL OR asset.brand = ''")
-                .getCount(),
-            assetRepo.createQueryBuilder("asset")
-                .where("asset.model IS NULL OR asset.model = ''")
-                .getCount(),
-            assetRepo.createQueryBuilder("asset")
-                .where("asset.purchase_date IS NULL OR asset.purchase_date = ''")
-                .getCount(),
+        const makeQuery = (condition: string) => {
+            const q = assetRepo.createQueryBuilder("asset").where(condition)
+            this.applyStatusFilter(q, statuses)
+            return q.getCount()
+        }
+
+        const [withoutImage, withoutPrice, withoutBrand, withoutModel, withoutPurchaseDate, withoutDepreciation] = await Promise.all([
+            makeQuery("asset.image IS NULL OR asset.image = ''"),
+            makeQuery("asset.price IS NULL OR asset.price = 0"),
+            makeQuery("asset.brand IS NULL OR asset.brand = ''"),
+            makeQuery("asset.model IS NULL OR asset.model = ''"),
+            makeQuery("asset.purchase_date IS NULL OR asset.purchase_date = ''"),
+            makeQuery("asset.useful_life IS NULL OR asset.price IS NULL OR asset.price = 0 OR asset.purchase_date IS NULL OR asset.purchase_date = ''"),
         ])
 
         return [
@@ -174,6 +231,86 @@ export class StatisticService {
             { label: "Without Brand", count: withoutBrand },
             { label: "Without Model", count: withoutModel },
             { label: "Without Purchase Date", count: withoutPurchaseDate },
+            { label: "Without Depreciation", count: withoutDepreciation },
         ]
+    }
+
+    async getDepreciation() {
+        const assetRepo = AppDataSource.getRepository(Asset)
+
+        const HAS_DEP_CONDITION = "asset.useful_life IS NOT NULL AND asset.price IS NOT NULL AND asset.price > 0 AND asset.purchase_date IS NOT NULL AND asset.purchase_date != ''"
+
+        // Summary
+        const totalWithDepreciation = await assetRepo
+            .createQueryBuilder("asset")
+            .where(HAS_DEP_CONDITION)
+            .getCount()
+
+        const monthlyDepResult = await assetRepo
+            .createQueryBuilder("asset")
+            .select("COALESCE(SUM(ROUND(asset.price / (asset.useful_life * 12), 2)), 0)", "total")
+            .where(HAS_DEP_CONDITION)
+            .getRawOne()
+
+        const accumulatedResult = await AppDataSource.query(`
+            SELECT
+                COALESCE(SUM(LEAST(ROUND(a.price / (a.useful_life * 12), 2) * TIMESTAMPDIFF(MONTH, a.purchase_date, NOW()), a.price)), 0) as totalAccumulated,
+                COALESCE(SUM(GREATEST(a.price - LEAST(ROUND(a.price / (a.useful_life * 12), 2) * TIMESTAMPDIFF(MONTH, a.purchase_date, NOW()), a.price), 0)), 0) as totalBookValue
+            FROM assets a
+            WHERE a.useful_life IS NOT NULL AND a.price IS NOT NULL AND a.price > 0 AND a.purchase_date IS NOT NULL AND a.purchase_date != ''
+        `)
+
+        const summary = {
+            totalWithDepreciation,
+            totalMonthlyDepreciation: Number(Number(monthlyDepResult?.total || 0).toFixed(2)),
+            totalAccumulatedDepreciation: Number(accumulatedResult[0]?.totalAccumulated || 0),
+            totalBookValue: Number(accumulatedResult[0]?.totalBookValue || 0),
+        }
+
+        // Status Breakdown
+        const totalAssets = await assetRepo.count()
+
+        const fullyDepreciated = await AppDataSource.query(`
+            SELECT COUNT(*) as count
+            FROM assets a
+            WHERE a.useful_life IS NOT NULL AND a.price IS NOT NULL AND a.price > 0 AND a.purchase_date IS NOT NULL AND a.purchase_date != ''
+            AND ROUND(a.price / (a.useful_life * 12), 2) * TIMESTAMPDIFF(MONTH, a.purchase_date, NOW()) >= a.price
+        `)
+
+        const fullyDepreciatedCount = Number(fullyDepreciated[0]?.count || 0)
+        const noDepreciation = totalAssets - totalWithDepreciation
+        const hasDepreciation = totalWithDepreciation - fullyDepreciatedCount
+
+        const statusBreakdown = [
+            { label: "Has Depreciation", count: hasDepreciation },
+            { label: "No Depreciation", count: noDepreciation },
+            { label: "Fully Depreciated", count: fullyDepreciatedCount },
+        ]
+
+        // By Category
+        const byCategoryResult = await AppDataSource.query(`
+            SELECT
+                c.name as name,
+                COALESCE(SUM(a.price), 0) as originalPrice,
+                COALESCE(SUM(GREATEST(a.price - LEAST(ROUND(a.price / (a.useful_life * 12), 2) * TIMESTAMPDIFF(MONTH, a.purchase_date, NOW()), a.price), 0)), 0) as bookValue
+            FROM assets a
+            INNER JOIN sub_categories sc ON a.sub_category_id = sc.id
+            INNER JOIN categories c ON sc.category_id = c.id
+            WHERE a.useful_life IS NOT NULL AND a.price IS NOT NULL AND a.price > 0 AND a.purchase_date IS NOT NULL AND a.purchase_date != ''
+            GROUP BY c.id, c.name
+            ORDER BY originalPrice DESC
+        `)
+
+        const byCategory = byCategoryResult.map((row: any) => ({
+            name: row.name,
+            originalPrice: Number(row.originalPrice),
+            bookValue: Number(row.bookValue),
+        }))
+
+        return {
+            summary,
+            statusBreakdown,
+            byCategory,
+        }
     }
 }

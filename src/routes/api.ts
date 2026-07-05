@@ -169,6 +169,7 @@ routes.get("/statistic/assets-by-location", authMiddleware, requirePermission("d
 routes.get("/statistic/assets-by-sub-category", authMiddleware, requirePermission("dashboard:read"), (c) => statisticController.assetsBySubCategory(c))
 routes.get("/statistic/asset-aging", authMiddleware, requirePermission("dashboard:read"), (c) => statisticController.assetAging(c))
 routes.get("/statistic/data-quality", authMiddleware, requirePermission("dashboard:read"), (c) => statisticController.dataQuality(c))
+routes.get("/statistic/depreciation", authMiddleware, requirePermission("dashboard:read"), (c) => statisticController.depreciation(c))
 
 // Role
 routes.get("/role/permissions", authMiddleware, (c) => roleController.permissions(c))
