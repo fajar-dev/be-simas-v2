@@ -260,6 +260,7 @@ components:
         phone: { type: string, example: "081234567890" }
         photo: { type: string, nullable: true, example: "https://cdn.example.com/employees/abc-123.png" }
         isActive: { type: boolean, example: true }
+        assetCount: { type: integer, example: 3, description: "Number of assets currently held by this employee" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
@@ -286,6 +287,7 @@ components:
         code: { type: string, example: "CAT-001" }
         name: { type: string, example: "Electronics" }
         description: { type: string, nullable: true, example: "Electronic devices and accessories" }
+        assetCount: { type: integer, example: 12, description: "Total number of assets in this category" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
@@ -320,6 +322,7 @@ components:
           properties:
             id: { type: integer, example: 1 }
             name: { type: string, example: "Electronics" }
+        assetCount: { type: integer, example: 5, description: "Total number of assets in this sub-category" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
@@ -355,6 +358,7 @@ components:
         address: { type: string, nullable: true, example: "Jl. Sudirman No. 1, Jakarta" }
         email: { type: string, format: email, nullable: true, example: "jakarta@company.com" }
         phone: { type: string, nullable: true, example: "021-1234567" }
+        assetCount: { type: integer, example: 8, description: "Number of assets at this branch (based on last location)" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
@@ -390,6 +394,7 @@ components:
             id: { type: integer, example: 1 }
             code: { type: string, example: "BR-001" }
             name: { type: string, example: "Jakarta Branch" }
+        assetCount: { type: integer, example: 4, description: "Number of assets at this location (based on last location)" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
@@ -1290,7 +1295,7 @@ paths:
         - name: sortBy
           in: query
           description: Field to sort by
-          schema: { type: string, enum: [code, name, description] }
+          schema: { type: string, enum: [code, name, description, assetCount] }
         - name: order
           in: query
           description: Sort order
@@ -1437,7 +1442,7 @@ paths:
         - name: sortBy
           in: query
           description: Field to sort by
-          schema: { type: string, enum: [code, name, description, category] }
+          schema: { type: string, enum: [code, name, description, category, assetCount] }
         - name: order
           in: query
           description: Sort order
@@ -1668,7 +1673,7 @@ paths:
         - name: sortBy
           in: query
           description: Field to sort by
-          schema: { type: string, enum: [name, employeeId, jobPosition, email, phone] }
+          schema: { type: string, enum: [name, employeeId, jobPosition, email, phone, assetCount] }
         - name: order
           in: query
           description: Sort order
@@ -1815,7 +1820,7 @@ paths:
         - name: sortBy
           in: query
           description: Field to sort by
-          schema: { type: string, enum: [code, name, description] }
+          schema: { type: string, enum: [code, name, description, assetCount] }
         - name: order
           in: query
           description: Sort order
@@ -1958,7 +1963,7 @@ paths:
         - name: sortBy
           in: query
           description: Field to sort by
-          schema: { type: string, enum: [name, branch, description] }
+          schema: { type: string, enum: [name, branch, description, assetCount] }
         - name: order
           in: query
           description: Sort order
