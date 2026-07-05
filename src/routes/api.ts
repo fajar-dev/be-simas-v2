@@ -12,6 +12,7 @@ import { CreateBranchValidator, UpdateBranchValidator } from "../modules/branch/
 import { CreateLocationValidator, UpdateLocationValidator } from "../modules/location/validators/location.validator"
 import { CreateAssetValidator, UpdateAssetValidator, BulkDeleteAssetValidator } from "../modules/asset/validators/asset.validator"
 import { CreateAssetMaintenanceValidator, UpdateAssetMaintenanceValidator } from "../modules/asset-maintenance/validators/asset-maintenance.validator"
+import { CreateAssetNoteValidator, UpdateAssetNoteValidator } from "../modules/asset-note/validators/asset-note.validator"
 import { CreateAssetLocationValidator } from "../modules/asset-location/validators/asset-location.validator"
 import { AssignAssetValidator, ReturnAssetValidator } from "../modules/asset-holder/validators/asset-holder.validator"
 import { StoreFeedbackValidator } from "../modules/feedback/validators/feedback.validator"
@@ -37,6 +38,7 @@ import { locationController } from "../modules/location/location.module"
 import { assetController } from "../modules/asset/asset.module"
 import { attachmentController } from "../modules/attachment/attachment.module"
 import { assetMaintenanceController } from "../modules/asset-maintenance/asset-maintenance.module"
+import { assetNoteController } from "../modules/asset-note/asset-note.module"
 import { assetLocationController } from "../modules/asset-location/asset-location.module"
 import { assetHolderController } from "../modules/asset-holder/asset-holder.module"
 import { assetLogController } from "../modules/asset-log/asset-log.module"
@@ -141,6 +143,13 @@ routes.get("/asset-maintenance/:id", authMiddleware, requirePermission("asset-ma
 routes.post("/asset-maintenance", authMiddleware, requirePermission("asset-maintenance:create"), zValidator("json", CreateAssetMaintenanceValidator, validationHook), (c) => assetMaintenanceController.store(c))
 routes.put("/asset-maintenance/:id", authMiddleware, requirePermission("asset-maintenance:update"), zValidator("json", UpdateAssetMaintenanceValidator, validationHook), (c) => assetMaintenanceController.update(c))
 routes.delete("/asset-maintenance/:id", authMiddleware, requirePermission("asset-maintenance:delete"), (c) => assetMaintenanceController.destroy(c))
+
+// Asset Note
+routes.get("/asset-note", authMiddleware, requirePermission("asset-note:read"), (c) => assetNoteController.index(c))
+routes.get("/asset-note/:id", authMiddleware, requirePermission("asset-note:read"), (c) => assetNoteController.show(c))
+routes.post("/asset-note", authMiddleware, requirePermission("asset-note:create"), zValidator("json", CreateAssetNoteValidator, validationHook), (c) => assetNoteController.store(c))
+routes.put("/asset-note/:id", authMiddleware, requirePermission("asset-note:update"), zValidator("json", UpdateAssetNoteValidator, validationHook), (c) => assetNoteController.update(c))
+routes.delete("/asset-note/:id", authMiddleware, requirePermission("asset-note:delete"), (c) => assetNoteController.destroy(c))
 
 // Asset Location
 routes.get("/asset-location", authMiddleware, requirePermission("asset-location:read"), (c) => assetLocationController.index(c))

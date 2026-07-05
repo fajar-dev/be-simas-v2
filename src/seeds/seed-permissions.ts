@@ -41,6 +41,11 @@ const PERMISSIONS = [
     { module: 'asset-maintenance', action: 'create' },
     { module: 'asset-maintenance', action: 'update' },
     { module: 'asset-maintenance', action: 'delete' },
+    { module: 'asset-note', action: 'read' },
+    { module: 'asset-note', action: 'create' },
+    { module: 'asset-note', action: 'update' },
+    { module: 'asset-note', action: 'delete' },
+    { module: 'asset', action: 'print-code' },
     { module: 'asset-status', action: 'read' },
     { module: 'asset-status', action: 'create' },
     { module: 'user', action: 'read' },
@@ -102,7 +107,9 @@ async function seed() {
         'asset-holder:read',
         'asset-location:read',
         'asset-maintenance:read',
+        'asset-note:read',
         'asset-status:read',
+        'asset:print-code',
         'dashboard:read',
     ]
     const employeePermissions = allPermissions.filter(p => employeePermissionKeys.includes(p.key))

@@ -620,6 +620,55 @@ components:
           type: array
           items: { $ref: "#/components/schemas/AttachmentResponse" }
 
+    CreateAssetNoteRequest:
+      type: object
+      required: [assetId, date, note]
+      properties:
+        assetId: { type: integer, example: 1 }
+        date: { type: string, format: date, example: "2026-06-19" }
+        note: { type: string, example: "General observation about the asset" }
+        attachmentIds:
+          type: array
+          items: { type: integer }
+          example: [1, 2]
+
+    UpdateAssetNoteRequest:
+      type: object
+      properties:
+        assetId: { type: integer, example: 1 }
+        date: { type: string, format: date, example: "2026-06-19" }
+        note: { type: string, example: "General observation about the asset" }
+        attachmentIds:
+          type: array
+          items: { type: integer }
+          example: [1, 2]
+
+    AssetNoteResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        assetId: { type: integer, example: 1 }
+        date: { type: string, format: date, example: "2026-06-19" }
+        note: { type: string, example: "General observation about the asset" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        asset:
+          type: object
+          properties:
+            id: { type: integer, example: 1 }
+            name: { type: string, example: "MacBook Pro M3" }
+            code: { type: string, example: "AST-001" }
+        createdBy:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer, example: 1 }
+            name: { type: string, example: "John Doe" }
+            photo: { type: string, nullable: true, example: "users/avatar.png" }
+        attachments:
+          type: array
+          items: { $ref: "#/components/schemas/AttachmentResponse" }
+
     CreateAssetLocationRequest:
       type: object
       required: [assetId, locationId, date]
@@ -2821,6 +2870,146 @@ paths:
               schema: { $ref: "#/components/schemas/BaseResponse" }
         "401": { description: Unauthorized }
         "404": { description: Maintenance record not found }
+
+  # ── Asset Note ─────────────────────────────────────────────────────────────
+  /asset-note:
+    get:
+      tags: [Asset Note]
+      summary: Get list of asset notes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+        - name: q
+          in: query
+          schema: { type: string }
+        - name: sortBy
+          in: query
+          schema: { type: string, enum: [date, asset, note, createdBy, createdAt] }
+        - name: order
+          in: query
+          schema: { type: string, enum: [ASC, DESC] }
+        - name: assetId
+          in: query
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Asset note records retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/AssetNoteResponse" }
+        "401": { description: Unauthorized }
+
+    post:
+      tags: [Asset Note]
+      summary: Create a new asset note record
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateAssetNoteRequest" }
+      responses:
+        "201":
+          description: Asset note record created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/AssetNoteResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Asset not found }
+        "422": { description: Validation error }
+
+  /asset-note/{id}:
+    get:
+      tags: [Asset Note]
+      summary: Get asset note details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Asset note record retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/AssetNoteResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Note record not found }
+
+    put:
+      tags: [Asset Note]
+      summary: Update an asset note record
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateAssetNoteRequest" }
+      responses:
+        "200":
+          description: Asset note record updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/AssetNoteResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Note record not found }
+        "422": { description: Validation error }
+
+    delete:
+      tags: [Asset Note]
+      summary: Delete an asset note record
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Asset note record deleted successfully
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BaseResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Note record not found }
 
   # ── Asset Location ────────────────────────────────────────────────────────
   /asset-location:

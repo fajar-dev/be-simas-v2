@@ -14,6 +14,7 @@ import { Asset } from "../src/modules/asset/entities/asset.entity"
 import { AssetLabel } from "../src/modules/asset/entities/asset-label.entity"
 import { Attachment } from "../src/modules/attachment/entities/attachment.entity"
 import { AssetMaintenance } from "../src/modules/asset-maintenance/entities/asset-maintenance.entity"
+import { AssetNote } from "../src/modules/asset-note/entities/asset-note.entity"
 import { AssetLocation } from "../src/modules/asset-location/entities/asset-location.entity"
 import { AssetHolder } from "../src/modules/asset-holder/entities/asset-holder.entity"
 import { AssetLog } from "../src/modules/asset-log/entities/asset-log.entity"
@@ -40,7 +41,7 @@ const TestDataSource = new DataSource({
     database: testDbName,
     synchronize: true,
     dropSchema: true,
-    entities: [User, Role, Permission, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetLocation, AssetHolder, AssetLog, AssetStatus],
+    entities: [User, Role, Permission, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetNote, AssetLocation, AssetHolder, AssetLog, AssetStatus],
     logging: false,
 })
 
