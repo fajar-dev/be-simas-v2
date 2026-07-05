@@ -2187,6 +2187,38 @@ paths:
           in: query
           description: "Filter by depreciation status"
           schema: { type: string, enum: [has_depreciation, no_depreciation, fully_depreciated] }
+        - name: usefulLifeOp
+          in: query
+          description: "Operator for useful life filter"
+          schema: { type: string, enum: ['<', '>', '='] }
+        - name: usefulLifeYears
+          in: query
+          description: "Useful life in years"
+          schema: { type: integer, example: 5 }
+        - name: monthlyDepMin
+          in: query
+          description: "Min monthly depreciation"
+          schema: { type: number, example: 100000 }
+        - name: monthlyDepMax
+          in: query
+          description: "Max monthly depreciation"
+          schema: { type: number, example: 500000 }
+        - name: accumulatedDepMin
+          in: query
+          description: "Min accumulated depreciation"
+          schema: { type: number, example: 1000000 }
+        - name: accumulatedDepMax
+          in: query
+          description: "Max accumulated depreciation"
+          schema: { type: number, example: 5000000 }
+        - name: bookValueMin
+          in: query
+          description: "Min book value"
+          schema: { type: number, example: 1000000 }
+        - name: bookValueMax
+          in: query
+          description: "Max book value"
+          schema: { type: number, example: 10000000 }
       responses:
         "200":
           description: Assets retrieved successfully

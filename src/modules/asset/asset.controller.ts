@@ -41,6 +41,16 @@ export class AssetController {
         const depreciationStatus = c.req.query("depreciationStatus")
         if (depreciationStatus) filters.depreciationStatus = depreciationStatus as any
 
+        const usefulLifeOp = c.req.query("usefulLifeOp")
+        if (usefulLifeOp === '<' || usefulLifeOp === '>' || usefulLifeOp === '=') filters.usefulLifeOp = usefulLifeOp
+        if (c.req.query("usefulLifeYears")) filters.usefulLifeYears = Number(c.req.query("usefulLifeYears"))
+        if (c.req.query("monthlyDepMin")) filters.monthlyDepMin = Number(c.req.query("monthlyDepMin"))
+        if (c.req.query("monthlyDepMax")) filters.monthlyDepMax = Number(c.req.query("monthlyDepMax"))
+        if (c.req.query("accumulatedDepMin")) filters.accumulatedDepMin = Number(c.req.query("accumulatedDepMin"))
+        if (c.req.query("accumulatedDepMax")) filters.accumulatedDepMax = Number(c.req.query("accumulatedDepMax"))
+        if (c.req.query("bookValueMin")) filters.bookValueMin = Number(c.req.query("bookValueMin"))
+        if (c.req.query("bookValueMax")) filters.bookValueMax = Number(c.req.query("bookValueMax"))
+
         // Parse label filters: label.{key}=value
         const allQueries = c.req.queries()
         const labelFilters: { key: string; value: string }[] = []

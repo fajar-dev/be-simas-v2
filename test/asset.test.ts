@@ -1179,6 +1179,242 @@ describe("Asset Depreciation", () => {
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Depreciation Filters
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("Depreciation Filters", () => {
+    test("should filter by usefulLifeOp='>' and usefulLifeYears=3", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+
+        // usefulLife = 2 (should NOT match > 3)
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, {
+                code: "UL-GT-1",
+                name: "Short Life Asset",
+                price: 60000,
+                purchaseDate: "2025-06-01",
+                usefulLife: 2,
+            }),
+        })
+
+        // usefulLife = 5 (should match > 3)
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, {
+                code: "UL-GT-2",
+                name: "Medium Life Asset",
+                price: 60000,
+                purchaseDate: "2025-06-01",
+                usefulLife: 5,
+            }),
+        })
+
+        // usefulLife = 10 (should match > 3)
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, {
+                code: "UL-GT-3",
+                name: "Long Life Asset",
+                price: 60000,
+                purchaseDate: "2025-06-01",
+                usefulLife: 10,
+            }),
+        })
+
+        const res = await request(app, "/api/asset?usefulLifeOp=%3E&usefulLifeYears=3", {
+            method: "GET",
+            headers,
+        })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.length).toBe(2)
+        const names = res.body.data.map((a: any) => a.name)
+        expect(names).toContain("Medium Life Asset")
+        expect(names).toContain("Long Life Asset")
+        expect(names).not.toContain("Short Life Asset")
+    })
+
+    test("should filter by usefulLifeOp='<' and usefulLifeYears=5", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+
+        // usefulLife = 2 (should match < 5)
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, {
+                code: "UL-LT-1",
+                name: "Short Life Asset",
+                price: 60000,
+                purchaseDate: "2025-06-01",
+                usefulLife: 2,
+            }),
+        })
+
+        // usefulLife = 5 (should NOT match < 5)
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, {
+                code: "UL-LT-2",
+                name: "Exact Life Asset",
+                price: 60000,
+                purchaseDate: "2025-06-01",
+                usefulLife: 5,
+            }),
+        })
+
+        // usefulLife = 8 (should NOT match < 5)
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, {
+                code: "UL-LT-3",
+                name: "Long Life Asset",
+                price: 60000,
+                purchaseDate: "2025-06-01",
+                usefulLife: 8,
+            }),
+        })
+
+        const res = await request(app, "/api/asset?usefulLifeOp=%3C&usefulLifeYears=5", {
+            method: "GET",
+            headers,
+        })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.length).toBe(1)
+        expect(res.body.data[0].name).toBe("Short Life Asset")
+    })
+
+    test("should filter by usefulLifeOp='=' and usefulLifeYears=5", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+
+        // usefulLife = 3 (should NOT match = 5)
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, {
+                code: "UL-EQ-1",
+                name: "Three Year Asset",
+                price: 60000,
+                purchaseDate: "2025-06-01",
+                usefulLife: 3,
+            }),
+        })
+
+        // usefulLife = 5 (should match = 5)
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, {
+                code: "UL-EQ-2",
+                name: "Five Year Asset",
+                price: 60000,
+                purchaseDate: "2025-06-01",
+                usefulLife: 5,
+            }),
+        })
+
+        // usefulLife = 7 (should NOT match = 5)
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, {
+                code: "UL-EQ-3",
+                name: "Seven Year Asset",
+                price: 60000,
+                purchaseDate: "2025-06-01",
+                usefulLife: 7,
+            }),
+        })
+
+        const res = await request(app, "/api/asset?usefulLifeOp=%3D&usefulLifeYears=5", {
+            method: "GET",
+            headers,
+        })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.length).toBe(1)
+        expect(res.body.data[0].name).toBe("Five Year Asset")
+    })
+
+    test("should filter by bookValueMin and bookValueMax range", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+
+        // Low price asset -> low book value
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, {
+                code: "BV-RANGE-1",
+                name: "Low Value Asset",
+                price: 10000,
+                purchaseDate: "2025-06-01",
+                usefulLife: 5,
+            }),
+        })
+
+        // Medium price asset -> medium book value
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, {
+                code: "BV-RANGE-2",
+                name: "Medium Value Asset",
+                price: 60000,
+                purchaseDate: "2025-06-01",
+                usefulLife: 5,
+            }),
+        })
+
+        // High price asset -> high book value
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, {
+                code: "BV-RANGE-3",
+                name: "High Value Asset",
+                price: 200000,
+                purchaseDate: "2025-06-01",
+                usefulLife: 5,
+            }),
+        })
+
+        // First, get all assets to check book values for picking good range
+        const allRes = await request(app, "/api/asset?depreciationStatus=has_depreciation", {
+            method: "GET",
+            headers,
+        })
+        expect(allRes.status).toBe(200)
+        expect(allRes.body.data.length).toBe(3)
+
+        // Sort by book value to understand the range
+        const bookValues = allRes.body.data
+            .map((a: any) => ({ name: a.name, bv: a.depreciation?.bookValue }))
+            .sort((a: any, b: any) => a.bv - b.bv)
+
+        // Filter with bookValueMin that excludes the lowest and bookValueMax that excludes the highest
+        const midBv = bookValues[1].bv
+        const res = await request(app, `/api/asset?bookValueMin=${bookValues[0].bv + 1}&bookValueMax=${bookValues[2].bv - 1}`, {
+            method: "GET",
+            headers,
+        })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.length).toBe(1)
+        expect(res.body.data[0].name).toBe("Medium Value Asset")
+    })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Asset Export & Import
 // ═══════════════════════════════════════════════════════════════════════════
 

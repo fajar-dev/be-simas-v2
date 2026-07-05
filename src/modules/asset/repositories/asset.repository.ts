@@ -124,6 +124,40 @@ export class AssetRepository implements IAssetRepository {
             )
         }
 
+        // Useful life filter (years)
+        if (filters?.usefulLifeOp && filters?.usefulLifeYears != null) {
+            const op = filters.usefulLifeOp === '=' ? '=' : filters.usefulLifeOp === '<' ? '<' : '>'
+            query.andWhere(`asset.useful_life IS NOT NULL AND asset.useful_life ${op} :usefulLifeYears`, { usefulLifeYears: filters.usefulLifeYears })
+        }
+
+        // Monthly depreciation range: price / (useful_life * 12)
+        const monthlyDepExpr = `ROUND(asset.price / (asset.useful_life * 12), 2)`
+        const depPrecondition = `asset.useful_life IS NOT NULL AND asset.price IS NOT NULL AND asset.price > 0 AND asset.purchase_date IS NOT NULL AND asset.purchase_date != ''`
+        if (filters?.monthlyDepMin != null) {
+            query.andWhere(`${depPrecondition} AND ${monthlyDepExpr} >= :monthlyDepMin`, { monthlyDepMin: filters.monthlyDepMin })
+        }
+        if (filters?.monthlyDepMax != null) {
+            query.andWhere(`${depPrecondition} AND ${monthlyDepExpr} <= :monthlyDepMax`, { monthlyDepMax: filters.monthlyDepMax })
+        }
+
+        // Accumulated depreciation range: MIN(monthlyDep * months_elapsed, price)
+        const accDepExpr = `LEAST(${monthlyDepExpr} * TIMESTAMPDIFF(MONTH, asset.purchase_date, NOW()), asset.price)`
+        if (filters?.accumulatedDepMin != null) {
+            query.andWhere(`${depPrecondition} AND ${accDepExpr} >= :accumulatedDepMin`, { accumulatedDepMin: filters.accumulatedDepMin })
+        }
+        if (filters?.accumulatedDepMax != null) {
+            query.andWhere(`${depPrecondition} AND ${accDepExpr} <= :accumulatedDepMax`, { accumulatedDepMax: filters.accumulatedDepMax })
+        }
+
+        // Book value range: MAX(price - accumulated, 0)
+        const bookValExpr = `GREATEST(asset.price - ${accDepExpr}, 0)`
+        if (filters?.bookValueMin != null) {
+            query.andWhere(`${depPrecondition} AND ${bookValExpr} >= :bookValueMin`, { bookValueMin: filters.bookValueMin })
+        }
+        if (filters?.bookValueMax != null) {
+            query.andWhere(`${depPrecondition} AND ${bookValExpr} <= :bookValueMax`, { bookValueMax: filters.bookValueMax })
+        }
+
         // Sorting
         const sortColumnMap: Record<string, string> = {
             name: "asset.name",

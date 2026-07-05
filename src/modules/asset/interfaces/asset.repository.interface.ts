@@ -17,6 +17,14 @@ export interface AssetFilter {
     labels?: { key: string; value: string }[]
     missingFields?: string[]
     depreciationStatus?: 'has_depreciation' | 'no_depreciation' | 'fully_depreciated'
+    usefulLifeOp?: '<' | '>' | '='
+    usefulLifeYears?: number
+    monthlyDepMin?: number
+    monthlyDepMax?: number
+    accumulatedDepMin?: number
+    accumulatedDepMax?: number
+    bookValueMin?: number
+    bookValueMax?: number
 }
 
 export interface IAssetRepository {
