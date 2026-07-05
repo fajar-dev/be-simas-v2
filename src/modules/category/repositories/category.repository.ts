@@ -14,6 +14,13 @@ export class CategoryRepository implements ICategoryRepository {
         const offset = (page - 1) * limit
 
         const query = this.repository.createQueryBuilder("category")
+            .addSelect(subQuery => {
+                return subQuery
+                    .select("COUNT(a.id)", "count")
+                    .from("assets", "a")
+                    .innerJoin("sub_categories", "sc", "sc.id = a.sub_category_id")
+                    .where("sc.category_id = category.id")
+            }, "assetCount")
 
         if (q) {
             query.where(
@@ -38,9 +45,14 @@ export class CategoryRepository implements ICategoryRepository {
             .orderBy(sortColumn, sortOrder)
             .skip(offset)
             .take(limit)
-            .getMany()
+            .getRawAndEntities()
 
-        return { data, total }
+        const result = data.entities.map((entity, i) => {
+            (entity as any).assetCount = parseInt(data.raw[i].assetCount || '0', 10)
+            return entity
+        })
+
+        return { data: result, total }
     }
 
     async findById(id: number): Promise<Category | null> {

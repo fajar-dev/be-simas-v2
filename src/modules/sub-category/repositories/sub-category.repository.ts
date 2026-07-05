@@ -15,6 +15,12 @@ export class SubCategoryRepository implements ISubCategoryRepository {
 
         const query = this.repository.createQueryBuilder("sub_category")
             .leftJoinAndSelect("sub_category.category", "category")
+            .addSelect(subQuery => {
+                return subQuery
+                    .select("COUNT(a.id)", "count")
+                    .from("assets", "a")
+                    .where("a.sub_category_id = sub_category.id")
+            }, "assetCount")
 
         if (q) {
             query.where(
@@ -44,9 +50,14 @@ export class SubCategoryRepository implements ISubCategoryRepository {
             .orderBy(sortColumn, sortOrder)
             .skip(offset)
             .take(limit)
-            .getMany()
+            .getRawAndEntities()
 
-        return { data, total }
+        const result = data.entities.map((entity, i) => {
+            (entity as any).assetCount = parseInt(data.raw[i].assetCount || '0', 10)
+            return entity
+        })
+
+        return { data: result, total }
     }
 
     async findByCategoryId(categoryId: number): Promise<SubCategory[]> {

@@ -11,6 +11,7 @@ export class SubCategorySerializer {
                 id: subCategory.category.id,
                 name: subCategory.category.name,
             } : null,
+            assetCount: (subCategory as any).assetCount ?? 0,
             createdAt: subCategory.createdAt,
             updatedAt: subCategory.updatedAt,
         }
