@@ -29,6 +29,10 @@ export class AssetUtilService {
             { header: 'Holder Employee ID', key: 'holderEmployeeId', width: 18 },
             { header: 'Location', key: 'location', width: 22 },
             { header: 'Branch', key: 'branch', width: 20 },
+            { header: 'Useful Life (Years)', key: 'usefulLife', width: 18 },
+            { header: 'Monthly Depreciation', key: 'monthlyDepreciation', width: 22 },
+            { header: 'Accumulated Depreciation', key: 'accumulatedDepreciation', width: 25 },
+            { header: 'Book Value', key: 'bookValue', width: 18 },
         ]
 
         // Add label columns dynamically (only checked ones)
@@ -77,6 +81,12 @@ export class AssetUtilService {
             groupRow.getCell(firstLabelCol).value = 'Labels'
         }
 
+        // Depreciation: merge horizontally in row 1
+        const usefulLifeCol = columns.findIndex(c => c.key === 'usefulLife') + 1
+        const bookValueCol = columns.findIndex(c => c.key === 'bookValue') + 1
+        sheet.mergeCells(1, usefulLifeCol, 1, bookValueCol)
+        groupRow.getCell(usefulLifeCol).value = 'Depreciation'
+
         // Header style
         const headerStyle = {
             font: { bold: true, color: { argb: 'FFFFFFFF' } } as ExcelJS.Font,
@@ -114,6 +124,13 @@ export class AssetUtilService {
                 location: asset.lastLocation?.location?.name || '',
                 branch: asset.lastLocation?.location?.branch?.name || '',
             }
+
+            // Compute depreciation
+            const dep = this.calculateDepreciation(asset.price, asset.usefulLife, asset.purchaseDate)
+            row.usefulLife = asset.usefulLife ?? ''
+            row.monthlyDepreciation = dep.monthlyDepreciation ?? ''
+            row.accumulatedDepreciation = dep.accumulatedDepreciation ?? ''
+            row.bookValue = dep.bookValue ?? ''
 
             labelKeys.forEach(key => {
                 const label = (asset.labels || []).find(l => l.key === key)
@@ -181,6 +198,7 @@ export class AssetUtilService {
             { header: 'BLE Tag MAC', key: 'bleTagMac', width: 20 },
             { header: 'Price', key: 'price', width: 15 },
             { header: 'Purchase Date', key: 'purchaseDate', width: 18 },
+            { header: 'Useful Life (Years)', key: 'usefulLife', width: 20 },
             { header: 'Status', key: 'status', width: 15 },
         ]
 
@@ -203,6 +221,7 @@ export class AssetUtilService {
             bleTagMac: 'AA:BB:CC:DD:EE:FF',
             price: 15000000,
             purchaseDate: '2024-01-15',
+            usefulLife: 5,
             status: 'active',
         })
         const exampleRow = templateSheet.getRow(2)
@@ -369,6 +388,7 @@ export class AssetUtilService {
             else if (val === 'price') colMap['price'] = colNumber
             else if (val.includes('purchase date')) colMap['purchaseDate'] = colNumber
             else if (val === 'status') colMap['status'] = colNumber
+            else if (val.includes('useful life')) colMap['usefulLife'] = colNumber
         })
 
         const getCellValue = (row: ExcelJS.Row, key: string): string => {
@@ -424,6 +444,11 @@ export class AssetUtilService {
             const model = getCellValue(row, 'model')
             const bleTagMac = getCellValue(row, 'bleTagMac')
             const status = getCellValue(row, 'status')
+            const usefulLifeVal = getCellValue(row, 'usefulLife')
+            const usefulLife = usefulLifeVal ? Number(usefulLifeVal) : undefined
+
+            // Only include usefulLife if both price and purchaseDate are provided
+            const finalUsefulLife = (usefulLife && !isNaN(usefulLife) && price && !isNaN(price) && purchaseDate) ? usefulLife : undefined
 
             try {
                 await assetService.create({
@@ -436,6 +461,7 @@ export class AssetUtilService {
                     bleTagMac: bleTagMac || undefined,
                     price: !isNaN(price as number) ? price : undefined,
                     purchaseDate: purchaseDate || undefined,
+                    usefulLife: finalUsefulLife,
                     status: status || undefined,
                     createdByUserId: userId,
                 })
@@ -449,5 +475,20 @@ export class AssetUtilService {
         }
 
         return { success, errors }
+    }
+
+    private calculateDepreciation(price?: number | null, usefulLife?: number | null, purchaseDate?: string | null) {
+        const round2 = (n: number) => Math.round(n * 100) / 100
+        const monthlyDepreciation = (price && usefulLife) ? round2(price / (usefulLife * 12)) : null
+        if (!monthlyDepreciation || !purchaseDate || !price) {
+            return { monthlyDepreciation, accumulatedDepreciation: null, bookValue: null }
+        }
+        const start = new Date(purchaseDate)
+        const now = new Date()
+        const monthsElapsed = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth())
+        const elapsed = Math.max(0, monthsElapsed)
+        const accumulatedDepreciation = round2(Math.min(monthlyDepreciation * elapsed, price))
+        const bookValue = round2(Math.max(price - accumulatedDepreciation, 0))
+        return { monthlyDepreciation, accumulatedDepreciation, bookValue }
     }
 }

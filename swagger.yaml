@@ -412,6 +412,7 @@ components:
         model: { type: string, example: "A2941" }
         image: { type: string, nullable: true, example: "assets/macbook.png" }
         bleTagMac: { type: string, nullable: true, example: "aa:bb:cc:dd:ee:ff" }
+        usefulLife: { type: integer, nullable: true, example: 5, description: "Useful life in years" }
         subCategoryId: { type: integer, example: 1 }
         hasHolder: { type: boolean, default: true, example: true }
         hasMaintenance: { type: boolean, default: true, example: true }
@@ -431,6 +432,7 @@ components:
         model: { type: string, example: "A2941" }
         image: { type: string, nullable: true, example: "assets/macbook.png" }
         bleTagMac: { type: string, nullable: true, example: "aa:bb:cc:dd:ee:ff" }
+        usefulLife: { type: integer, nullable: true, example: 5, description: "Useful life in years" }
         subCategoryId: { type: integer, example: 1 }
         hasHolder: { type: boolean, example: true }
         hasMaintenance: { type: boolean, example: true }
@@ -476,6 +478,14 @@ components:
         hasMaintenance: { type: boolean, example: true }
         hasLocation: { type: boolean, example: true }
         bleTagMac: { type: string, nullable: true, example: "aa:bb:cc:dd:ee:ff" }
+        usefulLife: { type: integer, nullable: true, example: 5 }
+        depreciation:
+          type: object
+          nullable: true
+          properties:
+            monthlyDepreciation: { type: number, example: 983.33 }
+            accumulatedDepreciation: { type: number, example: 11799.96 }
+            bookValue: { type: number, example: 47200.04 }
         subCategory:
           type: object
           properties:
@@ -2106,7 +2116,7 @@ paths:
         - name: sortBy
           in: query
           description: Field to sort by
-          schema: { type: string, enum: [name, code, brand, model, price, purchaseDate, createdAt, category, subCategory, location, holder, lastLocation, activeHolder] }
+          schema: { type: string, enum: [name, code, brand, model, price, purchaseDate, createdAt, category, subCategory, location, holder, lastLocation, activeHolder, bookValue] }
         - name: order
           in: query
           description: Sort order
@@ -2163,6 +2173,10 @@ paths:
           in: query
           description: "Filter by data quality (missing fields, comma-separated)"
           schema: { type: string, example: "price,brand,purchaseDate" }
+        - name: depreciationStatus
+          in: query
+          description: "Filter by depreciation status"
+          schema: { type: string, enum: [has_depreciation, no_depreciation, fully_depreciated] }
       responses:
         "200":
           description: Assets retrieved successfully
@@ -2308,6 +2322,101 @@ paths:
                       data: { $ref: "#/components/schemas/BulkDeleteAssetResponse" }
         "401": { description: Unauthorized }
         "422": { description: Validation error }
+
+  # ── Asset Export / Import ────────────────────────────────────────────────
+  /asset/export:
+    get:
+      tags: [Asset]
+      summary: Export assets to Excel
+      description: |
+        Exports assets as .xlsx file. Supports all the same filters as GET /asset.
+        The exported file includes columns: No, Image, Code, Name, Description, Category, Sub Category, Brand, Model, BLE Tag MAC, Price, Purchase Date, Status, Active Holder (Name + Employee ID), Last Location (Location + Branch), Depreciation (Useful Life, Monthly Depreciation, Accumulated Depreciation, Book Value), and dynamic label columns.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+        - name: sortBy
+          in: query
+          schema: { type: string }
+        - name: order
+          in: query
+          schema: { type: string, enum: [ASC, DESC] }
+        - name: labelColumns
+          in: query
+          description: "Label keys to include as columns (comma-separated)"
+          schema: { type: string, example: "serial_number,warranty" }
+      responses:
+        "200":
+          description: Excel file download
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        "401": { description: Unauthorized }
+
+  /asset/import-template:
+    get:
+      tags: [Asset]
+      summary: Download import template
+      description: |
+        Downloads an Excel template for importing assets. Includes columns: Asset Code, Name, Description, Sub Category Code, Brand, Model, BLE Tag MAC, Price, Purchase Date, Useful Life (Years), Status.
+        Contains a Reference sheet with valid Sub Category codes and Status values.
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Excel template file download
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        "401": { description: Unauthorized }
+
+  /asset/import:
+    post:
+      tags: [Asset]
+      summary: Import assets from Excel
+      description: |
+        Imports assets from an Excel file. The file should follow the import template format.
+        Useful Life is only imported when both Price and Purchase Date are provided.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Excel file (.xlsx)
+      responses:
+        "200":
+          description: Import completed
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          success: { type: integer, example: 8 }
+                          errors:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                row: { type: integer, example: 5 }
+                                message: { type: string, example: "Asset code \"AST-001\" already exists" }
+        "400": { description: File is required }
+        "401": { description: Unauthorized }
 
   # ── Permissions ─────────────────────────────────────────────────────────
   /role/permissions:

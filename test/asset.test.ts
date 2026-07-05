@@ -959,3 +959,242 @@ describe("POST /api/asset/bulk-delete", () => {
         expect(body.data.failed[0].message).toContain("Cannot delete asset")
     })
 })
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Depreciation Feature
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("Asset Depreciation", () => {
+    test("should create asset with usefulLife and return depreciation object", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+
+        const { status, body } = await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, {
+                code: "AST-DEPR-1",
+                name: "Depreciating Laptop",
+                price: 59000,
+                purchaseDate: "2025-06-01",
+                usefulLife: 5,
+            }),
+        })
+
+        expect(status).toBe(201)
+        expect(body.success).toBe(true)
+        expect(body.data.usefulLife).toBe(5)
+        expect(body.data.depreciation).toBeDefined()
+        expect(body.data.depreciation).not.toBeNull()
+        expect(typeof body.data.depreciation.monthlyDepreciation).toBe("number")
+        expect(typeof body.data.depreciation.accumulatedDepreciation).toBe("number")
+        expect(typeof body.data.depreciation.bookValue).toBe("number")
+        expect(body.data.depreciation.bookValue).toBeLessThanOrEqual(body.data.price)
+    })
+
+    test("should return depreciation as null when usefulLife is not set", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+
+        const { status, body } = await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, {
+                code: "AST-NODEPR",
+                name: "No Depreciation Asset",
+            }),
+        })
+
+        expect(status).toBe(201)
+        expect(body.data.depreciation).toBeNull()
+    })
+
+    test("should update asset with usefulLife and compute depreciation", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+
+        // Create asset without usefulLife first
+        const createRes = await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, {
+                code: "AST-DEPR-UPD",
+                name: "Update Depreciation Asset",
+                price: 120000,
+                purchaseDate: "2025-01-01",
+            }),
+        })
+        const assetId = createRes.body.data.id
+        expect(createRes.body.data.depreciation).toBeNull()
+
+        // Update with usefulLife
+        const { status, body } = await request(app, `/api/asset/${assetId}`, {
+            method: "PUT",
+            headers,
+            body: { usefulLife: 10, price: 120000, purchaseDate: "2025-01-01" },
+        })
+
+        expect(status).toBe(200)
+        expect(body.success).toBe(true)
+        expect(body.data.usefulLife).toBe(10)
+        expect(body.data.depreciation).not.toBeNull()
+        expect(body.data.depreciation.monthlyDepreciation).toBeGreaterThan(0)
+        expect(body.data.depreciation.accumulatedDepreciation).toBeGreaterThan(0)
+        expect(body.data.depreciation.bookValue).toBeLessThan(120000)
+    })
+
+    test("should fail validation when usefulLife is set without price and purchaseDate", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+
+        const { status, body } = await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: {
+                code: "AST-DEPR-FAIL",
+                name: "Validation Fail Asset",
+                subCategoryId: subCategory.id,
+                usefulLife: 5,
+            },
+        })
+
+        expect(status).toBe(422)
+        expect(body.success).toBe(false)
+    })
+
+    test("should filter by depreciationStatus=has_depreciation", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+
+        // Create asset with depreciation
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, {
+                code: "AST-HAS-DEPR",
+                name: "Has Depreciation",
+                price: 60000,
+                purchaseDate: "2025-06-01",
+                usefulLife: 5,
+            }),
+        })
+
+        // Create asset without depreciation
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, {
+                code: "AST-NO-DEPR",
+                name: "No Depreciation",
+            }),
+        })
+
+        const res = await request(app, "/api/asset?depreciationStatus=has_depreciation", {
+            method: "GET",
+            headers,
+        })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.length).toBe(1)
+        expect(res.body.data[0].name).toBe("Has Depreciation")
+        expect(res.body.data[0].depreciation).not.toBeNull()
+    })
+
+    test("should sort by bookValue without error", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, {
+                code: "AST-BV-1",
+                name: "Cheap Asset",
+                price: 30000,
+                purchaseDate: "2025-06-01",
+                usefulLife: 3,
+            }),
+        })
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, {
+                code: "AST-BV-2",
+                name: "Expensive Asset",
+                price: 90000,
+                purchaseDate: "2025-06-01",
+                usefulLife: 3,
+            }),
+        })
+
+        const res = await request(app, "/api/asset?sortBy=bookValue&order=ASC", {
+            method: "GET",
+            headers,
+        })
+
+        expect(res.status).toBe(200)
+        expect(res.body.success).toBe(true)
+        expect(res.body.data.length).toBe(2)
+    })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Asset Export & Import
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("Asset Export & Import", () => {
+    test("Export returns xlsx buffer", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+
+        // Create an asset so export has data
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, { code: "EXP-001", name: "Export Test Asset" }),
+        })
+
+        const res = await app.request("/api/asset/export", {
+            method: "GET",
+            headers: headers,
+        })
+        expect(res.status).toBe(200)
+        expect(res.headers.get("content-type")).toContain("spreadsheetml")
+    })
+
+    test("Import template returns xlsx", async () => {
+        const { headers } = await registerAndLogin(app)
+
+        const res = await app.request("/api/asset/import-template", {
+            method: "GET",
+            headers: headers,
+        })
+        expect(res.status).toBe(200)
+        expect(res.headers.get("content-type")).toContain("spreadsheetml")
+    })
+
+    test("Export includes depreciation columns", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+
+        // Create asset with usefulLife for depreciation
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, {
+                code: "EXP-DEPR-1",
+                name: "Depreciating Export Asset",
+                price: 60000,
+                purchaseDate: "2025-06-01",
+                usefulLife: 5,
+            }),
+        })
+
+        const res = await app.request("/api/asset/export", {
+            method: "GET",
+            headers: headers,
+        })
+        expect(res.status).toBe(200)
+        expect(res.headers.get("content-type")).toContain("spreadsheetml")
+    })
+})
