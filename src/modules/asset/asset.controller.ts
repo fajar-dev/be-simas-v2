@@ -38,6 +38,8 @@ export class AssetController {
         if (c.req.query("purchaseDateTo")) filters.purchaseDateTo = c.req.query("purchaseDateTo")!
         const missingFields = c.req.query("missingFields")
         if (missingFields) filters.missingFields = missingFields.split(',')
+        const depreciationStatus = c.req.query("depreciationStatus")
+        if (depreciationStatus) filters.depreciationStatus = depreciationStatus as any
 
         // Parse label filters: label.{key}=value
         const allQueries = c.req.queries()

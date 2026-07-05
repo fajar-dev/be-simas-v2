@@ -16,6 +16,7 @@ export interface AssetFilter {
     purchaseDateTo?: string
     labels?: { key: string; value: string }[]
     missingFields?: string[]
+    depreciationStatus?: 'has_depreciation' | 'no_depreciation' | 'fully_depreciated'
 }
 
 export interface IAssetRepository {

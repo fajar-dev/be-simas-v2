@@ -111,6 +111,18 @@ export class AssetRepository implements IAssetRepository {
                 }
             }
         }
+        if (filters?.depreciationStatus === 'has_depreciation') {
+            query.andWhere("asset.useful_life IS NOT NULL AND asset.price IS NOT NULL AND asset.price > 0 AND asset.purchase_date IS NOT NULL AND asset.purchase_date != ''")
+        }
+        if (filters?.depreciationStatus === 'no_depreciation') {
+            query.andWhere("(asset.useful_life IS NULL OR asset.price IS NULL OR asset.price = 0 OR asset.purchase_date IS NULL OR asset.purchase_date = '')")
+        }
+        if (filters?.depreciationStatus === 'fully_depreciated') {
+            query.andWhere("asset.useful_life IS NOT NULL AND asset.price IS NOT NULL AND asset.price > 0 AND asset.purchase_date IS NOT NULL AND asset.purchase_date != ''")
+            query.andWhere(
+                `ROUND(asset.price / (asset.useful_life * 12)) * TIMESTAMPDIFF(MONTH, asset.purchase_date, NOW()) >= asset.price`
+            )
+        }
 
         // Sorting
         const sortColumnMap: Record<string, string> = {
