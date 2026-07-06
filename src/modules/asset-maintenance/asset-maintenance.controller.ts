@@ -82,4 +82,11 @@ export class AssetMaintenanceController {
         await this.service.delete(id, user?.id)
         return ApiResponse.success(c, null, "Asset maintenance record deleted successfully")
     }
+
+    async getLabelKeys(c: Context) {
+        const assetIdVal = c.req.query("assetId")
+        const assetId = assetIdVal ? Number(assetIdVal) : undefined
+        const keys = await this.service.getUniqueLabelKeys(assetId)
+        return ApiResponse.success(c, keys, "Label keys retrieved successfully")
+    }
 }

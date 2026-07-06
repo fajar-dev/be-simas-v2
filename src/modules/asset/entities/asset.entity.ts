@@ -1,7 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, JoinColumn, Index } from "typeorm"
-import type { Relation } from "typeorm"
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from "typeorm"
 import { SubCategory } from "../../sub-category/entities/sub-category.entity"
-import { AssetLabel } from "./asset-label.entity"
 import { User } from "../../user/entities/user.entity"
 import type { AssetHolder } from "../../asset-holder/entities/asset-holder.entity"
 import type { AssetLocation } from "../../asset-location/entities/asset-location.entity"
@@ -74,10 +72,8 @@ export class Asset {
     @UpdateDateColumn({ name: "updated_at" })
     updatedAt!: Date
 
-    @OneToMany(() => AssetLabel, (label) => label.asset, { cascade: true, eager: true, orphanedRowAction: 'delete' })
-    labels!: Relation<AssetLabel[]>
-
     // Transient/virtual fields populated at service layer
+    labels?: { id: number; key: string; value: string }[]
     activeHolder?: AssetHolder
     lastLocation?: AssetLocation
     lastStatus?: AssetStatus

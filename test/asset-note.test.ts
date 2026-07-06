@@ -219,4 +219,68 @@ describe("Asset Note API Tests", () => {
         })
         expect(showRes.status).toBe(404)
     })
+
+    test("POST /api/asset-note - create with labels", async () => {
+        const payload = {
+            assetId,
+            date: "2026-06-22",
+            note: "Note with labels",
+            labels: [
+                { key: "category", value: "inspection" },
+                { key: "status", value: "reviewed" },
+            ],
+        }
+
+        const res = await request(app, "/api/asset-note", {
+            method: "POST",
+            headers: authHeaders,
+            body: payload,
+        })
+
+        expect(res.status).toBe(201)
+        expect(res.body.data.labels).toHaveLength(2)
+        expect(res.body.data.labels[0].key).toBe("category")
+        expect(res.body.data.labels[0].value).toBe("inspection")
+        expect(res.body.data.labels[1].key).toBe("status")
+        expect(res.body.data.labels[1].value).toBe("reviewed")
+    })
+
+    test("GET /api/asset-note - search by label value", async () => {
+        await request(app, "/api/asset-note", {
+            method: "POST",
+            headers: authHeaders,
+            body: {
+                assetId,
+                date: "2026-06-22",
+                note: "Labeled note",
+                labels: [{ key: "region", value: "Surabaya" }],
+            },
+        })
+
+        const res = await request(app, `/api/asset-note?q=Surabaya`, {
+            headers: authHeaders,
+        })
+        expect(res.status).toBe(200)
+        expect(res.body.data.length).toBeGreaterThanOrEqual(1)
+        expect(res.body.data[0].note).toBe("Labeled note")
+    })
+
+    test("GET /api/asset-note/label-keys - with assetId filter", async () => {
+        await request(app, "/api/asset-note", {
+            method: "POST",
+            headers: authHeaders,
+            body: {
+                assetId,
+                date: "2026-06-22",
+                note: "For label keys",
+                labels: [{ key: "team", value: "Engineering" }],
+            },
+        })
+
+        const res = await request(app, `/api/asset-note/label-keys?assetId=${assetId}`, {
+            headers: authHeaders,
+        })
+        expect(res.status).toBe(200)
+        expect(res.body.data).toContain("team")
+    })
 })

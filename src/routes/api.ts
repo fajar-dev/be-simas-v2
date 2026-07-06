@@ -139,6 +139,7 @@ routes.delete("/attachment/:id", authMiddleware, (c) => attachmentController.des
 
 // Asset Maintenance
 routes.get("/asset-maintenance", authMiddleware, requirePermission("asset-maintenance:read"), (c) => assetMaintenanceController.index(c))
+routes.get("/asset-maintenance/label-keys", authMiddleware, requirePermission("asset-maintenance:read"), (c) => assetMaintenanceController.getLabelKeys(c))
 routes.get("/asset-maintenance/:id", authMiddleware, requirePermission("asset-maintenance:read"), (c) => assetMaintenanceController.show(c))
 routes.post("/asset-maintenance", authMiddleware, requirePermission("asset-maintenance:create"), zValidator("json", CreateAssetMaintenanceValidator, validationHook), (c) => assetMaintenanceController.store(c))
 routes.put("/asset-maintenance/:id", authMiddleware, requirePermission("asset-maintenance:update"), zValidator("json", UpdateAssetMaintenanceValidator, validationHook), (c) => assetMaintenanceController.update(c))
@@ -146,6 +147,7 @@ routes.delete("/asset-maintenance/:id", authMiddleware, requirePermission("asset
 
 // Asset Note
 routes.get("/asset-note", authMiddleware, requirePermission("asset-note:read"), (c) => assetNoteController.index(c))
+routes.get("/asset-note/label-keys", authMiddleware, requirePermission("asset-note:read"), (c) => assetNoteController.getLabelKeys(c))
 routes.get("/asset-note/:id", authMiddleware, requirePermission("asset-note:read"), (c) => assetNoteController.show(c))
 routes.post("/asset-note", authMiddleware, requirePermission("asset-note:create"), zValidator("json", CreateAssetNoteValidator, validationHook), (c) => assetNoteController.store(c))
 routes.put("/asset-note/:id", authMiddleware, requirePermission("asset-note:update"), zValidator("json", UpdateAssetNoteValidator, validationHook), (c) => assetNoteController.update(c))
