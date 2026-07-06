@@ -81,6 +81,8 @@ export class AssetHolderService {
                 await this.attachmentService.associate(data.attachmentIds, "AssetHolder", log.id, manager)
             }
 
+
+
             // Log Asset assignment
             await assetLogService.log({
                 assetId: data.assetId!,

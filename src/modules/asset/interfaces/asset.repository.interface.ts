@@ -1,5 +1,6 @@
 import { EntityManager } from "typeorm"
 import { Asset } from "../entities/asset.entity"
+import { AssetLabel } from "../entities/asset-label.entity"
 
 export interface AssetFilter {
     categoryIds?: number[]
@@ -36,7 +37,9 @@ export interface IAssetRepository {
     save(data: Partial<Asset>, manager?: EntityManager): Promise<Asset>
     merge(entity: Asset, data: Partial<Asset>): Asset
     delete(id: number): Promise<void>
-    deleteLabels(assetId: number, manager?: EntityManager): Promise<void>
-    saveLabels(assetId: number, labels: { key: string; value: string }[], manager?: EntityManager): Promise<void>
-    getUniqueLabelKeys(): Promise<string[]>
+    deleteLabels(entityType: string, entityId: number, manager?: EntityManager): Promise<void>
+    saveLabels(entityType: string, entityId: number, labels: { key: string; value: string }[], manager?: EntityManager): Promise<void>
+    getLabelsForEntity(entityType: string, entityId: number): Promise<AssetLabel[]>
+    getLabelsForEntities(entityType: string, entityIds: number[]): Promise<Map<number, AssetLabel[]>>
+    getUniqueLabelKeys(entityType: string): Promise<string[]>
 }

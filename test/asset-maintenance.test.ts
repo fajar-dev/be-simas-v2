@@ -293,4 +293,68 @@ describe("Asset Maintenance API Tests", () => {
         })
         expect(showRes.status).toBe(404)
     })
+
+    test("POST /api/asset-maintenance - create with labels", async () => {
+        const payload = {
+            assetId,
+            date: "2026-06-22",
+            note: "Maintenance with labels",
+            labels: [
+                { key: "priority", value: "high" },
+                { key: "technician", value: "John" },
+            ],
+        }
+
+        const res = await request(app, "/api/asset-maintenance", {
+            method: "POST",
+            headers: authHeaders,
+            body: payload,
+        })
+
+        expect(res.status).toBe(201)
+        expect(res.body.data.labels).toHaveLength(2)
+        expect(res.body.data.labels[0].key).toBe("priority")
+        expect(res.body.data.labels[0].value).toBe("high")
+        expect(res.body.data.labels[1].key).toBe("technician")
+        expect(res.body.data.labels[1].value).toBe("John")
+    })
+
+    test("GET /api/asset-maintenance - search by label value", async () => {
+        await request(app, "/api/asset-maintenance", {
+            method: "POST",
+            headers: authHeaders,
+            body: {
+                assetId,
+                date: "2026-06-22",
+                note: "Labeled record",
+                labels: [{ key: "region", value: "Jakarta" }],
+            },
+        })
+
+        const res = await request(app, `/api/asset-maintenance?q=Jakarta`, {
+            headers: authHeaders,
+        })
+        expect(res.status).toBe(200)
+        expect(res.body.data.length).toBeGreaterThanOrEqual(1)
+        expect(res.body.data[0].note).toBe("Labeled record")
+    })
+
+    test("GET /api/asset-maintenance/label-keys - with assetId filter", async () => {
+        await request(app, "/api/asset-maintenance", {
+            method: "POST",
+            headers: authHeaders,
+            body: {
+                assetId,
+                date: "2026-06-22",
+                note: "For label keys",
+                labels: [{ key: "department", value: "IT" }],
+            },
+        })
+
+        const res = await request(app, `/api/asset-maintenance/label-keys?assetId=${assetId}`, {
+            headers: authHeaders,
+        })
+        expect(res.status).toBe(200)
+        expect(res.body.data).toContain("department")
+    })
 })

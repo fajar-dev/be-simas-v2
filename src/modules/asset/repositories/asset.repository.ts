@@ -20,22 +20,24 @@ export class AssetRepository implements IAssetRepository {
         const query = this.repository.createQueryBuilder("asset")
             .leftJoinAndSelect("asset.subCategory", "subCategory")
             .leftJoinAndSelect("subCategory.category", "category")
-            .leftJoinAndSelect("asset.labels", "labels")
             .leftJoinAndSelect("asset.createdBy", "createdBy")
             .leftJoin(AssetHolder, "activeHolder", "activeHolder.assetId = asset.id AND activeHolder.returnedDate IS NULL")
             .leftJoin(Employee, "activeEmployee", "activeEmployee.id = activeHolder.employeeId")
             .leftJoin(AssetLocation, "lastAssetLocation", "lastAssetLocation.id = (SELECT MAX(sub_al.id) FROM asset_locations sub_al WHERE sub_al.asset_id = asset.id)")
             .leftJoin(Location, "lastLoc", "lastLoc.id = lastAssetLocation.locationId")
             .leftJoin(Branch, "lastBranch", "lastBranch.id = lastLoc.branchId")
+            .leftJoin("asset_labels", "searchLabel", "searchLabel.entityType = 'Asset' AND searchLabel.entityId = asset.id")
             .addSelect("activeEmployee.name")
             .addSelect("lastLoc.name")
 
         if (q) {
             query.where(
-                "(asset.name LIKE :q OR asset.code LIKE :q OR asset.brand LIKE :q OR asset.model LIKE :q OR asset.bleTagMac LIKE :q OR asset.description LIKE :q OR subCategory.name LIKE :q OR category.name LIKE :q OR activeEmployee.name LIKE :q OR activeEmployee.employeeId LIKE :q OR lastLoc.name LIKE :q OR lastLoc.mistZoneId LIKE :q OR lastBranch.name LIKE :q OR labels.value LIKE :q)",
+                "(asset.name LIKE :q OR asset.code LIKE :q OR asset.brand LIKE :q OR asset.model LIKE :q OR asset.bleTagMac LIKE :q OR asset.description LIKE :q OR subCategory.name LIKE :q OR category.name LIKE :q OR activeEmployee.name LIKE :q OR activeEmployee.employeeId LIKE :q OR lastLoc.name LIKE :q OR lastLoc.mistZoneId LIKE :q OR lastBranch.name LIKE :q OR searchLabel.key LIKE :q OR searchLabel.value LIKE :q)",
                 { q: `%${q}%` }
             )
         }
+
+        query.distinct(true)
 
         if (filters?.categoryIds?.length) {
             query.andWhere("subCategory.categoryId IN (:...categoryIds)", { categoryIds: filters.categoryIds })
@@ -91,7 +93,7 @@ export class AssetRepository implements IAssetRepository {
         if (filters?.labels?.length) {
             filters.labels.forEach((label, i) => {
                 query.andWhere(
-                    `EXISTS (SELECT 1 FROM asset_labels al${i} WHERE al${i}.asset_id = asset.id AND al${i}.key = :lk${i} AND al${i}.value LIKE :lv${i})`,
+                    `EXISTS (SELECT 1 FROM asset_labels al${i} WHERE al${i}.entity_type = 'Asset' AND al${i}.entity_id = asset.id AND al${i}.key = :lk${i} AND al${i}.value LIKE :lv${i})`,
                     { [`lk${i}`]: label.key, [`lv${i}`]: `%${label.value}%` }
                 )
             })
@@ -178,7 +180,7 @@ export class AssetRepository implements IAssetRepository {
         const sortOrder = order === 'ASC' ? 'ASC' : 'DESC'
         if (sortBy && sortBy.startsWith("label:")) {
             const labelKey = sortBy.substring(6)
-            query.leftJoin(AssetLabel, "sortByLabel", "sortByLabel.assetId = asset.id AND sortByLabel.key = :sortByLabelKey", { sortByLabelKey: labelKey })
+            query.leftJoin(AssetLabel, "sortByLabel", "sortByLabel.entityType = 'Asset' AND sortByLabel.entityId = asset.id AND sortByLabel.key = :sortByLabelKey", { sortByLabelKey: labelKey })
             query.addSelect("sortByLabel.value")
             query.orderBy("sortByLabel.value", sortOrder)
         } else if (sortBy === 'bookValue') {
@@ -213,7 +215,7 @@ export class AssetRepository implements IAssetRepository {
     async findById(id: number): Promise<Asset | null> {
         return await this.repository.findOne({
             where: { id },
-            relations: ["subCategory", "subCategory.category", "labels", "createdBy"]
+            relations: ["subCategory", "subCategory.category", "createdBy"]
         })
     }
 
@@ -238,21 +240,40 @@ export class AssetRepository implements IAssetRepository {
         await this.repository.delete(id)
     }
 
-    async deleteLabels(assetId: number, manager?: EntityManager): Promise<void> {
+    async deleteLabels(entityType: string, entityId: number, manager?: EntityManager): Promise<void> {
         const repo = manager ? manager.getRepository(AssetLabel) : AppDataSource.getRepository(AssetLabel)
-        await repo.delete({ assetId })
+        await repo.delete({ entityType, entityId })
     }
 
-    async saveLabels(assetId: number, labels: { key: string; value: string }[], manager?: EntityManager): Promise<void> {
+    async saveLabels(entityType: string, entityId: number, labels: { key: string; value: string }[], manager?: EntityManager): Promise<void> {
         const repo = manager ? manager.getRepository(AssetLabel) : AppDataSource.getRepository(AssetLabel)
-        const entities = labels.map(l => repo.create({ key: l.key, value: l.value, assetId }))
+        const entities = labels.map(l => repo.create({ key: l.key, value: l.value, entityType, entityId }))
         await repo.save(entities)
     }
 
-    async getUniqueLabelKeys(): Promise<string[]> {
+    async getLabelsForEntity(entityType: string, entityId: number): Promise<AssetLabel[]> {
+        return await AppDataSource.getRepository(AssetLabel).find({ where: { entityType, entityId } })
+    }
+
+    async getLabelsForEntities(entityType: string, entityIds: number[]): Promise<Map<number, AssetLabel[]>> {
+        if (entityIds.length === 0) return new Map()
+        const labels = await AppDataSource.getRepository(AssetLabel)
+            .createQueryBuilder("label")
+            .where("label.entityType = :entityType AND label.entityId IN (:...entityIds)", { entityType, entityIds })
+            .getMany()
+        const map = new Map<number, AssetLabel[]>()
+        for (const label of labels) {
+            const arr = map.get(label.entityId) || []
+            arr.push(label)
+            map.set(label.entityId, arr)
+        }
+        return map
+    }
+
+    async getUniqueLabelKeys(entityType: string): Promise<string[]> {
         const result = await AppDataSource.getRepository(AssetLabel).createQueryBuilder("label")
             .select("DISTINCT label.key", "key")
-            .where("label.key IS NOT NULL AND label.key != ''")
+            .where("label.entityType = :entityType AND label.key IS NOT NULL AND label.key != ''", { entityType })
             .orderBy("label.key", "ASC")
             .getRawMany()
         return result.map(r => r.key)

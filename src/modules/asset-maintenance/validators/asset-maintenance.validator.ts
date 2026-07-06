@@ -6,6 +6,10 @@ export const CreateAssetMaintenanceValidator = z.object({
     note: z.string().trim().min(1, 'Note is required'),
     cost: z.number().min(0, 'Cost must be >= 0').optional().nullable(),
     attachmentIds: z.array(z.number()).optional(),
+    labels: z.array(z.object({
+        key: z.string().trim().min(1),
+        value: z.string().trim().min(1),
+    })).optional(),
 })
 
 export const UpdateAssetMaintenanceValidator = z.object({
@@ -14,6 +18,10 @@ export const UpdateAssetMaintenanceValidator = z.object({
     note: z.string().trim().optional(),
     cost: z.number().min(0, 'Cost must be >= 0').optional().nullable(),
     attachmentIds: z.array(z.number()).optional(),
+    labels: z.array(z.object({
+        key: z.string().trim().min(1),
+        value: z.string().trim().min(1),
+    })).optional(),
 })
 
 export type CreateAssetMaintenanceValidator = z.infer<typeof CreateAssetMaintenanceValidator>

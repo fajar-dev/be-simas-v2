@@ -2175,7 +2175,7 @@ paths:
           schema: { type: integer, default: 10 }
         - name: q
           in: query
-          description: "Search across: asset name, code, brand, model, description, category, sub-category, employee name, employee ID, location, branch, label values"
+          description: "Search across: asset name, code, brand, model, description, category, sub-category, employee name, employee ID, location, branch, label key, label value"
           schema: { type: string }
         - name: sortBy
           in: query
@@ -2514,6 +2514,27 @@ paths:
         "400": { description: File is required }
         "401": { description: Unauthorized }
 
+  /asset/label-keys:
+    get:
+      tags: [Asset]
+      summary: Get unique label keys for assets
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Label keys retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { type: string }
+        "401": { description: Unauthorized }
+
   # ── Permissions ─────────────────────────────────────────────────────────
   /role/permissions:
     get:
@@ -2752,6 +2773,7 @@ paths:
           schema: { type: integer, default: 10 }
         - name: q
           in: query
+          description: "Search across: note, asset name, asset code, label key, label value"
           schema: { type: string }
         - name: sortBy
           in: query
@@ -2876,6 +2898,32 @@ paths:
         "401": { description: Unauthorized }
         "404": { description: Maintenance record not found }
 
+  /asset-maintenance/label-keys:
+    get:
+      tags: [Asset Maintenance]
+      summary: Get unique label keys for asset maintenance
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: assetId
+          in: query
+          description: Filter label keys by asset ID
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Label keys retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { type: string }
+        "401": { description: Unauthorized }
+
   # ── Asset Note ─────────────────────────────────────────────────────────────
   /asset-note:
     get:
@@ -2892,6 +2940,7 @@ paths:
           schema: { type: integer, default: 10 }
         - name: q
           in: query
+          description: "Search across: note, asset name, asset code, label key, label value"
           schema: { type: string }
         - name: sortBy
           in: query
@@ -3015,6 +3064,32 @@ paths:
               schema: { $ref: "#/components/schemas/BaseResponse" }
         "401": { description: Unauthorized }
         "404": { description: Note record not found }
+
+  /asset-note/label-keys:
+    get:
+      tags: [Asset Note]
+      summary: Get unique label keys for asset notes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: assetId
+          in: query
+          description: Filter label keys by asset ID
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Label keys retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { type: string }
+        "401": { description: Unauthorized }
 
   # ── Asset Location ────────────────────────────────────────────────────────
   /asset-location:
