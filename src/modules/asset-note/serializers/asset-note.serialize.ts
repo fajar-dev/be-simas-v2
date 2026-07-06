@@ -24,6 +24,7 @@ export class AssetNoteSerializer {
                 photo: await resolveFileUrl(note.createdBy.photo),
             } : null,
             attachments: await AttachmentSerializer.collection(attachments),
+            labels: ((note as any).labels || []).map((l: any) => ({ id: l.id, key: l.key, value: l.value })),
         }
     }
 

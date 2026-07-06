@@ -643,31 +643,6 @@ components:
           items: { type: integer }
           example: [1, 2]
 
-    # --- Book Schemas ---
-    BorrowBookRequest:
-      type: object
-      required: [assetId]
-      properties:
-        assetId: { type: integer, example: 1, description: "ID of the book asset to borrow" }
-        assignNote: { type: string, nullable: true, example: "Borrowing for reading club", description: "Optional note" }
-        attachmentIds:
-          type: array
-          items: { type: integer }
-          example: [1]
-          description: "Attachment IDs (e.g. borrow photo)"
-
-    ReturnBookRequest:
-      type: object
-      required: [assetHolderId, returnNote]
-      properties:
-        assetHolderId: { type: integer, example: 1, description: "ID of the asset holder record" }
-        returnNote: { type: string, format: uri, example: "https://www.goodreads.com/book/show/12345", description: "Goodreads link (required, must be a valid URL)" }
-        attachmentIds:
-          type: array
-          items: { type: integer }
-          example: [2]
-          description: "Attachment IDs (e.g. return photo)"
-
     AssetNoteResponse:
       type: object
       properties:
@@ -702,6 +677,31 @@ components:
         locationId: { type: integer, example: 1 }
         date: { type: string, format: date, example: "2026-06-19" }
         note: { type: string, example: "Relocated to Main Office IT Room" }
+
+    # --- Book Schemas ---
+    BorrowBookRequest:
+      type: object
+      required: [assetId]
+      properties:
+        assetId: { type: integer, example: 1, description: "ID of the book asset to borrow" }
+        assignNote: { type: string, nullable: true, example: "Borrowing for reading club", description: "Optional note" }
+        attachmentIds:
+          type: array
+          items: { type: integer }
+          example: [1]
+          description: "Attachment IDs (e.g. borrow photo)"
+
+    ReturnBookRequest:
+      type: object
+      required: [assetHolderId, returnNote]
+      properties:
+        assetHolderId: { type: integer, example: 1, description: "ID of the asset holder record" }
+        returnNote: { type: string, format: uri, example: "https://www.goodreads.com/book/show/12345", description: "Goodreads link (required, must be a valid URL)" }
+        attachmentIds:
+          type: array
+          items: { type: integer }
+          example: [2]
+          description: "Attachment IDs (e.g. return photo)"
 
     AssetLocationResponse:
       type: object
@@ -2200,7 +2200,7 @@ paths:
           schema: { type: integer, default: 10 }
         - name: q
           in: query
-          description: "Search across: asset name, code, brand, model, description, category, sub-category, employee name, employee ID, location, branch, label values"
+          description: "Search across: asset name, code, brand, model, description, category, sub-category, employee name, employee ID, location, branch, label key, label value"
           schema: { type: string }
         - name: sortBy
           in: query
@@ -2539,6 +2539,27 @@ paths:
         "400": { description: File is required }
         "401": { description: Unauthorized }
 
+  /asset/label-keys:
+    get:
+      tags: [Asset]
+      summary: Get unique label keys for assets
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Label keys retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { type: string }
+        "401": { description: Unauthorized }
+
   # ── Permissions ─────────────────────────────────────────────────────────
   /role/permissions:
     get:
@@ -2777,6 +2798,7 @@ paths:
           schema: { type: integer, default: 10 }
         - name: q
           in: query
+          description: "Search across: note, asset name, asset code, label key, label value"
           schema: { type: string }
         - name: sortBy
           in: query
@@ -2901,6 +2923,32 @@ paths:
         "401": { description: Unauthorized }
         "404": { description: Maintenance record not found }
 
+  /asset-maintenance/label-keys:
+    get:
+      tags: [Asset Maintenance]
+      summary: Get unique label keys for asset maintenance
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: assetId
+          in: query
+          description: Filter label keys by asset ID
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Label keys retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { type: string }
+        "401": { description: Unauthorized }
+
   # ── Asset Note ─────────────────────────────────────────────────────────────
   /asset-note:
     get:
@@ -2917,6 +2965,7 @@ paths:
           schema: { type: integer, default: 10 }
         - name: q
           in: query
+          description: "Search across: note, asset name, asset code, label key, label value"
           schema: { type: string }
         - name: sortBy
           in: query
@@ -3041,6 +3090,32 @@ paths:
         "401": { description: Unauthorized }
         "404": { description: Note record not found }
 
+  /asset-note/label-keys:
+    get:
+      tags: [Asset Note]
+      summary: Get unique label keys for asset notes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: assetId
+          in: query
+          description: Filter label keys by asset ID
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Label keys retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { type: string }
+        "401": { description: Unauthorized }
+
   # ── Book (Borrow / Return) ───────────────────────────────────────────────
   /book/my-books:
     get:
@@ -3096,7 +3171,7 @@ paths:
                   - type: object
                     properties:
                       data: { $ref: "#/components/schemas/AssetHolderResponse" }
-        "400": { description: Validation failed (not a book, not active, already borrowed, etc.) }
+        "400": { description: "Validation failed (not a book, not active, already borrowed, etc.)" }
         "401": { description: Unauthorized }
         "404": { description: Asset not found }
         "422": { description: Request body validation error }

@@ -23,9 +23,12 @@ export class AssetMaintenanceService {
         assetId?: number
     ): Promise<{ data: { maintenance: AssetMaintenance; attachments: Attachment[] }[]; total: number }> {
         const { data, total } = await this.repository.findAll(page, limit, q, sortBy, order, assetId)
-        
+
+        const labelsMap = await this.repository.getLabelsForEntities("AssetMaintenance", data.map(d => d.id))
+
         const mapped = await Promise.all(data.map(async (maintenance) => {
             const attachments = await this.attachmentService.getForEntity("AssetMaintenance", maintenance.id)
+            ;(maintenance as any).labels = labelsMap.get(maintenance.id) || []
             return { maintenance, attachments }
         }))
 
@@ -39,6 +42,7 @@ export class AssetMaintenanceService {
         }
 
         const attachments = await this.attachmentService.getForEntity("AssetMaintenance", id)
+        ;(maintenance as any).labels = await this.repository.getLabelsForEntity("AssetMaintenance", id)
         return { maintenance, attachments }
     }
 
@@ -59,6 +63,10 @@ export class AssetMaintenanceService {
                 await this.attachmentService.associate(data.attachmentIds, "AssetMaintenance", maintenance.id, manager)
             }
 
+            if ((data as any).labels && (data as any).labels.length > 0) {
+                await this.repository.saveLabels("AssetMaintenance", maintenance.id, (data as any).labels, manager)
+            }
+
             // Log Asset maintenance creation
             await assetLogService.log({
                 assetId: data.assetId!,
@@ -72,9 +80,8 @@ export class AssetMaintenanceService {
             return maintenance
         })
 
-        // Reload with relations
-        const reloaded = await this.repository.findById(maintenance.id)
-        if (!reloaded) throw new NotFoundException("Created record could not be loaded")
+        // Reload with relations (including labels)
+        const { maintenance: reloaded } = await this.getById(maintenance.id)
         return reloaded
     }
 
@@ -103,6 +110,13 @@ export class AssetMaintenanceService {
                 await this.attachmentService.associate(data.attachmentIds, "AssetMaintenance", id, manager)
             }
 
+            if ((data as any).labels !== undefined) {
+                await this.repository.deleteLabels("AssetMaintenance", id, manager)
+                if ((data as any).labels && (data as any).labels.length > 0) {
+                    await this.repository.saveLabels("AssetMaintenance", id, (data as any).labels, manager)
+                }
+            }
+
             // Log Asset maintenance update
             await assetLogService.log({
                 assetId: maintenance.assetId,
@@ -127,6 +141,8 @@ export class AssetMaintenanceService {
         await withTransaction(async (manager) => {
             // Delete all associated files & db entries
             await this.attachmentService.disassociateOrphans("AssetMaintenance", id, [], manager)
+            // Delete associated labels
+            await this.repository.deleteLabels("AssetMaintenance", id, manager)
             // Delete record
             await this.repository.delete(id, manager)
 
@@ -140,5 +156,9 @@ export class AssetMaintenanceService {
                 oldValue: { ...maintenance },
             }, manager)
         })
+    }
+
+    async getUniqueLabelKeys(assetId?: number): Promise<string[]> {
+        return this.repository.getUniqueLabelKeys("AssetMaintenance", assetId)
     }
 }

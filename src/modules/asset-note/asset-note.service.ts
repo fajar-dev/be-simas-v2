@@ -23,9 +23,12 @@ export class AssetNoteService {
         assetId?: number
     ): Promise<{ data: { note: AssetNote; attachments: Attachment[] }[]; total: number }> {
         const { data, total } = await this.repository.findAll(page, limit, q, sortBy, order, assetId)
-        
+
+        const labelsMap = await this.repository.getLabelsForEntities("AssetNote", data.map(d => d.id))
+
         const mapped = await Promise.all(data.map(async (note) => {
             const attachments = await this.attachmentService.getForEntity("AssetNote", note.id)
+            ;(note as any).labels = labelsMap.get(note.id) || []
             return { note, attachments }
         }))
 
@@ -39,6 +42,7 @@ export class AssetNoteService {
         }
 
         const attachments = await this.attachmentService.getForEntity("AssetNote", id)
+        ;(note as any).labels = await this.repository.getLabelsForEntity("AssetNote", id)
         return { note, attachments }
     }
 
@@ -58,6 +62,10 @@ export class AssetNoteService {
                 await this.attachmentService.associate(data.attachmentIds, "AssetNote", note.id, manager)
             }
 
+            if ((data as any).labels && (data as any).labels.length > 0) {
+                await this.repository.saveLabels("AssetNote", note.id, (data as any).labels, manager)
+            }
+
             // Log Asset note creation
             await assetLogService.log({
                 assetId: data.assetId!,
@@ -71,9 +79,8 @@ export class AssetNoteService {
             return note
         })
 
-        // Reload with relations
-        const reloaded = await this.repository.findById(note.id)
-        if (!reloaded) throw new NotFoundException("Created record could not be loaded")
+        // Reload with relations (including labels)
+        const { note: reloaded } = await this.getById(note.id)
         return reloaded
     }
 
@@ -101,6 +108,13 @@ export class AssetNoteService {
                 await this.attachmentService.associate(data.attachmentIds, "AssetNote", id, manager)
             }
 
+            if ((data as any).labels !== undefined) {
+                await this.repository.deleteLabels("AssetNote", id, manager)
+                if ((data as any).labels && (data as any).labels.length > 0) {
+                    await this.repository.saveLabels("AssetNote", id, (data as any).labels, manager)
+                }
+            }
+
             // Log Asset note update
             await assetLogService.log({
                 assetId: note.assetId,
@@ -125,6 +139,8 @@ export class AssetNoteService {
         await withTransaction(async (manager) => {
             // Delete all associated files & db entries
             await this.attachmentService.disassociateOrphans("AssetNote", id, [], manager)
+            // Delete associated labels
+            await this.repository.deleteLabels("AssetNote", id, manager)
             // Delete record
             await this.repository.delete(id, manager)
 
@@ -138,5 +154,9 @@ export class AssetNoteService {
                 oldValue: { ...note },
             }, manager)
         })
+    }
+
+    async getUniqueLabelKeys(assetId?: number): Promise<string[]> {
+        return this.repository.getUniqueLabelKeys("AssetNote", assetId)
     }
 }

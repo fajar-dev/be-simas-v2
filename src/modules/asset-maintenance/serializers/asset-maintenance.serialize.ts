@@ -25,6 +25,7 @@ export class AssetMaintenanceSerializer {
                 photo: await resolveFileUrl(maintenance.createdBy.photo),
             } : null,
             attachments: await AttachmentSerializer.collection(attachments),
+            labels: ((maintenance as any).labels || []).map((l: any) => ({ id: l.id, key: l.key, value: l.value })),
         }
     }
 

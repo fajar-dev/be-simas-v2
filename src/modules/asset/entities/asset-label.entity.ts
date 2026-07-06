@@ -1,6 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index } from "typeorm"
-import type { Asset } from "./asset.entity"
+import { Entity, PrimaryGeneratedColumn, Column, Index } from "typeorm"
 
+@Index(["entityType", "entityId"])
 @Entity("asset_labels")
 export class AssetLabel {
     @PrimaryGeneratedColumn()
@@ -13,11 +13,9 @@ export class AssetLabel {
     @Column()
     value!: string
 
-    @Index()
-    @Column({ name: "asset_id" })
-    assetId!: number
+    @Column({ name: "entity_type" })
+    entityType!: string
 
-    @ManyToOne("Asset", "labels", { onDelete: "CASCADE" })
-    @JoinColumn({ name: "asset_id" })
-    asset!: Asset
+    @Column({ name: "entity_id", type: "integer" })
+    entityId!: number
 }

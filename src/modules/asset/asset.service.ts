@@ -44,6 +44,10 @@ export class AssetService {
     }
 
     private async populateRelations(asset: Asset): Promise<void> {
+        // Load labels
+        const labels = await this.repository.getLabelsForEntity("Asset", asset.id)
+        asset.labels = labels.map(l => ({ id: l.id, key: l.key, value: l.value }))
+
         // Load activeHolder
         if (asset.hasHolder) {
             asset.activeHolder = await this.assetHolderService.findActiveHolder(asset.id)
@@ -77,6 +81,7 @@ export class AssetService {
             status: initialStatus,
             statusNote,
             attachmentIds,
+            labels: newLabels,
             ...assetData
         } = data
 
@@ -184,6 +189,11 @@ export class AssetService {
                     await attachmentService.associate(attachmentIds, "Asset", asset.id, manager)
                 }
 
+                // 6. Save labels
+                if (newLabels && newLabels.length > 0) {
+                    await this.repository.saveLabels("Asset", asset.id, newLabels, manager)
+                }
+
                 return asset
             })
 
@@ -197,7 +207,7 @@ export class AssetService {
         }
     }
 
-    async update(id: number, data: Partial<Asset>, operatorId?: number): Promise<Asset> {
+    async update(id: number, data: Partial<Asset> & { attachmentIds?: number[] }, operatorId?: number): Promise<Asset> {
         const asset = await this.getById(id)
 
         // Capture old values before merge
@@ -221,9 +231,9 @@ export class AssetService {
 
                 // Handle labels: delete old, insert new
                 if (newLabels !== undefined) {
-                    await this.repository.deleteLabels(id, manager)
+                    await this.repository.deleteLabels("Asset", id, manager)
                     if (newLabels && newLabels.length > 0) {
-                        await this.repository.saveLabels(id, newLabels as any, manager)
+                        await this.repository.saveLabels("Asset", id, newLabels as any, manager)
                     }
                 }
 
@@ -269,6 +279,7 @@ export class AssetService {
         if (maintenanceCount > 0) {
             throw new ConflictException(`Cannot delete asset, ${maintenanceCount} maintenance record(s) exist. Please delete them first`)
         }
+        await this.repository.deleteLabels("Asset", id)
         await this.repository.delete(id)
     }
 
@@ -291,7 +302,7 @@ export class AssetService {
     }
 
     async getUniqueLabelKeys(): Promise<string[]> {
-        return await this.repository.getUniqueLabelKeys()
+        return await this.repository.getUniqueLabelKeys("Asset")
     }
 
     async findByBleTagMac(mac: string): Promise<Asset | null> {
