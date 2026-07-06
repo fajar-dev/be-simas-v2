@@ -27,6 +27,7 @@ export const authMiddleware = async (c: Context, next: Next) => {
                 password: true,
                 isActive: true,
                 roleId: true,
+                employeeId: true,
                 createdAt: true,
                 updatedAt: true
             },
