@@ -330,7 +330,7 @@ describe("PUT /api/user/:id", () => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe("DELETE /api/user/:id", () => {
-    test("should delete user successfully", async () => {
+    test("should soft delete user successfully", async () => {
         const { headers } = await registerAndLogin(app)
 
         const createRes = await request(app, "/api/user", {
@@ -349,12 +349,92 @@ describe("DELETE /api/user/:id", () => {
         expect(body.success).toBe(true)
         expect(body.message).toBe("User deleted successfully")
 
-        // Verify it's deleted
+        // Verify user is not findable via API (filtered out)
         const { status: getStatus } = await request(app, `/api/user/${userId}`, {
             method: "GET",
             headers,
         })
         expect(getStatus).toBe(404)
+    })
+
+    test("should not show soft-deleted user in list", async () => {
+        const { headers } = await registerAndLogin(app)
+
+        const createRes = await request(app, "/api/user", {
+            method: "POST",
+            headers,
+            body: createUserData(),
+        })
+        const userId = createRes.body.data.id
+        const userName = createRes.body.data.name
+
+        // Delete the user
+        await request(app, `/api/user/${userId}`, {
+            method: "DELETE",
+            headers,
+        })
+
+        // Verify not in list
+        const { body: listBody } = await request(app, "/api/user", {
+            method: "GET",
+            headers,
+        })
+        const found = listBody.data.find((u: any) => u.id === userId)
+        expect(found).toBeUndefined()
+    })
+
+    test("should allow reusing email after soft delete", async () => {
+        const { headers } = await registerAndLogin(app)
+        const userData = createUserData()
+
+        // Create user
+        const createRes = await request(app, "/api/user", {
+            method: "POST",
+            headers,
+            body: userData,
+        })
+        const userId = createRes.body.data.id
+
+        // Delete user
+        await request(app, `/api/user/${userId}`, {
+            method: "DELETE",
+            headers,
+        })
+
+        // Re-create with the same email
+        const { status, body } = await request(app, "/api/user", {
+            method: "POST",
+            headers,
+            body: userData,
+        })
+
+        expect(status).toBe(201)
+        expect(body.success).toBe(true)
+        expect(body.data.email).toBe(userData.email)
+    })
+
+    test("should return 404 when deleting already deleted user", async () => {
+        const { headers } = await registerAndLogin(app)
+
+        const createRes = await request(app, "/api/user", {
+            method: "POST",
+            headers,
+            body: createUserData(),
+        })
+        const userId = createRes.body.data.id
+
+        // Delete once
+        await request(app, `/api/user/${userId}`, {
+            method: "DELETE",
+            headers,
+        })
+
+        // Try to delete again
+        const { status } = await request(app, `/api/user/${userId}`, {
+            method: "DELETE",
+            headers,
+        })
+        expect(status).toBe(404)
     })
 })
 

@@ -1252,7 +1252,12 @@ paths:
 
     delete:
       tags: [User]
-      summary: Delete a user
+      summary: Soft delete a user
+      description: |
+        Performs a soft delete on the user. The user record is retained in the database
+        but marked as deleted (deletedAt is set). The email is cleared so it can be reused.
+        The user is deactivated and can no longer log in. References to this user
+        (e.g. createdBy in asset logs) are preserved.
       security:
         - bearerAuth: []
       parameters:
@@ -1262,7 +1267,7 @@ paths:
           schema: { type: integer }
       responses:
         "200":
-          description: User deleted successfully
+          description: User soft-deleted successfully
           content:
             application/json:
               schema: { $ref: "#/components/schemas/BaseResponse" }
