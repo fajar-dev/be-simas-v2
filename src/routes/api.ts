@@ -47,6 +47,8 @@ import { statisticController } from "../modules/statistic/statistic.module"
 import { roleController } from "../modules/role/role.module"
 import { mistWebhookController } from "../modules/mist-webhook/mist-webhook.module"
 import { aiController } from "../modules/ai/ai.module"
+import { bookController } from "../modules/book/book.module"
+import { BorrowBookValidator, ReturnBookValidator } from "../modules/book/validators/book.validator"
 
 // ── Routes ───────────────────────────────────────────────────────────────────
 const routes = new Hono()
@@ -226,5 +228,10 @@ routes.post("/ai/decode-barcode", authMiddleware, zValidator("form", DecodeBarco
 
 // Mist BLE Webhook (no auth - uses its own secret verification)
 routes.post("/webhook/mist", (c) => mistWebhookController.handleWebhook(c))
+
+// Book (Borrow/Return)
+routes.get("/book/my-books", authMiddleware, (c) => bookController.myBooks(c))
+routes.post("/book/borrow", authMiddleware, zValidator("json", BorrowBookValidator, validationHook), (c) => bookController.borrow(c))
+routes.post("/book/return", authMiddleware, zValidator("json", ReturnBookValidator, validationHook), (c) => bookController.returnBook(c))
 
 export default routes

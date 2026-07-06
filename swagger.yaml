@@ -643,6 +643,31 @@ components:
           items: { type: integer }
           example: [1, 2]
 
+    # --- Book Schemas ---
+    BorrowBookRequest:
+      type: object
+      required: [assetId]
+      properties:
+        assetId: { type: integer, example: 1, description: "ID of the book asset to borrow" }
+        assignNote: { type: string, nullable: true, example: "Borrowing for reading club", description: "Optional note" }
+        attachmentIds:
+          type: array
+          items: { type: integer }
+          example: [1]
+          description: "Attachment IDs (e.g. borrow photo)"
+
+    ReturnBookRequest:
+      type: object
+      required: [assetHolderId, returnNote]
+      properties:
+        assetHolderId: { type: integer, example: 1, description: "ID of the asset holder record" }
+        returnNote: { type: string, format: uri, example: "https://www.goodreads.com/book/show/12345", description: "Goodreads link (required, must be a valid URL)" }
+        attachmentIds:
+          type: array
+          items: { type: integer }
+          example: [2]
+          description: "Attachment IDs (e.g. return photo)"
+
     AssetNoteResponse:
       type: object
       properties:
@@ -3015,6 +3040,95 @@ paths:
               schema: { $ref: "#/components/schemas/BaseResponse" }
         "401": { description: Unauthorized }
         "404": { description: Note record not found }
+
+  # ── Book (Borrow / Return) ───────────────────────────────────────────────
+  /book/my-books:
+    get:
+      tags: [Book]
+      summary: Get current user's borrowed books
+      description: |
+        Returns the list of books currently borrowed by the authenticated user.
+        The user must be linked to an employee. Only active (not returned) holders are returned.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Borrowed books retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/AssetHolderResponse" }
+        "400": { description: Account not linked to an employee }
+        "401": { description: Unauthorized }
+
+  /book/borrow:
+    post:
+      tags: [Book]
+      summary: Borrow a book
+      description: |
+        Borrow an asset that belongs to the "Buku" category. Validations:
+        - Asset must exist and belong to the "Buku" category
+        - Holder feature must be enabled on the asset
+        - Asset last status must be "active"
+        - Asset must not have an active holder (not currently borrowed)
+        - User must be linked to an employee
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BorrowBookRequest" }
+      responses:
+        "201":
+          description: Book borrowed successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/AssetHolderResponse" }
+        "400": { description: Validation failed (not a book, not active, already borrowed, etc.) }
+        "401": { description: Unauthorized }
+        "404": { description: Asset not found }
+        "422": { description: Request body validation error }
+
+  /book/return:
+    post:
+      tags: [Book]
+      summary: Return a borrowed book
+      description: |
+        Return a previously borrowed book. The returnNote field must be a valid URL (Goodreads link).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReturnBookRequest" }
+      responses:
+        "200":
+          description: Book returned successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/AssetHolderResponse" }
+        "400": { description: Already returned or invalid }
+        "401": { description: Unauthorized }
+        "404": { description: Holder record not found }
+        "422": { description: Request body validation error }
 
   # ── Asset Location ────────────────────────────────────────────────────────
   /asset-location:
