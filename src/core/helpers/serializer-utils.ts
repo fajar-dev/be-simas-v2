@@ -10,7 +10,12 @@ import { minio } from "./minio"
 export async function resolveFileUrl(path?: string | null): Promise<string | null> {
     if (!path) return null
     if (path.startsWith("http://") || path.startsWith("https://")) return path
-    return await minio.getPresignedUrl(path)
+    try {
+        return await minio.getPresignedUrl(path)
+    } catch {
+        // Fallback to proxy URL if MinIO is unreachable
+        return minio.getProxyUrl(path)
+    }
 }
 
 /** @deprecated Use resolveFileUrl instead */
