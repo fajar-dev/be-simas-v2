@@ -2205,9 +2205,13 @@ paths:
           in: query
           description: "Filter by holder status"
           schema: { type: string, enum: [has_holder, no_holder] }
+        - name: holderType
+          in: query
+          description: "Filter by holder type (only when holderStatus=has_holder). active_holder = currently assigned, historical_holder = any holder ever assigned"
+          schema: { type: string, enum: [active_holder, historical_holder] }
         - name: holderId
           in: query
-          description: "Filter by active holder employee ID"
+          description: "Filter by holder employee ID. Uses active holder by default, or historical holder if holderType=historical_holder"
           schema: { type: integer }
         - name: bleTagStatus
           in: query

@@ -9,6 +9,7 @@ export interface AssetFilter {
     locationIds?: number[]
     status?: string[]
     holderStatus?: 'has_holder' | 'no_holder'
+    holderType?: 'active_holder' | 'historical_holder'
     bleTagStatus?: 'has_ble_tag' | 'no_ble_tag'
     holderId?: number
     priceMin?: number

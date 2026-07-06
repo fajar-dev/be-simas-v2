@@ -58,13 +58,25 @@ export class AssetRepository implements IAssetRepository {
             )
         }
         if (filters?.holderStatus === 'has_holder') {
-            query.andWhere("activeHolder.id IS NOT NULL")
+            if (filters?.holderType === 'historical_holder') {
+                // Any holder ever assigned (active or returned)
+                query.andWhere("EXISTS (SELECT 1 FROM asset_holders ah WHERE ah.asset_id = asset.id)")
+            } else {
+                // Default: active holder only
+                query.andWhere("activeHolder.id IS NOT NULL")
+            }
         }
         if (filters?.holderStatus === 'no_holder') {
             query.andWhere("activeHolder.id IS NULL")
         }
         if (filters?.holderId) {
-            query.andWhere("activeHolder.employeeId = :holderId", { holderId: filters.holderId })
+            if (filters?.holderType === 'historical_holder') {
+                // Filter by employee across ALL holder records
+                query.andWhere("EXISTS (SELECT 1 FROM asset_holders ah WHERE ah.asset_id = asset.id AND ah.employee_id = :holderId)", { holderId: filters.holderId })
+            } else {
+                // Filter by employee on active holder only
+                query.andWhere("activeHolder.employeeId = :holderId", { holderId: filters.holderId })
+            }
         }
         if (filters?.bleTagStatus === 'has_ble_tag') {
             query.andWhere("asset.bleTagMac IS NOT NULL AND asset.bleTagMac != ''")
