@@ -4,6 +4,7 @@ import { config } from '../../config/config'
 import { AppDataSource } from '../../config/database'
 import { User } from '../../modules/user/entities/user.entity'
 import { UnauthorizedException } from '../exceptions/base'
+import { IsNull } from 'typeorm'
 
 export const authMiddleware = async (c: Context, next: Next) => {
     const authHeader = c.req.header('Authorization')
@@ -17,7 +18,7 @@ export const authMiddleware = async (c: Context, next: Next) => {
         const decoded = await verify(token, config.app.jwtSecret, "HS256") as { sub: number }
         const userRepository = AppDataSource.getRepository(User)
         const user = await userRepository.findOne({
-            where: { id: decoded.sub },
+            where: { id: decoded.sub, deletedAt: IsNull() },
             select: {
                 id: true,
                 name: true,

@@ -51,5 +51,9 @@ export class User {
 
     @UpdateDateColumn({ name: "updated_at" })
     updatedAt!: Date
+
+    @Index()
+    @Column({ name: "deleted_at", type: "timestamp", nullable: true, default: null })
+    deletedAt?: Date | null
 }
 

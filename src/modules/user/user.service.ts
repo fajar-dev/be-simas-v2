@@ -93,7 +93,7 @@ export class UserService {
     }
 
     async delete(id: number): Promise<void> {
-        await this.getById(id)
-        await this.repository.delete(id)
+        const user = await this.getById(id)
+        await this.repository.delete(user.id)
     }
 }

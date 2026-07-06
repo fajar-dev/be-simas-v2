@@ -1,4 +1,4 @@
-import { EntityManager, Repository } from "typeorm"
+import { EntityManager, IsNull, Repository } from "typeorm"
 import { AppDataSource } from "../../../config/database"
 import { User } from "../entities/user.entity"
 import { IUserRepository, UserListFilters } from "../interfaces/user.repository.interface"
@@ -17,9 +17,10 @@ export class UserRepository implements IUserRepository {
             .leftJoinAndSelect("user.role", "role")
             .leftJoinAndSelect("role.permissions", "permissions")
             .leftJoinAndSelect("user.employee", "employee")
+            .where("user.deleted_at IS NULL")
 
         if (q) {
-            query.where(
+            query.andWhere(
                 "(user.name LIKE :q OR user.email LIKE :q)",
                 { q: `%${q}%` }
             )
@@ -59,11 +60,12 @@ export class UserRepository implements IUserRepository {
             .leftJoinAndSelect("role.permissions", "permissions")
             .leftJoinAndSelect("user.employee", "employee")
             .where("user.id = :id", { id })
+            .andWhere("user.deleted_at IS NULL")
             .getOne()
     }
 
     async findByEmail(email: string): Promise<User | null> {
-        return await this.repository.findOneBy({ email })
+        return await this.repository.findOneBy({ email, deletedAt: IsNull() })
     }
 
     async findByEmailWithPassword(email: string): Promise<User | null> {
@@ -71,6 +73,7 @@ export class UserRepository implements IUserRepository {
             .leftJoinAndSelect("user.role", "role")
             .leftJoinAndSelect("role.permissions", "permissions")
             .where("user.email = :email", { email })
+            .andWhere("user.deleted_at IS NULL")
             .addSelect("user.password")
             .getOne()
     }
@@ -80,6 +83,7 @@ export class UserRepository implements IUserRepository {
             .leftJoinAndSelect("user.role", "role")
             .leftJoinAndSelect("role.permissions", "permissions")
             .where("user.id = :id", { id })
+            .andWhere("user.deleted_at IS NULL")
             .addSelect("user.password")
             .getOne()
     }
@@ -88,6 +92,7 @@ export class UserRepository implements IUserRepository {
         return await this.repository.createQueryBuilder("user")
             .where("user.reset_password_token = :token", { token })
             .andWhere("user.reset_password_expires > :now", { now: new Date() })
+            .andWhere("user.deleted_at IS NULL")
             .getOne()
     }
 
@@ -96,6 +101,7 @@ export class UserRepository implements IUserRepository {
             .where("user.email = :email", { email })
             .andWhere("user.reset_password_token = :token", { token })
             .andWhere("user.reset_password_expires > :now", { now: new Date() })
+            .andWhere("user.deleted_at IS NULL")
             .getOne()
     }
 
@@ -115,6 +121,14 @@ export class UserRepository implements IUserRepository {
     }
 
     async delete(id: number): Promise<void> {
-        await this.repository.delete(id)
+        const now = new Date()
+        await this.repository.update(id, {
+            deletedAt: now,
+            email: `deleted_${id}_${now.getTime()}@deleted`,
+            isActive: false,
+            password: undefined,
+            resetPasswordToken: undefined,
+            resetPasswordExpires: undefined,
+        } as any)
     }
 }
