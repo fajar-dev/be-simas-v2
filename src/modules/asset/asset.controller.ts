@@ -29,6 +29,8 @@ export class AssetController {
 
         const holderStatus = c.req.query("holderStatus")
         if (holderStatus === 'has_holder' || holderStatus === 'no_holder') filters.holderStatus = holderStatus
+        const holderType = c.req.query("holderType")
+        if (holderType === 'active_holder' || holderType === 'historical_holder') filters.holderType = holderType
         const bleTagStatus = c.req.query("bleTagStatus")
         if (bleTagStatus === 'has_ble_tag' || bleTagStatus === 'no_ble_tag') filters.bleTagStatus = bleTagStatus
         if (c.req.query("holderId")) filters.holderId = Number(c.req.query("holderId"))

@@ -807,6 +807,127 @@ describe("GET /api/asset - filtering", () => {
     })
 })
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Holder Type Filtering (active vs historical)
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("GET /api/asset - holderType filtering", () => {
+    async function setupHolderTestData(app: Hono, headers: any) {
+        const subCategory = await createTestSubCategory(app, headers)
+
+        // Create two employees
+        const emp1Res = await request(app, "/api/employee", {
+            method: "POST",
+            headers,
+            body: { employeeId: "EMP-H1", name: "Employee One", jobPosition: "Dev", email: "emp1@test.com", phone: "081001" }
+        })
+        const emp2Res = await request(app, "/api/employee", {
+            method: "POST",
+            headers,
+            body: { employeeId: "EMP-H2", name: "Employee Two", jobPosition: "QA", email: "emp2@test.com", phone: "081002" }
+        })
+        const emp1Id = emp1Res.body.data.id
+        const emp2Id = emp2Res.body.data.id
+
+        // Asset 1: has active holder (emp1)
+        const asset1Res = await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, {
+                name: "Active Holder Asset",
+                employeeId: emp1Id,
+                assignedDate: "2026-01-01",
+            }),
+        })
+        const asset1Id = asset1Res.body.data.id
+
+        // Asset 2: was held by emp2 then returned (historical only)
+        const asset2Res = await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, {
+                name: "Historical Holder Asset",
+                employeeId: emp2Id,
+                assignedDate: "2026-01-01",
+            }),
+        })
+        const asset2Id = asset2Res.body.data.id
+        // Return asset 2
+        const holderRes = await request(app, `/api/asset-holder/active/${asset2Id}`, { method: "GET", headers })
+        const holderId = holderRes.body.data.id
+        await request(app, `/api/asset-holder/${holderId}/return`, {
+            method: "POST",
+            headers,
+            body: { returnedDate: "2026-02-01", returnNote: "Returned" }
+        })
+
+        // Asset 3: no holder at all
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, { name: "No Holder Asset" }),
+        })
+
+        return { emp1Id, emp2Id, asset1Id, asset2Id }
+    }
+
+    test("holderStatus=has_holder with holderType=active_holder should only return assets with active holders", async () => {
+        const { headers } = await registerAndLogin(app)
+        await setupHolderTestData(app, headers)
+
+        const res = await request(app, "/api/asset?holderStatus=has_holder&holderType=active_holder", { method: "GET", headers })
+        expect(res.status).toBe(200)
+        expect(res.body.data.length).toBe(1)
+        expect(res.body.data[0].name).toBe("Active Holder Asset")
+    })
+
+    test("holderStatus=has_holder with holderType=historical_holder should return assets with any holder (active or returned)", async () => {
+        const { headers } = await registerAndLogin(app)
+        await setupHolderTestData(app, headers)
+
+        const res = await request(app, "/api/asset?holderStatus=has_holder&holderType=historical_holder", { method: "GET", headers })
+        expect(res.status).toBe(200)
+        expect(res.body.data.length).toBe(2)
+        const names = res.body.data.map((a: any) => a.name)
+        expect(names).toContain("Active Holder Asset")
+        expect(names).toContain("Historical Holder Asset")
+    })
+
+    test("holderStatus=has_holder with holderType=active_holder and holderId should filter by specific active holder", async () => {
+        const { headers } = await registerAndLogin(app)
+        const { emp1Id } = await setupHolderTestData(app, headers)
+
+        const res = await request(app, `/api/asset?holderStatus=has_holder&holderType=active_holder&holderId=${emp1Id}`, { method: "GET", headers })
+        expect(res.status).toBe(200)
+        expect(res.body.data.length).toBe(1)
+        expect(res.body.data[0].name).toBe("Active Holder Asset")
+    })
+
+    test("holderStatus=has_holder with holderType=historical_holder and holderId should filter by employee who ever held the asset", async () => {
+        const { headers } = await registerAndLogin(app)
+        const { emp2Id } = await setupHolderTestData(app, headers)
+
+        // emp2 held asset 2 but returned it — should still show with historical filter
+        const res = await request(app, `/api/asset?holderStatus=has_holder&holderType=historical_holder&holderId=${emp2Id}`, { method: "GET", headers })
+        expect(res.status).toBe(200)
+        expect(res.body.data.length).toBe(1)
+        expect(res.body.data[0].name).toBe("Historical Holder Asset")
+    })
+
+    test("holderStatus=no_holder should only return assets with no active holder", async () => {
+        const { headers } = await registerAndLogin(app)
+        await setupHolderTestData(app, headers)
+
+        const res = await request(app, "/api/asset?holderStatus=no_holder", { method: "GET", headers })
+        expect(res.status).toBe(200)
+        // Asset 2 (returned) and Asset 3 (never assigned) have no active holder
+        expect(res.body.data.length).toBe(2)
+        const names = res.body.data.map((a: any) => a.name)
+        expect(names).toContain("Historical Holder Asset")
+        expect(names).toContain("No Holder Asset")
+    })
+})
+
 describe("Asset Custom Labels - Keys & Sorting", () => {
     test("should fetch unique label keys and sort assets by custom label values", async () => {
         const { headers } = await registerAndLogin(app)
