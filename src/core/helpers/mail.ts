@@ -8,7 +8,7 @@ interface MailPayload {
     html?: string;
 }
 
-class Mail {
+export class Mail {
     /**
      * Internal method to send email via SMTP
      * Handles centering of logic, logging, and error handling.
@@ -57,4 +57,5 @@ class Mail {
 
 // Export a singleton instance
 export const mail = new Mail()
+export const mailHelper = mail
 export default mail

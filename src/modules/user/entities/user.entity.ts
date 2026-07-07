@@ -1,6 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from "typeorm"
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index, OneToMany } from "typeorm"
+import type { Relation } from "typeorm"
 import { Role } from "../../role/entities/role.entity"
 import { Employee } from "../../employee/entities/employee.entity"
+import { PasswordResetToken } from "../../auth/entities/password-reset-token.entity"
 
 @Entity("users")
 export class User {
@@ -19,12 +21,6 @@ export class User {
 
     @Column({ select: false, nullable: true })
     password?: string
-
-    @Column({ name: "reset_password_token", nullable: true })
-    resetPasswordToken?: string
-
-    @Column({ name: "reset_password_expires", type: "timestamp", nullable: true })
-    resetPasswordExpires?: Date
 
     @Index()
     @Column({ name: "is_active", default: true })
@@ -55,5 +51,8 @@ export class User {
     @Index()
     @Column({ name: "deleted_at", type: "timestamp", nullable: true, default: null })
     deletedAt?: Date | null
+
+    @OneToMany(() => PasswordResetToken, (token) => token.user)
+    passwordResetTokens!: Relation<PasswordResetToken[]>
 }
 
