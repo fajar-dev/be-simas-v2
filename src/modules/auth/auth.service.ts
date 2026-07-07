@@ -12,14 +12,21 @@ import { hashPassword, comparePassword } from "../../core/helpers/hash"
 import { verify } from "hono/jwt"
 import { config } from "../../config/config"
 import crypto from "crypto"
-import { mail } from "../../core/helpers/mail"
 import { UserService } from "../user/user.service"
 import { AuthHelper } from "../../core/helpers/auth"
 import { minio } from "../../core/helpers/minio"
+import path from "path"
+import fs from "fs"
+import { Mail } from "../../core/helpers/mail"
+import { IPasswordResetTokenRepository } from "./interfaces/password-reset-token.repository.interface"
 
 export class AuthService {
     constructor(
         private readonly userService: UserService,
+        private readonly mailHelper: Mail,
+        private readonly passwordResetTokenRepository: IPasswordResetTokenRepository,
+
+
     ) {}
 
     async register(data: RegisterValidator) {
@@ -100,50 +107,44 @@ export class AuthService {
             throw new BadRequestException("Account is inactive")
         }
 
-        const resetToken = crypto.randomBytes(32).toString("hex")
-        user.resetPasswordToken = resetToken
-        user.resetPasswordExpires = new Date(Date.now() + 30 * 60 * 1000) // 30 minutes
+      const resetToken = crypto.randomBytes(32).toString("hex")
+        const expiresAt = new Date(Date.now() + 36000000) // 10 hours
+
+        await this.passwordResetTokenRepository.create(user.id, resetToken, expiresAt)
 
         await this.userService.save(user)
-        const resetLink = `${config.app.appUrl}/auth/reset-password?email=${user.email}&token=${resetToken}`
-        const text = `Halo ${user.name},\n\nKami menerima permintaan untuk mengatur ulang kata sandi akun Anda.\n\nSilakan klik tautan berikut untuk mengatur ulang kata sandi:\n${resetLink}\n\nTautan ini akan kedaluwarsa dalam 30 menit.\n\nJika Anda tidak meminta pengaturan ulang kata sandi, abaikan email ini.\n\nTerima kasih.`
-        mail.sendText(user.email, "Atur Ulang Kata Sandi", text).catch(err => console.error("[ForgotPassword] Failed to send email:", err))
+        const resetLink = `${config.app.appUrl}/auth/reset-password?token=${resetToken}`
+        const templatePath = path.join(process.cwd(), "public/templates/forgot-password.html")
+        const html = fs.readFileSync(templatePath, "utf8")
+            .replace(/{{name}}/g, user.name!)
+            .replace(/{{resetLink}}/g, resetLink)
+
+        this.mailHelper.sendHtml(user.email!, "Atur Ulang Kata Sandi", html).catch((err: any) => {
+            console.error(`[Mail] Failed to send reset password email to ${user.email}:`, err)
+        })
         return true
     }
 
     async resetPassword(data: ResetPasswordValidator) {
-        const user = await this.userService.getByResetToken(data.token)
-        if (!user) {
+         const resetToken = await this.passwordResetTokenRepository.findValidToken(data.token)
+        if (!resetToken) {
             throw new BadRequestException("Invalid or expired reset token")
         }
 
-        // Validate token has not expired
-        if (!user.resetPasswordExpires || new Date() > new Date(user.resetPasswordExpires)) {
-            user.resetPasswordToken = null as any
-            user.resetPasswordExpires = null as any
-            await this.userService.save(user)
-            throw new BadRequestException("Reset token has expired")
-        }
-
+        const user = resetToken.user
         user.password = await hashPassword(data.newPassword)
-        user.resetPasswordToken = null as any
-        user.resetPasswordExpires = null as any
 
         await this.userService.save(user)
+        await this.passwordResetTokenRepository.deleteAllByUserId(user.id)
+
         return true
     }
 
-    async validateResetToken(email: string, token: string) {
-        const user = await this.userService.getByEmailAndResetToken(email, token)
-        if (!user) {
+    async validateResetToken(token: string) {
+        const resetToken = await this.passwordResetTokenRepository.findValidToken(token)
+        if (!resetToken) {
             throw new BadRequestException("Invalid or expired reset token")
         }
-
-        // Validate token has not expired
-        if (!user.resetPasswordExpires || new Date() > new Date(user.resetPasswordExpires)) {
-            throw new BadRequestException("Reset token has expired")
-        }
-
         return true
     }
 
