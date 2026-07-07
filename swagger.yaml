@@ -1008,10 +1008,6 @@ paths:
       tags: [Auth]
       summary: Validate a password reset token
       parameters:
-        - name: email
-          in: query
-          required: true
-          schema: { type: string, format: email }
         - name: token
           in: query
           required: true
