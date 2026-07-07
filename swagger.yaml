@@ -16,6 +16,11 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: "JWT access token. Expires in 15 minutes."
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: "Static API key sent via the x-api-key header. Used for machine-to-machine endpoints."
 
   schemas:
     # --- Base Wrapper Schemas ---
@@ -702,6 +707,41 @@ components:
           items: { type: integer }
           example: [2]
           description: "Attachment IDs (e.g. return photo)"
+
+    BookLoanGroup:
+      type: object
+      description: |
+        Loans grouped by employee. Each key is an employee ID (string) mapping to the
+        employee's name and a `bookLoans` map keyed by asset-holder record ID.
+      additionalProperties:
+        type: object
+        properties:
+          employee: { type: string, example: "Book Reader" }
+          bookLoans:
+            type: object
+            additionalProperties: { $ref: "#/components/schemas/BookLoanItem" }
+
+    BookLoanItem:
+      type: object
+      properties:
+        code: { type: string, example: "BOOK-001" }
+        name: { type: string, example: "Atomic Habits" }
+        imageUrl: { type: string, nullable: true, example: "http://cdn.test.com/stock/attachments/cover.jpg" }
+        subCategory: { type: string, nullable: true, example: "Novel" }
+        loanHistory:
+          type: object
+          properties:
+            loaning:
+              type: object
+              properties:
+                loanPeriod: { type: string, nullable: true, example: "2026-07-07T10:00" }
+                loanPhoto: { type: string, nullable: true, example: "http://cdn.test.com/stock/attachments/loan.jpg" }
+            return:
+              type: object
+              properties:
+                returnTime: { type: string, nullable: true, example: "2026-07-08T14:30" }
+                returnPhoto: { type: string, nullable: true, example: "http://cdn.test.com/stock/attachments/return.jpg" }
+                linkReview: { type: string, nullable: true, example: "https://www.goodreads.com/book/show/40121378" }
 
     AssetLocationResponse:
       type: object
@@ -3119,6 +3159,70 @@ paths:
         "401": { description: Unauthorized }
 
   # ── Book (Borrow / Return) ───────────────────────────────────────────────
+  /book/loan:
+    get:
+      tags: [Book]
+      summary: Get book loans grouped by employee
+      description: |
+        Returns all book loans (assets in the "Buku" category) grouped by employee.
+        The response is an array containing a single object keyed by employee ID.
+        Each employee entry holds a `bookLoans` map keyed by the asset-holder record ID.
+
+        Authentication: this endpoint uses the static API key (`x-api-key` header), not a bearer token.
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - in: query
+          name: search
+          schema: { type: string }
+          description: Filter by employee name, employee ID, or asset name.
+        - in: query
+          name: hasReturn
+          schema: { type: boolean }
+          description: "`true` = only returned loans, `false` = only active loans. Omit for all."
+        - in: query
+          name: startDate
+          schema: { type: string }
+          description: Filter by returned date (>= startDate). Combine with endDate for a range.
+        - in: query
+          name: endDate
+          schema: { type: string }
+          description: Filter by returned date (<= endDate). Combine with startDate for a range.
+      responses:
+        "200":
+          description: Loans retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/BookLoanGroup" }
+              example:
+                success: true
+                message: Loans retrieved successfully
+                data:
+                  - "EMP-BOOK-01":
+                      employee: "Book Reader"
+                      bookLoans:
+                        "12":
+                          code: "BOOK-001"
+                          name: "Atomic Habits"
+                          imageUrl: "http://cdn.test.com/stock/attachments/cover.jpg"
+                          subCategory: "Novel"
+                          loanHistory:
+                            loaning:
+                              loanPeriod: "2026-07-07T10:00"
+                              loanPhoto: "http://cdn.test.com/stock/attachments/loan.jpg"
+                            return:
+                              returnTime: "2026-07-08T14:30"
+                              returnPhoto: "http://cdn.test.com/stock/attachments/return.jpg"
+                              linkReview: "https://www.goodreads.com/book/show/40121378"
+        "401": { description: Unauthorized }
+
   /book/my-books:
     get:
       tags: [Book]

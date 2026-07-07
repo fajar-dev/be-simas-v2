@@ -49,6 +49,7 @@ import { mistWebhookController } from "../modules/mist-webhook/mist-webhook.modu
 import { aiController } from "../modules/ai/ai.module"
 import { bookController } from "../modules/book/book.module"
 import { BorrowBookValidator, ReturnBookValidator } from "../modules/book/validators/book.validator"
+import { apiKeyMiddleware } from "../core/middlewares/api-key.middleware"
 
 // ── Routes ───────────────────────────────────────────────────────────────────
 const routes = new Hono()
@@ -232,6 +233,7 @@ routes.post("/ai/decode-barcode", authMiddleware, zValidator("form", DecodeBarco
 routes.post("/webhook/mist", (c) => mistWebhookController.handleWebhook(c))
 
 // Book (Borrow/Return)
+routes.get("/book/loan", apiKeyMiddleware, (c) => bookController.loans(c))
 routes.get("/book/my-books", authMiddleware, (c) => bookController.myBooks(c))
 routes.post("/book/borrow", authMiddleware, zValidator("json", BorrowBookValidator, validationHook), (c) => bookController.borrow(c))
 routes.post("/book/return", authMiddleware, zValidator("json", ReturnBookValidator, validationHook), (c) => bookController.returnBook(c))

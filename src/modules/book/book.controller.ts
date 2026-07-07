@@ -38,6 +38,16 @@ export class BookController {
         return ApiResponse.success(c, result, "Book returned successfully")
     }
 
+    async loans(c: Context) {
+        const search = c.req.query("search") || undefined
+        const startDate = c.req.query("startDate") || undefined
+        const endDate = c.req.query("endDate") || undefined
+        const hasReturn = c.req.query("hasReturn")
+
+        const data = await this.service.getLoans(search, startDate, endDate, hasReturn)
+        return ApiResponse.success(c, data, "Loans retrieved successfully")
+    }
+
     async myBooks(c: Context) {
         const user = c.get("user")
         if (!user?.employeeId) {

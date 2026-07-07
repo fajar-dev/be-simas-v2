@@ -23,6 +23,10 @@ mock.module("../src/core/helpers/minio", () => {
     return { minio: helper, default: helper }
 })
 
+// GET /book/loan is protected by the API key middleware (x-api-key), not bearer auth.
+// In tests, config falls back to the dev key when API_KEY env is empty.
+const apiKeyHeaders = { "x-api-key": "dev-api-key-change-me" }
+
 let app: Hono
 let authHeaders: Record<string, string>
 let bookAssetId: number
@@ -291,6 +295,169 @@ describe("POST /api/book/return", () => {
 
         expect(res.status).toBe(400)
         expect(res.body.success).toBe(false)
+    })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// GET /api/book/loan
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe("GET /api/book/loan", () => {
+    test("should return an array with an empty employee map when no loans", async () => {
+        const res = await request(app, "/api/book/loan", {
+            method: "GET",
+            headers: apiKeyHeaders,
+        })
+
+        expect(res.status).toBe(200)
+        expect(res.body.success).toBe(true)
+        expect(res.body.message).toBe("Loans retrieved successfully")
+        expect(res.body.data).toBeArray()
+        expect(res.body.data.length).toBe(1)
+        expect(res.body.data[0]).toEqual({})
+    })
+
+    test("should group loans by employee with book loan details", async () => {
+        // Borrow a book
+        await request(app, "/api/book/borrow", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId: bookAssetId, assignNote: "For reading club" },
+        })
+
+        const res = await request(app, "/api/book/loan", {
+            method: "GET",
+            headers: apiKeyHeaders,
+        })
+
+        expect(res.status).toBe(200)
+        const employeeLoans = res.body.data[0]
+        expect(employeeLoans["EMP-BOOK-01"]).toBeDefined()
+        expect(employeeLoans["EMP-BOOK-01"].employee).toBe("Book Reader")
+
+        const bookLoans = employeeLoans["EMP-BOOK-01"].bookLoans
+        const loanKeys = Object.keys(bookLoans)
+        expect(loanKeys.length).toBe(1)
+
+        const loan = bookLoans[loanKeys[0]]
+        expect(loan.code).toBe("BOOK-001")
+        expect(loan.name).toBe("Atomic Habits")
+        expect(loan.subCategory).toBe("Novel")
+        expect(loan.loanHistory.loaning.loanPeriod).toBeTruthy()
+        expect(loan.loanHistory.return.returnTime).toBeNull()
+        expect(loan.loanHistory.return.linkReview).toBeNull()
+    })
+
+    test("should include review link and return time after a book is returned", async () => {
+        const borrowRes = await request(app, "/api/book/borrow", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId: bookAssetId },
+        })
+
+        await request(app, "/api/book/return", {
+            method: "POST",
+            headers: authHeaders,
+            body: {
+                assetHolderId: borrowRes.body.data.id,
+                returnNote: "https://www.goodreads.com/book/show/40121378",
+            },
+        })
+
+        const res = await request(app, "/api/book/loan", {
+            method: "GET",
+            headers: apiKeyHeaders,
+        })
+
+        const bookLoans = res.body.data[0]["EMP-BOOK-01"].bookLoans
+        const loan = bookLoans[Object.keys(bookLoans)[0]]
+        expect(loan.loanHistory.return.returnTime).toBeTruthy()
+        expect(loan.loanHistory.return.linkReview).toBe("https://www.goodreads.com/book/show/40121378")
+    })
+
+    test("should filter by hasReturn=false (only active loans)", async () => {
+        await request(app, "/api/book/borrow", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId: bookAssetId },
+        })
+
+        const res = await request(app, "/api/book/loan?hasReturn=false", {
+            method: "GET",
+            headers: apiKeyHeaders,
+        })
+
+        const bookLoans = res.body.data[0]["EMP-BOOK-01"].bookLoans
+        expect(Object.keys(bookLoans).length).toBe(1)
+
+        const returnedRes = await request(app, "/api/book/loan?hasReturn=true", {
+            method: "GET",
+            headers: apiKeyHeaders,
+        })
+        expect(returnedRes.body.data[0]).toEqual({})
+    })
+
+    test("should filter by search term", async () => {
+        await request(app, "/api/book/borrow", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId: bookAssetId },
+        })
+
+        const match = await request(app, "/api/book/loan?search=Atomic", {
+            method: "GET",
+            headers: apiKeyHeaders,
+        })
+        expect(match.body.data[0]["EMP-BOOK-01"]).toBeDefined()
+
+        const noMatch = await request(app, "/api/book/loan?search=Nonexistent", {
+            method: "GET",
+            headers: apiKeyHeaders,
+        })
+        expect(noMatch.body.data[0]).toEqual({})
+    })
+
+    test("should not include non-book category loans", async () => {
+        // Activate and borrow-like assign the non-book asset directly via asset-holder
+        await request(app, "/api/asset-status", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId: nonBookAssetId, status: "active" },
+        })
+        await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId: nonBookAssetId, employeeId, assignedDate: "2026-07-07T10:00" },
+        })
+
+        const res = await request(app, "/api/book/loan", {
+            method: "GET",
+            headers: apiKeyHeaders,
+        })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data[0]).toEqual({})
+    })
+
+    test("should fail without api key", async () => {
+        const res = await request(app, "/api/book/loan", { method: "GET" })
+        expect(res.status).toBe(401)
+    })
+
+    test("should fail with an invalid api key", async () => {
+        const res = await request(app, "/api/book/loan", {
+            method: "GET",
+            headers: { "x-api-key": "wrong-key" },
+        })
+        expect(res.status).toBe(401)
+    })
+
+    test("should reject bearer token (api key required, not auth)", async () => {
+        const res = await request(app, "/api/book/loan", {
+            method: "GET",
+            headers: authHeaders,
+        })
+        expect(res.status).toBe(401)
     })
 })
 

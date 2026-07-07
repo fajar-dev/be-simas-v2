@@ -1,9 +1,10 @@
 import { AssetHolderService } from "../asset-holder/asset-holder.service"
 import type { AssetService } from "../asset/asset.service"
-import type { EmployeeService } from "../employee/employee.service"
 import { AttachmentService } from "../attachment/attachment.service"
 import { AssetHolderSerializer } from "../asset-holder/serializers/asset-holder.serialize"
 import { BadRequestException, NotFoundException } from "../../core/exceptions/base"
+import { IBookRepository } from "./interfaces/book.repository.interface"
+import { resolveFileUrl } from "../../core/helpers/serializer-utils"
 
 const BOOK_CATEGORY = 'Buku'
 
@@ -11,6 +12,8 @@ export class BookService {
     constructor(
         private readonly assetHolderService: AssetHolderService,
         private readonly assetService: AssetService,
+        private readonly bookRepository: IBookRepository,
+        private readonly attachmentService: AttachmentService,
     ) {}
 
     async borrow(data: {
@@ -64,6 +67,63 @@ export class BookService {
 
         const result = await this.assetHolderService.getById(log.id)
         return await AssetHolderSerializer.single(result.log, result.attachments)
+    }
+
+    async getLoans(search?: string, startDate?: string, endDate?: string, hasReturn?: boolean | string) {
+        let hasReturnFilter: boolean | undefined
+        if (hasReturn !== undefined && hasReturn !== '') {
+            hasReturnFilter = String(hasReturn) === 'true'
+        }
+
+        const loans = await this.bookRepository.findLoans({
+            search,
+            startDate,
+            endDate,
+            hasReturn: hasReturnFilter,
+        })
+
+        const employeeLoans: Record<string, any> = {}
+
+        for (const loan of loans) {
+            const empId = loan.employee.employeeId
+            if (!employeeLoans[empId]) {
+                employeeLoans[empId] = {
+                    employee: loan.employee.name,
+                    bookLoans: {},
+                }
+            }
+        }
+
+        await Promise.all(loans.map(async (loan) => {
+            const empId = loan.employee.employeeId
+            const attachments = await this.attachmentService.getForEntity("AssetHolder", loan.id)
+
+            const [imageUrl, loanPhoto, returnPhoto] = await Promise.all([
+                resolveFileUrl(loan.asset.image),
+                attachments[0] ? resolveFileUrl(attachments[0].filename) : Promise.resolve(null),
+                attachments[1] ? resolveFileUrl(attachments[1].filename) : Promise.resolve(null),
+            ])
+
+            employeeLoans[empId].bookLoans[loan.id] = {
+                code: loan.asset.code,
+                name: loan.asset.name,
+                imageUrl,
+                subCategory: loan.asset.subCategory?.name || null,
+                loanHistory: {
+                    loaning: {
+                        loanPeriod: loan.assignedDate,
+                        loanPhoto,
+                    },
+                    return: {
+                        returnTime: loan.returnedDate,
+                        returnPhoto,
+                        linkReview: loan.returnNote || null,
+                    },
+                },
+            }
+        }))
+
+        return [employeeLoans]
     }
 
     async getMyBorrowedBooks(employeeId: number) {
