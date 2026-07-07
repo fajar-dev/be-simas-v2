@@ -269,4 +269,43 @@ describe("Asset Location API Tests", () => {
         expect(listRes.body.data[0].attachments).toHaveLength(1)
         expect(listRes.body.data[0].attachments[0].originalName).toBe("invoice.pdf")
     })
+
+    test("POST /api/asset-location - should fail when asset status is not active", async () => {
+        // Set asset status to "damaged"
+        await request(app, "/api/asset-status", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, status: "damaged", note: "Broken" },
+        })
+
+        // Try to relocate - should fail
+        const res = await request(app, "/api/asset-location", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, locationId, date: "2026-07-01" },
+        })
+
+        expect(res.status).toBe(400)
+        expect(res.body.success).toBe(false)
+        expect(res.body.message).toContain("active")
+    })
+
+    test("POST /api/asset-location - should succeed when asset status is active", async () => {
+        // Set asset status to "active"
+        await request(app, "/api/asset-status", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, status: "active" },
+        })
+
+        // Relocate - should succeed
+        const res = await request(app, "/api/asset-location", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, locationId, date: "2026-07-01" },
+        })
+
+        expect(res.status).toBe(201)
+        expect(res.body.success).toBe(true)
+    })
 })

@@ -296,3 +296,138 @@ describe("Bulk Asset Status - Error Cases", () => {
         expect(body.success).toBe(false)
     })
 })
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Return Active Holders on Status Change
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function createTestEmployee(app: Hono, headers: any) {
+    const res = await request(app, "/api/employee", {
+        method: "POST",
+        headers,
+        body: {
+            employeeId: `EMP-${Date.now()}`,
+            name: "Test Employee",
+            jobPosition: "Developer",
+            email: `emp-${Date.now()}@test.com`,
+            phone: "08123456789"
+        }
+    })
+    return res.body.data
+}
+
+async function assignAssetToEmployee(app: Hono, headers: any, assetId: number, employeeId: number) {
+    const res = await request(app, "/api/asset-holder", {
+        method: "POST",
+        headers,
+        body: { assetId, employeeId, assignedDate: "2026-07-01" },
+    })
+    return res.body.data
+}
+
+describe("Return Active Holders on Status Change", () => {
+    test("single status change with returnActiveHolders should auto-return the holder", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+        const asset = await createTestAsset(app, headers, subCategory.id)
+        const employee = await createTestEmployee(app, headers)
+
+        // Assign asset to employee
+        await assignAssetToEmployee(app, headers, asset.id, employee.id)
+
+        // Verify active holder exists
+        const activeRes = await request(app, `/api/asset-holder/active/${asset.id}`, { headers })
+        expect(activeRes.body.data).not.toBeNull()
+
+        // Change status with returnActiveHolders = true
+        const { status, body } = await request(app, "/api/asset-status", {
+            method: "POST",
+            headers,
+            body: {
+                assetId: asset.id,
+                status: "under_repair",
+                note: "Needs repair",
+                returnActiveHolders: true,
+            },
+        })
+        expect(status).toBe(201)
+        expect(body.success).toBe(true)
+
+        // Verify active holder is now returned
+        const afterRes = await request(app, `/api/asset-holder/active/${asset.id}`, { headers })
+        expect(afterRes.body.data).toBeNull()
+    })
+
+    test("single status change WITHOUT returnActiveHolders should NOT return the holder", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+        const asset = await createTestAsset(app, headers, subCategory.id)
+        const employee = await createTestEmployee(app, headers)
+
+        // Assign asset to employee
+        await assignAssetToEmployee(app, headers, asset.id, employee.id)
+
+        // Change status without returnActiveHolders
+        await request(app, "/api/asset-status", {
+            method: "POST",
+            headers,
+            body: { assetId: asset.id, status: "idle" },
+        })
+
+        // Active holder should still exist
+        const afterRes = await request(app, `/api/asset-holder/active/${asset.id}`, { headers })
+        expect(afterRes.body.data).not.toBeNull()
+    })
+
+    test("bulk status change with returnActiveHolders should auto-return holders", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+        const asset1 = await createTestAsset(app, headers, subCategory.id)
+        const asset2 = await createTestAsset(app, headers, subCategory.id)
+        const employee = await createTestEmployee(app, headers)
+
+        // Assign both assets
+        await assignAssetToEmployee(app, headers, asset1.id, employee.id)
+        // asset2 has no holder
+
+        // Bulk status change with returnActiveHolders
+        const { status, body } = await request(app, "/api/asset-status/bulk", {
+            method: "POST",
+            headers,
+            body: {
+                assetIds: [asset1.id, asset2.id],
+                status: "damaged",
+                returnActiveHolders: true,
+            },
+        })
+        expect(status).toBe(201)
+        expect(body.data.count).toBe(2)
+
+        // asset1 holder should be returned
+        const holder1 = await request(app, `/api/asset-holder/active/${asset1.id}`, { headers })
+        expect(holder1.body.data).toBeNull()
+
+        // asset2 had no holder, should still be null
+        const holder2 = await request(app, `/api/asset-holder/active/${asset2.id}`, { headers })
+        expect(holder2.body.data).toBeNull()
+    })
+
+    test("status change with returnActiveHolders on asset without holder should succeed silently", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+        const asset = await createTestAsset(app, headers, subCategory.id)
+
+        // No holder assigned, just change status with returnActiveHolders
+        const { status, body } = await request(app, "/api/asset-status", {
+            method: "POST",
+            headers,
+            body: {
+                assetId: asset.id,
+                status: "active",
+                returnActiveHolders: true,
+            },
+        })
+        expect(status).toBe(201)
+        expect(body.success).toBe(true)
+    })
+})
