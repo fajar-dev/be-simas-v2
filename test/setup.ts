@@ -19,6 +19,7 @@ import { AssetLocation } from "../src/modules/asset-location/entities/asset-loca
 import { AssetHolder } from "../src/modules/asset-holder/entities/asset-holder.entity"
 import { AssetLog } from "../src/modules/asset-log/entities/asset-log.entity"
 import { AssetStatus } from "../src/modules/asset-status/entities/asset-status.entity"
+import { PasswordResetToken } from "../src/modules/auth/entities/password-reset-token.entity"
 import { ApiResponse } from "../src/core/helpers/response"
 import { BaseException, ValidationException } from "../src/core/exceptions/base"
 import { ZodError } from "zod"
@@ -41,7 +42,7 @@ const TestDataSource = new DataSource({
     database: testDbName,
     synchronize: true,
     dropSchema: true,
-    entities: [User, Role, Permission, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetNote, AssetLocation, AssetHolder, AssetLog, AssetStatus],
+    entities: [User, Role, Permission, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetNote, AssetLocation, AssetHolder, AssetLog, AssetStatus, PasswordResetToken],
     logging: false,
 })
 
