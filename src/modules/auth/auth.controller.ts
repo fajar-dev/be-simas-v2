@@ -71,11 +71,9 @@ export class AuthController {
     }
 
     async validateResetToken(c: Context) {
-        const email = c.req.query("email")
         const token = c.req.query("token")
         if (!token) throw new BadRequestException("Reset token is required")
-        if (!email) throw new BadRequestException("Email is required")
-        await this.service.validateResetToken(email, token)
+        await this.service.validateResetToken(token)
         return ApiResponse.success(c, null, "Token is valid")
     }
 
