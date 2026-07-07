@@ -46,6 +46,14 @@ mock.module("../src/core/helpers/minio", () => {
     return { minio: helper, default: helper }
 })
 
+// ── Mock SMTP to prevent real connections ──────────────────────────────────
+
+mock.module("../src/config/smtp", () => ({
+    transporter: {
+        sendMail: async () => ({ messageId: "test-message-id" }),
+    },
+}))
+
 // ── Setup ───────────────────────────────────────────────────────────────────
 
 let app: Hono
@@ -367,16 +375,7 @@ describe("POST /api/auth/forgot-password", () => {
 
 describe("GET /api/auth/validate-reset-token", () => {
     test("should fail when token query param is missing", async () => {
-        const { status, body } = await request(app, "/api/auth/validate-reset-token?email=test@example.com", {
-            method: "GET",
-        })
-
-        expect(status).toBe(400)
-        expect(body.success).toBe(false)
-    })
-
-    test("should fail when email query param is missing", async () => {
-        const { status, body } = await request(app, "/api/auth/validate-reset-token?token=sometoken", {
+        const { status, body } = await request(app, "/api/auth/validate-reset-token", {
             method: "GET",
         })
 
@@ -387,7 +386,7 @@ describe("GET /api/auth/validate-reset-token", () => {
     test("should fail with invalid token", async () => {
         const { status, body } = await request(
             app,
-            "/api/auth/validate-reset-token?email=test@example.com&token=invalidtoken",
+            "/api/auth/validate-reset-token?token=invalidtoken",
             { method: "GET" }
         )
 
@@ -484,6 +483,62 @@ describe("Full Auth Flow", () => {
             headers: { Authorization: `Bearer ${newAccessToken}` },
         })
         expect(logoutRes.status).toBe(200)
+    })
+
+    test("Forgot Password → Validate Token → Reset Password → Login with new password", async () => {
+        const userData = createUserData()
+
+        // 1. Register
+        await request(app, "/api/auth/register", { method: "POST", body: userData })
+
+        // 2. Forgot password
+        const forgotRes = await request(app, "/api/auth/forgot-password", {
+            method: "POST",
+            body: { email: userData.email },
+        })
+        expect(forgotRes.status).toBe(200)
+
+        // 3. Get the token from DB directly
+        const { getDataSource } = await import("../src/config/database")
+        const ds = getDataSource()
+        const { PasswordResetToken } = await import("../src/modules/auth/entities/password-reset-token.entity")
+        const tokenRecord = await ds.getRepository(PasswordResetToken).findOne({ where: { }, order: { id: "DESC" } })
+        expect(tokenRecord).not.toBeNull()
+        const resetToken = tokenRecord!.token
+
+        // 4. Validate token
+        const validateRes = await request(app, `/api/auth/validate-reset-token?token=${resetToken}`, { method: "GET" })
+        expect(validateRes.status).toBe(200)
+        expect(validateRes.body.success).toBe(true)
+
+        // 5. Reset password
+        const newPassword = "mynewsecurepassword"
+        const resetRes = await request(app, "/api/auth/reset-password", {
+            method: "POST",
+            body: { token: resetToken, newPassword },
+        })
+        expect(resetRes.status).toBe(200)
+        expect(resetRes.body.success).toBe(true)
+
+        // 6. Old password should fail
+        const oldLoginRes = await request(app, "/api/auth/login", {
+            method: "POST",
+            body: { email: userData.email, password: userData.password },
+        })
+        expect(oldLoginRes.status).toBe(401)
+
+        // 7. New password should work
+        const newLoginRes = await request(app, "/api/auth/login", {
+            method: "POST",
+            body: { email: userData.email, password: newPassword },
+        })
+        expect(newLoginRes.status).toBe(200)
+        expect(newLoginRes.body.success).toBe(true)
+        expect(newLoginRes.body.data.accessToken).toBeDefined()
+
+        // 8. Token should be consumed — using it again should fail
+        const revalidateRes = await request(app, `/api/auth/validate-reset-token?token=${resetToken}`, { method: "GET" })
+        expect(revalidateRes.status).toBe(400)
     })
 })
 
