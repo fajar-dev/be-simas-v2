@@ -68,6 +68,13 @@ export class AssetHolderService {
             throw new BadRequestException("Asset is currently assigned and must be returned first")
         }
 
+        // Block assignment if asset status is not "active"
+        const { assetStatusService } = require("../asset-status/asset-status.module")
+        const lastStatus = await assetStatusService.findLastStatus(data.assetId!)
+        if (lastStatus && lastStatus.status !== "active") {
+            throw new BadRequestException(`Cannot assign holder: asset status is "${lastStatus.status}", must be "active"`)
+        }
+
         const log = await withTransaction(async (manager) => {
             const log = await this.repository.save({
                 assetId: data.assetId,

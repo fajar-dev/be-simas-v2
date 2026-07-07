@@ -843,6 +843,7 @@ components:
         assetId: { type: integer, example: 1 }
         status: { type: string, enum: [active, idle, under_repair, damaged, lost, sold, disposed], example: "active" }
         note: { type: string, nullable: true, example: "Asset is operational" }
+        returnActiveHolders: { type: boolean, default: false, description: "If true, automatically return the asset from its active holder" }
 
     BulkCreateAssetStatusRequest:
       type: object
@@ -856,6 +857,7 @@ components:
           description: "Array of asset IDs to change status for"
         status: { type: string, enum: [active, idle, under_repair, damaged, lost, sold, disposed], example: "active" }
         note: { type: string, nullable: true, example: "Bulk status update" }
+        returnActiveHolders: { type: boolean, default: false, description: "If true, automatically return assets from their active holders" }
 
     AssetStatusResponse:
       type: object
@@ -3249,6 +3251,7 @@ paths:
     post:
       tags: [Asset Location]
       summary: Relocate an asset
+      description: "Relocate an asset to a new location. Asset must have 'active' status. Fails if asset is already at the target location or status is not active."
       security:
         - bearerAuth: []
       requestBody:
@@ -3267,6 +3270,7 @@ paths:
                   - type: object
                     properties:
                       data: { $ref: "#/components/schemas/AssetLocationResponse" }
+        "400": { description: "Asset is already at this location or asset status is not active" }
         "401": { description: Unauthorized }
         "404": { description: Asset or Location not found }
         "422": { description: Validation error }
@@ -3343,6 +3347,7 @@ paths:
     post:
       tags: [Asset Holder]
       summary: Assign an asset to an employee
+      description: "Assign an asset to an employee. Asset must have 'active' status. Fails if asset is already assigned or status is not active."
       security:
         - bearerAuth: []
       requestBody:
@@ -3361,7 +3366,7 @@ paths:
                   - type: object
                     properties:
                       data: { $ref: "#/components/schemas/AssetHolderResponse" }
-        "400": { description: Asset is currently assigned and must be returned first }
+        "400": { description: "Asset is currently assigned, employee is inactive, or asset status is not active" }
         "401": { description: Unauthorized }
         "404": { description: Asset or Employee not found }
         "422": { description: Validation error }
@@ -3554,7 +3559,7 @@ paths:
     post:
       tags: [Asset Status]
       summary: Bulk update asset statuses
-      description: "Change the status of multiple assets at once. Creates a new status record for each asset."
+      description: "Change the status of multiple assets at once. Creates a new status record for each asset. Optionally auto-returns assets from active holders when returnActiveHolders is true."
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true

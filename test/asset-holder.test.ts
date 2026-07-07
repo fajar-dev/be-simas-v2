@@ -203,4 +203,43 @@ describe("Asset Holder API Tests", () => {
         expect(resActive.status).toBe(200)
         expect(resActive.body.data.employee.name).toBe("Alice Assignment")
     })
+
+    test("POST /api/asset-holder - should fail when asset status is not active", async () => {
+        // Set asset status to "under_repair"
+        await request(app, "/api/asset-status", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, status: "under_repair", note: "Repairing" },
+        })
+
+        // Try to assign - should fail
+        const res = await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, employeeId, assignedDate: "2026-07-01" },
+        })
+
+        expect(res.status).toBe(400)
+        expect(res.body.success).toBe(false)
+        expect(res.body.message).toContain("active")
+    })
+
+    test("POST /api/asset-holder - should succeed when asset status is active", async () => {
+        // Set asset status to "active"
+        await request(app, "/api/asset-status", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, status: "active" },
+        })
+
+        // Assign - should succeed
+        const res = await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, employeeId, assignedDate: "2026-07-01" },
+        })
+
+        expect(res.status).toBe(201)
+        expect(res.body.success).toBe(true)
+    })
 })

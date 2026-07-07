@@ -61,6 +61,13 @@ export class AssetLocationService {
             throw new BadRequestException("Asset is already at this location")
         }
 
+        // Block relocation if asset status is not "active"
+        const { assetStatusService } = require("../asset-status/asset-status.module")
+        const lastStatus = await assetStatusService.findLastStatus(data.assetId!)
+        if (lastStatus && lastStatus.status !== "active") {
+            throw new BadRequestException(`Cannot relocate: asset status is "${lastStatus.status}", must be "active"`)
+        }
+
         const log = await withTransaction(async (manager) => {
             const log = await this.repository.save({
                 assetId: data.assetId,

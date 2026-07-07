@@ -7,6 +7,7 @@ export class AssetStatusService {
     constructor(private readonly repository: IAssetStatusRepository) {}
 
     private get assetService() { return require("../asset/asset.module").assetService }
+    private get assetHolderService() { return require("../asset-holder/asset-holder.module").assetHolderService }
 
     async getByAssetId(assetId: number, page: number, limit: number): Promise<{ data: AssetStatus[]; total: number }> {
         return await this.repository.findByAssetId(assetId, page, limit)
@@ -16,7 +17,7 @@ export class AssetStatusService {
         return await this.repository.findLastByAssetId(assetId)
     }
 
-    async create(data: { assetId: number; status: string; note?: string | null; createdByUserId?: number | null }): Promise<AssetStatus> {
+    async create(data: { assetId: number; status: string; note?: string | null; createdByUserId?: number | null; returnActiveHolders?: boolean }): Promise<AssetStatus> {
         // Validate asset exists
         await this.assetService.getById(data.assetId)
 
@@ -26,6 +27,11 @@ export class AssetStatusService {
             note: data.note || null,
             createdByUserId: data.createdByUserId,
         })
+
+        // Auto-return active holder if requested
+        if (data.returnActiveHolders) {
+            await this.returnActiveHolderForAsset(data.assetId, data.createdByUserId)
+        }
 
         // Log status change
         await assetLogService.log({
@@ -39,7 +45,7 @@ export class AssetStatusService {
         return record
     }
 
-    async bulkCreate(data: { assetIds: number[]; status: string; note?: string | null; createdByUserId?: number | null }): Promise<{ count: number }> {
+    async bulkCreate(data: { assetIds: number[]; status: string; note?: string | null; createdByUserId?: number | null; returnActiveHolders?: boolean }): Promise<{ count: number }> {
         let count = 0
         for (const assetId of data.assetIds) {
             await this.create({
@@ -47,6 +53,7 @@ export class AssetStatusService {
                 status: data.status,
                 note: data.note,
                 createdByUserId: data.createdByUserId,
+                returnActiveHolders: data.returnActiveHolders,
             })
             count++
         }
@@ -55,5 +62,19 @@ export class AssetStatusService {
 
     async save(data: Partial<AssetStatus>, manager?: EntityManager): Promise<AssetStatus> {
         return await this.repository.save(data, manager)
+    }
+
+    /**
+     * Return the active holder for a specific asset (if any).
+     */
+    private async returnActiveHolderForAsset(assetId: number, userId?: number | null): Promise<void> {
+        const activeHolder = await this.assetHolderService.findActiveHolder(assetId)
+        if (activeHolder) {
+            await this.assetHolderService.returnAsset(activeHolder.id, {
+                returnedDate: new Date().toISOString().split("T")[0],
+                returnNote: "Auto-returned due to status change",
+                returnedByUserId: userId || undefined,
+            })
+        }
     }
 }
