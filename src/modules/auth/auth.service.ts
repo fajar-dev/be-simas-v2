@@ -119,7 +119,7 @@ export class AuthService {
             .replace(/{{name}}/g, user.name!)
             .replace(/{{resetLink}}/g, resetLink)
 
-        this.mailHelper.sendHtml(user.email!, "Atur Ulang Kata Sandi", html).catch((err: any) => {
+        this.mailHelper.sendHtml(user.email!, "Reset Password", html).catch((err: any) => {
             console.error(`[Mail] Failed to send reset password email to ${user.email}:`, err)
         })
         return true
