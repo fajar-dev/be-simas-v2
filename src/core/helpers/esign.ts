@@ -42,7 +42,8 @@ export class EsignHelper {
         form.append("file", params.file, params.file.name)
         form.append("title", params.title ?? "Serah Terima Barang")
         form.append("external_reference_id", String(params.external_reference_id))
-        form.append("signing_mode", "PARALLEL")
+        form.append("signing_mode", "SERIAL")
+        form.append("uploader_name", "SIMAS")
 
         form.append(
             "callback_complete",
