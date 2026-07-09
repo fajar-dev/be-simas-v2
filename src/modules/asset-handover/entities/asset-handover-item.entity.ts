@@ -7,9 +7,8 @@ import {
     ManyToOne,
     JoinColumn,
     Index,
-    Relation,
 } from "typeorm"
-
+import type { Relation } from "typeorm"
 import { AssetHandover } from "./asset-handover.entity"
 import { Asset } from "../../asset/entities/asset.entity"
 

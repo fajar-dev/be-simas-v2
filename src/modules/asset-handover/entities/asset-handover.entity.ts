@@ -8,9 +8,8 @@ import {
     JoinColumn,
     OneToMany,
     Index,
-    Relation,
 } from "typeorm"
-
+import type { Relation } from "typeorm"
 import { User } from "../../user/entities/user.entity"
 import { Employee } from "../../employee/entities/employee.entity"
 import { AssetHandoverItem } from "./asset-handover-item.entity"
