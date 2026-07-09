@@ -2,8 +2,8 @@
   "name": "simas-be",
   "scripts": {
     "dev": "bun run --hot src/index.ts",
-    "build": "bun build --minify --outfile dist/index.js --target bun src/index.ts",
-    "start": "bun run src/index.ts",
+    "build": "bun build src/index.ts --outfile dist/index.js --target bun --packages external --sourcemap linked",
+    "start": "bun dist/index.js",
     "test": "bun test --timeout 30000",
     "seed:permissions": "bun run src/seeds/seed-permissions.ts",
     "sync:employee": "bun run src/jobs/sync-employees.job.ts",
