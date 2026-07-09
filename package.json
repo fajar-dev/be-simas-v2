@@ -1,14 +1,15 @@
 {
   "name": "simas-be",
-  "scripts": {
-    "dev": "bun run --hot src/index.ts",
-"build": "bun build src/index.ts --outdir dist --target bun --packages external --sourcemap linked",    "start": "bun dist/index.js",
-    "test": "bun test --timeout 30000",
-    "seed:permissions": "bun run src/seeds/seed-permissions.ts",
-    "sync:employee": "bun run src/jobs/sync-employees.job.ts",
-    "sync:user": "bun run src/jobs/sync-user.job.ts",
-    "sync:branch": "bun run src/jobs/sync-branch.job.ts"
-  },
+ "scripts": {
+  "dev": "bun run --hot src/index.ts",
+  "build": "bun build src/index.ts --outdir dist --target=bun --packages=external",
+  "start": "bun dist/index.js",
+  "test": "bun test --timeout 30000",
+  "seed:permissions": "bun run src/seeds/seed-permissions.ts",
+  "sync:employee": "bun run src/jobs/sync-employees.job.ts",
+  "sync:user": "bun run src/jobs/sync-user.job.ts",
+  "sync:branch": "bun run src/jobs/sync-branch.job.ts"
+},
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@hono/swagger-ui": "^0.6.1",
