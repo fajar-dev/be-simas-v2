@@ -92,8 +92,8 @@ describe("Asset Holder API Tests", () => {
 
         expect(res.status).toBe(201)
         expect(res.body.success).toBe(true)
-        expect(res.body.data.assetId).toBe(assetId)
-        expect(res.body.data.employeeId).toBe(employeeId)
+        expect(res.body.data.asset.id).toBe(assetId)
+        expect(res.body.data.employee.id).toBe(employeeId)
         expect(res.body.data.assignedDate).toBe("2026-06-19")
         expect(res.body.data.returnedDate).toBeNull()
         expect(res.body.data.assignNote).toBe("Given to Alice")

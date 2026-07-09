@@ -1,11 +1,11 @@
 import { Context } from "hono"
-import { AssetHandoverService } from "./asset-handover.service"
-import { AssetHandoverSerializer } from "./serializers/asset-handover.serialize"
+import { HandoverService } from "./handover.service"
+import { HandoverSerializer } from "./serializers/handover.serialize"
 import { ApiResponse } from "../../core/helpers/response"
 import { BadRequestException } from "../../core/exceptions/base"
 
-export class AssetHandoverController {
-    constructor(private readonly service: AssetHandoverService) {}
+export class HandoverController {
+    constructor(private readonly service: HandoverService) {}
 
     async index(c: Context) {
         const page = Number(c.req.query("page") || "1")
@@ -17,7 +17,7 @@ export class AssetHandoverController {
         const transactionType = c.req.query("transactionType") || undefined
 
         const { data, total } = await this.service.getAll(page, limit, q, sortBy, order, { status, transactionType })
-        const serialized = await AssetHandoverSerializer.collection(data)
+        const serialized = await HandoverSerializer.collection(data)
 
         return ApiResponse.paginate(c, serialized, total, page, limit, "Asset handovers retrieved successfully")
     }
@@ -25,7 +25,7 @@ export class AssetHandoverController {
     async show(c: Context) {
         const id = Number(c.req.param("id"))
         const { handover, attachments } = await this.service.getById(id)
-        const data = await AssetHandoverSerializer.single(handover, attachments)
+        const data = await HandoverSerializer.single(handover, attachments)
         return ApiResponse.success(c, data, "Asset handover retrieved successfully")
     }
 
@@ -33,14 +33,14 @@ export class AssetHandoverController {
         const user = c.get("user")
         const body = c.req.valid("json" as never) as any
         const { handover, attachments } = await this.service.create(body, user?.id)
-        const data = await AssetHandoverSerializer.single(handover, attachments)
+        const data = await HandoverSerializer.single(handover, attachments)
         return ApiResponse.success(c, data, "Asset handover created successfully", 201)
     }
 
     async cancel(c: Context) {
         const id = Number(c.req.param("id"))
         const { handover, attachments } = await this.service.cancel(id)
-        const data = await AssetHandoverSerializer.single(handover, attachments)
+        const data = await HandoverSerializer.single(handover, attachments)
         return ApiResponse.success(c, data, "Asset handover cancelled successfully")
     }
 }

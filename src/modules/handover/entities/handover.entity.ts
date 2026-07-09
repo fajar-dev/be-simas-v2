@@ -12,11 +12,11 @@ import {
 import type { Relation } from "typeorm"
 import { User } from "../../user/entities/user.entity"
 import { Employee } from "../../employee/entities/employee.entity"
-import { AssetHandoverItem } from "./asset-handover-item.entity"
+import { HandoverItem } from "./handover-item.entity"
 import type { HandoverTransactionType, HandoverStatus } from "../../../core/enums"
 
-@Entity("asset_handovers")
-export class AssetHandover {
+@Entity("handovers")
+export class Handover {
     @PrimaryGeneratedColumn()
     id!: number
 
@@ -46,6 +46,16 @@ export class AssetHandover {
     @Column({ type: "varchar", default: "pending" })
     status!: HandoverStatus
 
+    // For a `return` handover: the origin `assign` handover it returns from
+    // (best-effort — set only when all returned assets share one origin).
+    @Index()
+    @Column({ name: "parent_handover_id", nullable: true })
+    parentHandoverId?: number | null
+
+    @ManyToOne(() => Handover, { onDelete: "SET NULL", nullable: true })
+    @JoinColumn({ name: "parent_handover_id" })
+    parentHandover?: Relation<Handover> | null
+
     @Column({ name: "created_by", nullable: true })
     createdByUserId?: number | null
 
@@ -53,8 +63,8 @@ export class AssetHandover {
     @JoinColumn({ name: "created_by" })
     createdBy?: Relation<User> | null
 
-    @OneToMany(() => AssetHandoverItem, (item) => item.handover)
-    items?: Relation<AssetHandoverItem[]>
+    @OneToMany(() => HandoverItem, (item) => item.handover)
+    items?: Relation<HandoverItem[]>
 
     @CreateDateColumn({ name: "created_at" })
     createdAt!: Date

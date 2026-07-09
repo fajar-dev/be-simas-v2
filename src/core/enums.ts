@@ -12,11 +12,11 @@
 export const ASSET_STATUSES = ["active", "idle", "under_repair", "damaged", "lost", "sold", "disposed"] as const
 export type AssetStatusValue = (typeof ASSET_STATUSES)[number]
 
-/** Asset handover transaction type — column `asset_handovers.transaction_type`. */
+/** Asset handover transaction type — column `handovers.transaction_type`. */
 export const HANDOVER_TRANSACTION_TYPES = ["assign", "return"] as const
 export type HandoverTransactionType = (typeof HANDOVER_TRANSACTION_TYPES)[number]
 
-/** Asset handover approval status — column `asset_handovers.status`. */
+/** Asset handover approval status — column `handovers.status`. */
 export const HANDOVER_STATUSES = ["pending", "approve", "reject", "cancel"] as const
 export type HandoverStatus = (typeof HANDOVER_STATUSES)[number]
 

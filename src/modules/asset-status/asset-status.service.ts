@@ -4,7 +4,8 @@ import { assetLogService } from "../asset-log/asset-log.module"
 import { EntityManager } from "typeorm"
 import { AppDataSource } from "../../config/database"
 import { Asset } from "../asset/entities/asset.entity"
-import { NotFoundException } from "../../core/exceptions/base"
+import { HandoverItem } from "../handover/entities/handover-item.entity"
+import { NotFoundException, BadRequestException } from "../../core/exceptions/base"
 import { AssetHolderService } from "../asset-holder/asset-holder.service"
 
 export class AssetStatusService {
@@ -27,6 +28,10 @@ export class AssetStatusService {
         if (!assetExists) {
             throw new NotFoundException("Asset not found")
         }
+
+        // Keep the handover lifecycle authoritative: an asset held via a handover
+        // must first be returned through a return handover before its status can change.
+        await this.assertNotTiedToHandover(data.assetId)
 
         const record = await this.repository.save({
             assetId: data.assetId,
@@ -53,6 +58,12 @@ export class AssetStatusService {
     }
 
     async bulkCreate(data: { assetIds: number[]; status: string; note?: string | null; createdByUserId?: number | null; returnActiveHolders?: boolean }): Promise<{ count: number }> {
+        // Reject the whole batch up front if any asset is held via a handover,
+        // so no partial status changes are applied.
+        for (const assetId of data.assetIds) {
+            await this.assertNotTiedToHandover(assetId)
+        }
+
         let count = 0
         for (const assetId of data.assetIds) {
             await this.create({
@@ -69,6 +80,36 @@ export class AssetStatusService {
 
     async save(data: Partial<AssetStatus>, manager?: EntityManager): Promise<AssetStatus> {
         return await this.repository.save(data, manager)
+    }
+
+    /**
+     * Reject a status change while the asset is tied to a handover, so the handover
+     * lifecycle stays authoritative:
+     * - held by an active holder that came from a handover → return it via a return handover first;
+     * - part of a pending handover → complete or cancel that handover first.
+     */
+    private async assertNotTiedToHandover(assetId: number): Promise<void> {
+        const activeHolder = await this.assetHolderService.findActiveHolder(assetId)
+        if (activeHolder?.assignHandoverId) {
+            const name = activeHolder.asset?.name || `#${assetId}`
+            throw new BadRequestException(`Asset "${name}" is held via a handover; return it through a return handover before changing its status`)
+        }
+        if (await this.isInPendingHandover(assetId)) {
+            const asset = await AppDataSource.getRepository(Asset).findOneBy({ id: assetId })
+            const name = asset?.name || `#${assetId}`
+            throw new BadRequestException(`Asset "${name}" is in a pending handover; complete or cancel it before changing its status`)
+        }
+    }
+
+    /** Whether the asset is currently part of a pending (assign or return) handover. */
+    private async isInPendingHandover(assetId: number): Promise<boolean> {
+        const count = await AppDataSource.getRepository(HandoverItem)
+            .createQueryBuilder("item")
+            .innerJoin("item.handover", "handover")
+            .where("item.assetId = :assetId", { assetId })
+            .andWhere("handover.status = :status", { status: "pending" })
+            .getCount()
+        return count > 0
     }
 
     /**

@@ -8,8 +8,6 @@ export class AssetLocationSerializer {
     static async single(log: AssetLocation, attachments: Attachment[] = []) {
         return {
             id: log.id,
-            assetId: log.assetId,
-            locationId: log.locationId,
             date: log.date,
             note: log.note || null,
             createdAt: log.createdAt,

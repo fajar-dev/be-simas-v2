@@ -19,7 +19,7 @@ import { StoreFeedbackValidator } from "../modules/feedback/validators/feedback.
 import { CreateAssetStatusValidator, BulkCreateAssetStatusValidator } from "../modules/asset-status/validators/asset-status.validator"
 import { CreateRoleValidator, UpdateRoleValidator } from "../modules/role/validators/role.validator"
 import { DecodeBarcodeValidator } from "../modules/ai/validators/ai.validator"
-import { CreateAssetHandoverValidator } from "../modules/asset-handover/validators/asset-handover.validator"
+import { CreateHandoverValidator } from "../modules/handover/validators/handover.validator"
 
 // ── Middlewares ──────────────────────────────────────────────────────────────
 import { authMiddleware } from "../core/middlewares/auth.middleware"
@@ -50,7 +50,7 @@ import { webhookClientController } from "../modules/webhook-client/webhook-clien
 import { aiController } from "../modules/ai/ai.module"
 import { bookController } from "../modules/book/book.module"
 import { BorrowBookValidator, ReturnBookValidator } from "../modules/book/validators/book.validator"
-import { assetHandoverController } from "../modules/asset-handover/asset-handover.module"
+import { handoverController } from "../modules/handover/handover.module"
 import { apiKeyMiddleware } from "../core/middlewares/api-key.middleware"
 
 // ── Routes ───────────────────────────────────────────────────────────────────
@@ -179,10 +179,10 @@ routes.post("/asset-status/bulk", authMiddleware, requirePermission("asset-statu
 routes.post("/asset-status", authMiddleware, requirePermission("asset-status:create"), zValidator("json", CreateAssetStatusValidator, validationHook), (c) => assetStatusController.store(c))
 
 // Asset Handover
-routes.get("/asset-handover", authMiddleware, requirePermission("asset-handover:read"), (c) => assetHandoverController.index(c))
-routes.get("/asset-handover/:id", authMiddleware, requirePermission("asset-handover:read"), (c) => assetHandoverController.show(c))
-routes.post("/asset-handover", authMiddleware, requirePermission("asset-handover:create"), zValidator("json", CreateAssetHandoverValidator, validationHook), (c) => assetHandoverController.store(c))
-routes.post("/asset-handover/:id/cancel", authMiddleware, requirePermission("asset-handover:cancel"), (c) => assetHandoverController.cancel(c))
+routes.get("/handover", authMiddleware, requirePermission("handover:read"), (c) => handoverController.index(c))
+routes.get("/handover/:id", authMiddleware, requirePermission("handover:read"), (c) => handoverController.show(c))
+routes.post("/handover", authMiddleware, requirePermission("handover:create"), zValidator("json", CreateHandoverValidator, validationHook), (c) => handoverController.store(c))
+routes.post("/handover/:id/cancel", authMiddleware, requirePermission("handover:cancel"), (c) => handoverController.cancel(c))
 
 // Statistic
 routes.get("/statistic/summary", authMiddleware, requirePermission("dashboard:read"), (c) => statisticController.summary(c))

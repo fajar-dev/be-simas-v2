@@ -9,7 +9,7 @@ import { withTransaction } from "../../core/helpers/transaction"
 import { EntityManager } from "typeorm"
 import { AppDataSource } from "../../config/database"
 import { Asset } from "../asset/entities/asset.entity"
-import { AssetHandoverItem } from "../asset-handover/entities/asset-handover-item.entity"
+import { HandoverItem } from "../handover/entities/handover-item.entity"
 import { AssetStatus } from "../asset-status/entities/asset-status.entity"
 
 export class AssetHolderService {
@@ -78,7 +78,7 @@ export class AssetHolderService {
         }
 
         // Block manual assignment while the asset is part of a pending handover
-        const pendingItems = await AppDataSource.getRepository(AssetHandoverItem)
+        const pendingItems = await AppDataSource.getRepository(HandoverItem)
             .createQueryBuilder("item")
             .innerJoin("item.handover", "handover")
             .where("handover.status = :status", { status: "pending" })
@@ -132,10 +132,20 @@ export class AssetHolderService {
         return reloaded
     }
 
-    async returnAsset(id: number, data: { returnedDate: string; returnNote?: string; returnedByUserId?: number; attachmentIds?: number[] }): Promise<AssetHolder> {
+    async returnAsset(
+        id: number,
+        data: { returnedDate: string; returnNote?: string; returnedByUserId?: number; attachmentIds?: number[] },
+        options: { enforceHandoverPolicy?: boolean } = {}
+    ): Promise<AssetHolder> {
         const { log } = await this.getById(id)
         if (log.returnedDate) {
             throw new BadRequestException("Asset has already been returned")
+        }
+        // A user-initiated manual return is not allowed for holders created via an assign
+        // handover — those must be returned through a return handover. System-triggered
+        // returns (status change auto-return, book return) bypass this policy.
+        if (options.enforceHandoverPolicy && log.assignHandoverId) {
+            throw new BadRequestException("Asset assigned via handover must be returned through a return handover")
         }
 
         await withTransaction(async (manager) => {

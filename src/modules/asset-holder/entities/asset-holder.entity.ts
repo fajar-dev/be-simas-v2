@@ -13,7 +13,7 @@ import type { Relation } from "typeorm"
 import { Asset } from "../../asset/entities/asset.entity"
 import { Employee } from "../../employee/entities/employee.entity"
 import { User } from "../../user/entities/user.entity"
-import { AssetHandover } from "../../asset-handover/entities/asset-handover.entity"
+import { Handover } from "../../handover/entities/handover.entity"
 
 @Entity("asset_holders")
 export class AssetHolder {
@@ -64,12 +64,20 @@ export class AssetHolder {
     returnedBy?: Relation<User> | null
 
     @Index()
-    @Column({ name: "handover_id", nullable: true })
-    handoverId?: number | null
+    @Column({ name: "assign_handover_id", nullable: true })
+    assignHandoverId?: number | null
 
-    @ManyToOne(() => AssetHandover, { onDelete: "SET NULL", nullable: true })
-    @JoinColumn({ name: "handover_id" })
-    handover?: Relation<AssetHandover> | null
+    @ManyToOne(() => Handover, { onDelete: "SET NULL", nullable: true })
+    @JoinColumn({ name: "assign_handover_id" })
+    assignHandover?: Relation<Handover> | null
+
+    @Index()
+    @Column({ name: "return_handover_id", nullable: true })
+    returnHandoverId?: number | null
+
+    @ManyToOne(() => Handover, { onDelete: "SET NULL", nullable: true })
+    @JoinColumn({ name: "return_handover_id" })
+    returnHandover?: Relation<Handover> | null
 
     @CreateDateColumn({ name: "created_at" })
     createdAt!: Date

@@ -1,5 +1,5 @@
 import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from "pdf-lib"
-import type { AssetHandover } from "../../modules/asset-handover/entities/asset-handover.entity"
+import type { Handover } from "../../modules/handover/entities/handover.entity"
 import type { HandoverTransactionType } from "../enums"
 
 const A4 = { w: 595.28, h: 841.89 }
@@ -58,7 +58,7 @@ function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): 
  * Generate the "FORM SERAH TERIMA ASET/BARANG" PDF for a handover.
  * Returns the raw PDF bytes.
  */
-export async function generateHandoverPdf(handover: AssetHandover): Promise<Uint8Array> {
+export async function generateHandoverPdf(handover: Handover): Promise<Uint8Array> {
     const doc = await PDFDocument.create()
     const page = doc.addPage([A4.w, A4.h])
     const font = await doc.embedFont(StandardFonts.Helvetica)

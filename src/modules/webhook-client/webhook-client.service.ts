@@ -1,7 +1,7 @@
 import { AssetService } from "../asset/asset.service"
 import { LocationService } from "../location/location.service"
 import { AssetLocationService } from "../asset-location/asset-location.service"
-import { AssetHandoverService } from "../asset-handover/asset-handover.service"
+import { HandoverService } from "../handover/handover.service"
 import { config } from "../../config/config"
 
 interface MistZoneEvent {
@@ -18,7 +18,7 @@ export class WebhookClientService {
         private readonly assetService: AssetService,
         private readonly locationService: LocationService,
         private readonly assetLocationService: AssetLocationService,
-        private readonly assetHandoverService: AssetHandoverService
+        private readonly handoverService: HandoverService
     ) {}
 
     // Mist Logic
@@ -91,9 +91,9 @@ export class WebhookClientService {
 
         const status = body.status
         if (status === "COMPLETED") {
-            return await this.assetHandoverService.approve(externalReferenceId, body.file_url)
+            return await this.handoverService.approve(externalReferenceId, body.file_url)
         } else {
-            return await this.assetHandoverService.reject(externalReferenceId)
+            return await this.handoverService.reject(externalReferenceId)
         }
     }
 }

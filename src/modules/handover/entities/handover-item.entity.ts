@@ -9,11 +9,11 @@ import {
     Index,
 } from "typeorm"
 import type { Relation } from "typeorm"
-import { AssetHandover } from "./asset-handover.entity"
+import { Handover } from "./handover.entity"
 import { Asset } from "../../asset/entities/asset.entity"
 
-@Entity("asset_handover_items")
-export class AssetHandoverItem {
+@Entity("handover_items")
+export class HandoverItem {
     @PrimaryGeneratedColumn()
     id!: number
 
@@ -21,11 +21,11 @@ export class AssetHandoverItem {
     @Column({ name: "handover_id" })
     handoverId!: number
 
-    @ManyToOne(() => AssetHandover, (handover) => handover.items, {
+    @ManyToOne(() => Handover, (handover) => handover.items, {
         onDelete: "CASCADE",
     })
     @JoinColumn({ name: "handover_id" })
-    handover!: Relation<AssetHandover>
+    handover!: Relation<Handover>
 
     @Index()
     @Column({ name: "asset_id" })

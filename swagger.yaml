@@ -515,8 +515,8 @@ components:
           nullable: true
           properties:
             id: { type: integer, example: 1 }
-            employeeId: { type: integer, example: 1 }
             assignedDate: { type: string, format: date, example: "2026-06-19" }
+            assignHandoverId: { type: integer, nullable: true, example: 5 }
             employee:
               type: object
               nullable: true
@@ -602,7 +602,6 @@ components:
       type: object
       properties:
         id: { type: integer, example: 1 }
-        assetId: { type: integer, example: 1 }
         date: { type: string, format: date, example: "2026-06-19" }
         note: { type: string, example: "Routine hardware checkup" }
         cost: { type: number, nullable: true, example: 500000 }
@@ -652,7 +651,6 @@ components:
       type: object
       properties:
         id: { type: integer, example: 1 }
-        assetId: { type: integer, example: 1 }
         date: { type: string, format: date, example: "2026-06-19" }
         note: { type: string, example: "General observation about the asset" }
         createdAt: { type: string, format: date-time }
@@ -747,8 +745,6 @@ components:
       type: object
       properties:
         id: { type: integer, example: 1 }
-        assetId: { type: integer, example: 1 }
-        locationId: { type: integer, example: 1 }
         date: { type: string, format: date, example: "2026-06-19" }
         note: { type: string, nullable: true, example: "Relocated to Main Office IT Room" }
         source: { type: string, example: "manual", description: "Source of the relocation: manual or ble" }
@@ -781,14 +777,14 @@ components:
             name: { type: string, example: "John Doe" }
             photo: { type: string, nullable: true, example: "users/avatar.png" }
 
-    AssetHandoverItemRequest:
+    HandoverItemRequest:
       type: object
       required: [assetId]
       properties:
         assetId: { type: integer, example: 1 }
         note: { type: string, nullable: true, example: "Charger + bag, minor scratches", description: "Keterangan/kondisi per item — shown in the generated form" }
 
-    CreateAssetHandoverRequest:
+    CreateHandoverRequest:
       type: object
       required: [receivedById, handedOverById, transactionType, items]
       properties:
@@ -799,9 +795,9 @@ components:
         items:
           type: array
           minItems: 1
-          items: { $ref: "#/components/schemas/AssetHandoverItemRequest" }
+          items: { $ref: "#/components/schemas/HandoverItemRequest" }
 
-    AssetHandoverResponse:
+    HandoverResponse:
       type: object
       properties:
         id: { type: integer, example: 1 }
@@ -828,6 +824,14 @@ components:
         status: { type: string, enum: [pending, approve, reject, cancel], example: "pending" }
         transactionType: { type: string, enum: [assign, return] }
         note: { type: string, nullable: true }
+        parentHandover:
+          type: object
+          nullable: true
+          description: "For a return handover, the origin assign handover it returns from (best-effort)."
+          properties:
+            id: { type: integer, example: 5 }
+            transactionType: { type: string, enum: [assign, return] }
+            status: { type: string, enum: [pending, approve, reject, cancel] }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         createdBy:
@@ -885,13 +889,10 @@ components:
       type: object
       properties:
         id: { type: integer, example: 1 }
-        assetId: { type: integer, example: 1 }
-        employeeId: { type: integer, example: 1 }
         assignedDate: { type: string, format: date, example: "2026-06-19" }
         returnedDate: { type: string, format: date, nullable: true, example: "2026-06-25" }
         assignNote: { type: string, nullable: true, example: "Assigned for development work" }
         returnNote: { type: string, nullable: true, example: "Returned in good condition" }
-        handoverId: { type: integer, nullable: true, example: 5 }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         asset:
@@ -924,15 +925,25 @@ components:
             id: { type: integer, example: 1 }
             name: { type: string, example: "John Doe" }
             photo: { type: string, nullable: true, example: "users/avatar.png" }
-        handover:
+        assignHandover:
           type: object
           nullable: true
-          description: "Source handover if this holder was created from an asset handover; null otherwise."
+          description: "Origin (assign) handover if this holder was created from a handover; null otherwise."
           properties:
             id: { type: integer, example: 5 }
             status: { type: string, enum: [pending, approve, reject, cancel], example: "approve" }
             transactionType: { type: string, enum: [assign, return], example: "assign" }
             note: { type: string, nullable: true, example: "Operational use" }
+            createdAt: { type: string, format: date-time }
+        returnHandover:
+          type: object
+          nullable: true
+          description: "Return handover that returned this holder; null while still active."
+          properties:
+            id: { type: integer, example: 8 }
+            status: { type: string, enum: [pending, approve, reject, cancel], example: "approve" }
+            transactionType: { type: string, enum: [assign, return], example: "return" }
+            note: { type: string, nullable: true }
             createdAt: { type: string, format: date-time }
         attachments:
           type: array
@@ -3643,7 +3654,7 @@ paths:
         "404": { description: Asset assignment record not found }
         "422": { description: Validation error }
 
-  /asset-handover:
+  /handover:
     get:
       tags: [Asset Handover]
       summary: Get list of asset handovers
@@ -3677,7 +3688,7 @@ paths:
                     properties:
                       data:
                         type: array
-                        items: { $ref: "#/components/schemas/AssetHandoverResponse" }
+                        items: { $ref: "#/components/schemas/HandoverResponse" }
         "401": { description: Unauthorized }
 
     post:
@@ -3690,7 +3701,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/CreateAssetHandoverRequest" }
+            schema: { $ref: "#/components/schemas/CreateHandoverRequest" }
       responses:
         "201":
           description: Asset handover created successfully
@@ -3701,13 +3712,13 @@ paths:
                   - $ref: "#/components/schemas/BaseResponse"
                   - type: object
                     properties:
-                      data: { $ref: "#/components/schemas/AssetHandoverResponse" }
+                      data: { $ref: "#/components/schemas/HandoverResponse" }
         "400": { description: "Asset already has a holder, is in another pending handover, duplicated, or employee inactive" }
         "401": { description: Unauthorized }
         "404": { description: Asset or Employee not found }
         "422": { description: Validation error }
 
-  /asset-handover/{id}:
+  /handover/{id}:
     get:
       tags: [Asset Handover]
       summary: Get asset handover details
@@ -3728,11 +3739,11 @@ paths:
                   - $ref: "#/components/schemas/BaseResponse"
                   - type: object
                     properties:
-                      data: { $ref: "#/components/schemas/AssetHandoverResponse" }
+                      data: { $ref: "#/components/schemas/HandoverResponse" }
         "401": { description: Unauthorized }
         "404": { description: Asset handover not found }
 
-  /asset-handover/{id}/cancel:
+  /handover/{id}/cancel:
     post:
       tags: [Asset Handover]
       summary: Cancel a pending asset handover
@@ -3754,10 +3765,10 @@ paths:
                   - $ref: "#/components/schemas/BaseResponse"
                   - type: object
                     properties:
-                      data: { $ref: "#/components/schemas/AssetHandoverResponse" }
+                      data: { $ref: "#/components/schemas/HandoverResponse" }
         "400": { description: Only pending handovers can be cancelled }
         "401": { description: Unauthorized }
-        "403": { description: Forbidden - missing asset-handover:cancel permission }
+        "403": { description: Forbidden - missing handover:cancel permission }
         "404": { description: Asset handover not found }
 
   /asset-log:
@@ -4014,7 +4025,7 @@ paths:
                       data:
                         type: object
                         properties:
-                          handover: { $ref: "#/components/schemas/AssetHandoverResponse" }
+                          handover: { $ref: "#/components/schemas/HandoverResponse" }
                           attachments:
                             type: array
                             items: { $ref: "#/components/schemas/AttachmentResponse" }

@@ -6,7 +6,18 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [Unreleased] — 2026-07-09
+## [Unreleased] — 2026-07-10
+
+### Added
+- **Serah terima pengembalian (return handover)**: handover `return` — hanya aset yang active holder-nya = karyawan penyerah (`handedOverById`) yang boleh dipindai; lewat alur `pending → e-sign → approve` yang sama; saat approve, holder terkait ditandai returned. Mendukung **partial return** (assign 2, return 1) dan tautan best-effort ke handover assign asal (`parent_handover_id`). Holder dari serah terima hanya bisa dikembalikan lewat return handover (return manual diblokir).
+- **Guard perubahan status aset**: menolak ubah status (single & bulk) bila aset masih **dipegang via handover** atau sedang dalam **pending handover** — menjaga konsistensi lifecycle handover. Bulk menolak seluruh batch bila ada satu yang terkunci.
+- Test E2E return handover + guard status (`test/handover.test.ts`).
+
+### Changed
+- **Rename modul `AssetHandover` → `Handover`** (generik, untuk reuse modul stok — stok & serah terima berbagi satu dokumen): folder `src/modules/handover`, tabel `handovers` & `handover_items`, endpoint `/handover*`, permission `handover:*`, entity-type attachment `"Handover"`.
+- **Cleanup serializer (repo-wide)**: hapus scalar FK bila objek lengkap sudah diserialisasi (mis. `assetId` bila ada `asset:{}`), pada holder/asset/user/user-list/note/location/maintenance. `UserService.create/update` kini reload relasi agar objek `role`/`employee` ada di response.
+- Entity `AssetHolder`: relasi origin handover `handover`/`handover_id` → **`assignHandover`/`assign_handover_id`**; tambah relasi `returnHandover`/`return_handover_id` (diisi saat return handover di-approve).
+- Copy PDF & dokumen: type transaksi Penetapan/Pengembalian.
 
 ### Added
 - **Cancel Asset Handover**: handover berstatus `pending` dapat dibatalkan (status menjadi `cancel`); setelah `approve` handover terkunci dan tidak bisa dibatalkan. Endpoint `POST /asset-handover/:id/cancel` (permission `asset-handover:cancel`); aset ikut terbebas untuk di-assign ulang. Alur e-sign tetap aman: webhook `COMPLETED` menolak meng-approve handover yang sudah `cancel`.

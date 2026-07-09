@@ -15,8 +15,8 @@ import { AssetLocation } from "../modules/asset-location/entities/asset-location
 import { AssetHolder } from "../modules/asset-holder/entities/asset-holder.entity"
 import { AssetLog } from "../modules/asset-log/entities/asset-log.entity"
 import { AssetStatus } from "../modules/asset-status/entities/asset-status.entity"
-import { AssetHandover } from "../modules/asset-handover/entities/asset-handover.entity"
-import { AssetHandoverItem } from "../modules/asset-handover/entities/asset-handover-item.entity"
+import { Handover } from "../modules/handover/entities/handover.entity"
+import { HandoverItem } from "../modules/handover/entities/handover-item.entity"
 import { Role } from "../modules/role/entities/role.entity"
 import { Permission } from "../modules/role/entities/permission.entity"
 import { config } from "./config"
@@ -37,7 +37,7 @@ const defaultDataSource = new DataSource({
     password: config.database.pass,
     database: config.database.name,
     synchronize: config.database.sync,
-    entities: [User, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetNote, AssetLocation, AssetHolder, AssetLog, AssetStatus, AssetHandover, AssetHandoverItem, Role, Permission, PasswordResetToken],
+    entities: [User, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetNote, AssetLocation, AssetHolder, AssetLog, AssetStatus, Handover, HandoverItem, Role, Permission, PasswordResetToken],
     migrations: [],
     subscribers: [],
 })

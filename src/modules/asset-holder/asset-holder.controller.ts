@@ -81,7 +81,7 @@ export class AssetHolderController {
         const log = await this.service.returnAsset(id, {
             ...body,
             returnedByUserId: user?.id,
-        })
+        }, { enforceHandoverPolicy: true })
 
         const { log: reloaded, attachments } = await this.service.getById(log.id)
         const data = await AssetHolderSerializer.single(reloaded, attachments)

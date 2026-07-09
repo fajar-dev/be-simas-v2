@@ -1,16 +1,16 @@
 import { EntityManager, Repository } from "typeorm"
 import { AppDataSource } from "../../../config/database"
-import { AssetHandover } from "../entities/asset-handover.entity"
-import { AssetHandoverItem } from "../entities/asset-handover-item.entity"
-import { IAssetHandoverRepository, AssetHandoverFilter } from "../interfaces/asset-handover.repository.interface"
+import { Handover } from "../entities/handover.entity"
+import { HandoverItem } from "../entities/handover-item.entity"
+import { IHandoverRepository, HandoverFilter } from "../interfaces/handover.repository.interface"
 
-export class TypeOrmAssetHandoverRepository implements IAssetHandoverRepository {
-    private readonly repository: Repository<AssetHandover>
-    private readonly itemRepository: Repository<AssetHandoverItem>
+export class TypeOrmHandoverRepository implements IHandoverRepository {
+    private readonly repository: Repository<Handover>
+    private readonly itemRepository: Repository<HandoverItem>
 
     constructor() {
-        this.repository = AppDataSource.getRepository(AssetHandover)
-        this.itemRepository = AppDataSource.getRepository(AssetHandoverItem)
+        this.repository = AppDataSource.getRepository(Handover)
+        this.itemRepository = AppDataSource.getRepository(HandoverItem)
     }
 
     async findAll(
@@ -19,8 +19,8 @@ export class TypeOrmAssetHandoverRepository implements IAssetHandoverRepository 
         q: string,
         sortBy?: string,
         order?: 'ASC' | 'DESC',
-        filters?: AssetHandoverFilter
-    ): Promise<{ data: AssetHandover[]; total: number }> {
+        filters?: HandoverFilter
+    ): Promise<{ data: Handover[]; total: number }> {
         const offset = (page - 1) * limit
 
         const query = this.repository.createQueryBuilder("handover")
@@ -65,7 +65,7 @@ export class TypeOrmAssetHandoverRepository implements IAssetHandoverRepository 
         return { data, total }
     }
 
-    async findById(id: number): Promise<AssetHandover | null> {
+    async findById(id: number): Promise<Handover | null> {
         return await this.repository.findOne({
             where: { id },
             relations: [
@@ -74,6 +74,7 @@ export class TypeOrmAssetHandoverRepository implements IAssetHandoverRepository 
                 "receivedBy",
                 "handedOverBy",
                 "createdBy",
+                "parentHandover",
             ],
         })
     }
@@ -92,27 +93,27 @@ export class TypeOrmAssetHandoverRepository implements IAssetHandoverRepository 
         return rows.map((r) => Number(r.assetId))
     }
 
-    async save(data: Partial<AssetHandover>, manager?: EntityManager): Promise<AssetHandover> {
-        const repo = manager ? manager.getRepository(AssetHandover) : this.repository
+    async save(data: Partial<Handover>, manager?: EntityManager): Promise<Handover> {
+        const repo = manager ? manager.getRepository(Handover) : this.repository
         return await repo.save(data)
     }
 
-    async saveItem(data: Partial<AssetHandoverItem>, manager?: EntityManager): Promise<AssetHandoverItem> {
-        const repo = manager ? manager.getRepository(AssetHandoverItem) : this.itemRepository
+    async saveItem(data: Partial<HandoverItem>, manager?: EntityManager): Promise<HandoverItem> {
+        const repo = manager ? manager.getRepository(HandoverItem) : this.itemRepository
         return await repo.save(data)
     }
 
     async deleteItems(handoverId: number, manager?: EntityManager): Promise<void> {
-        const repo = manager ? manager.getRepository(AssetHandoverItem) : this.itemRepository
+        const repo = manager ? manager.getRepository(HandoverItem) : this.itemRepository
         await repo.delete({ handoverId })
     }
 
     async delete(id: number, manager?: EntityManager): Promise<void> {
-        const repo = manager ? manager.getRepository(AssetHandover) : this.repository
+        const repo = manager ? manager.getRepository(Handover) : this.repository
         await repo.delete(id)
     }
 
-    merge(entity: AssetHandover, data: Partial<AssetHandover>): AssetHandover {
+    merge(entity: Handover, data: Partial<Handover>): Handover {
         return this.repository.merge(entity, data)
     }
 }

@@ -468,7 +468,7 @@ describe("User - roleId", () => {
 
         expect(status).toBe(201)
         expect(body.success).toBe(true)
-        expect(body.data.roleId).toBe(roleId)
+        expect(body.data.role.id).toBe(roleId)
     })
 
     test("should update user roleId", async () => {
@@ -501,7 +501,7 @@ describe("User - roleId", () => {
             body: userData,
         })
         const userId = createRes.body.data.id
-        expect(createRes.body.data.roleId).toBe(role1Id)
+        expect(createRes.body.data.role.id).toBe(role1Id)
 
         // Update to role2
         const { status, body } = await request(app, `/api/user/${userId}`, {
@@ -512,7 +512,7 @@ describe("User - roleId", () => {
 
         expect(status).toBe(200)
         expect(body.success).toBe(true)
-        expect(body.data.roleId).toBe(role2Id)
+        expect(body.data.role.id).toBe(role2Id)
     })
 
     test("should return role in user show response", async () => {
@@ -545,7 +545,7 @@ describe("User - roleId", () => {
         })
 
         expect(status).toBe(200)
-        expect(body.data.roleId).toBe(roleId)
+        expect(body.data.role.id).toBe(roleId)
         expect(body.data.role).toBeDefined()
         expect(body.data.role.name).toBe("Show Tester")
     })

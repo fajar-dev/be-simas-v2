@@ -8,7 +8,7 @@ const HandoverItemValidator = z.object({
     note: z.string().trim().optional().nullable(),
 })
 
-export const CreateAssetHandoverValidator = z.object({
+export const CreateHandoverValidator = z.object({
     receivedById: z.number("Received by ID is required"),
     handedOverById: z.number("Handed over by ID is required"),
     transactionType: TransactionTypeEnum,
@@ -16,4 +16,4 @@ export const CreateAssetHandoverValidator = z.object({
     items: z.array(HandoverItemValidator).min(1, "At least one item is required"),
 })
 
-export type CreateAssetHandoverValidator = z.infer<typeof CreateAssetHandoverValidator>
+export type CreateHandoverValidator = z.infer<typeof CreateHandoverValidator>

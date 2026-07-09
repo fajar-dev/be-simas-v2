@@ -1,12 +1,12 @@
-import { AssetHandover } from "../entities/asset-handover.entity"
-import { AssetHandoverItem } from "../entities/asset-handover-item.entity"
+import { Handover } from "../entities/handover.entity"
+import { HandoverItem } from "../entities/handover-item.entity"
 import { resolveFileUrl } from "../../../core/helpers/serializer-utils"
 import { Attachment } from "../../attachment/entities/attachment.entity"
 import { AttachmentSerializer } from "../../attachment/serializers/attachment.serialize"
 
-export class AssetHandoverSerializer {
+export class HandoverSerializer {
 
-    private static async item(item: AssetHandoverItem) {
+    private static async item(item: HandoverItem) {
         return {
             id: item.id,
             note: item.note || null,
@@ -19,7 +19,7 @@ export class AssetHandoverSerializer {
         }
     }
 
-    static async single(handover: AssetHandover, attachments: Attachment[] = []) {
+    static async single(handover: Handover, attachments: Attachment[] = []) {
         return {
             id: handover.id,
             received: handover.receivedBy ? {
@@ -39,6 +39,11 @@ export class AssetHandoverSerializer {
             status: handover.status,
             transactionType: handover.transactionType,
             note: handover.note || null,
+            parentHandover: handover.parentHandover ? {
+                id: handover.parentHandover.id,
+                transactionType: handover.parentHandover.transactionType,
+                status: handover.parentHandover.status,
+            } : null,
             createdAt: handover.createdAt,
             updatedAt: handover.updatedAt,
             createdBy: handover.createdBy ? {
@@ -51,7 +56,7 @@ export class AssetHandoverSerializer {
         }
     }
 
-    static async collection(items: { handover: AssetHandover; attachments: Attachment[] }[]) {
+    static async collection(items: { handover: Handover; attachments: Attachment[] }[]) {
         return Promise.all(items.map((i) => this.single(i.handover, i.attachments)))
     }
 }

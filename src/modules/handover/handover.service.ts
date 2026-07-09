@@ -1,8 +1,8 @@
-import { AssetHandover } from "./entities/asset-handover.entity"
-import { IAssetHandoverRepository, AssetHandoverFilter } from "./interfaces/asset-handover.repository.interface"
+import { Handover } from "./entities/handover.entity"
+import { IHandoverRepository, HandoverFilter } from "./interfaces/handover.repository.interface"
 import { NotFoundException, BadRequestException } from "../../core/exceptions/base"
 import { withTransaction } from "../../core/helpers/transaction"
-import { CreateAssetHandoverValidator } from "./validators/asset-handover.validator"
+import { CreateHandoverValidator } from "./validators/handover.validator"
 import { AssetService } from "../asset/asset.service"
 import { EmployeeService } from "../employee/employee.service"
 import { AssetHolderService } from "../asset-holder/asset-holder.service"
@@ -12,15 +12,16 @@ import { Attachment } from "../attachment/entities/attachment.entity"
 import { AssetHolder } from "../asset-holder/entities/asset-holder.entity"
 import { generateHandoverPdf } from "../../core/helpers/handover-pdf"
 import { esignHelper, EsignSigner } from "../../core/helpers/esign"
+import type { HandoverTransactionType } from "../../core/enums"
 
-const ENTITY_HANDOVER = "AssetHandover"
+const ENTITY_HANDOVER = "Handover"
 const ENTITY_HOLDER = "AssetHolder"
 
-export type HandoverWithAttachments = { handover: AssetHandover; attachments: Attachment[] }
+export type HandoverWithAttachments = { handover: Handover; attachments: Attachment[] }
 
-export class AssetHandoverService {
+export class HandoverService {
     constructor(
-        private readonly repository: IAssetHandoverRepository,
+        private readonly repository: IHandoverRepository,
         private readonly assetService: AssetService,
         private readonly employeeService: EmployeeService,
         private readonly assetHolderService: AssetHolderService,
@@ -29,7 +30,7 @@ export class AssetHandoverService {
     ) {}
 
 
-    async getAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC', filters?: AssetHandoverFilter): Promise<{ data: HandoverWithAttachments[]; total: number }> {
+    async getAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC', filters?: HandoverFilter): Promise<{ data: HandoverWithAttachments[]; total: number }> {
         const { data, total } = await this.repository.findAll(page, limit, q, sortBy, order, filters)
         const withAttachments = await Promise.all(
             data.map(async (handover) => ({
@@ -47,7 +48,7 @@ export class AssetHandoverService {
     }
 
     /** Fetch a handover entity or throw; used internally where attachments aren't needed. */
-    private async findOrFail(id: number): Promise<AssetHandover> {
+    private async findOrFail(id: number): Promise<Handover> {
         const handover = await this.repository.findById(id)
         if (!handover) {
             throw new NotFoundException("Asset handover not found")
@@ -59,8 +60,18 @@ export class AssetHandoverService {
         return await this.repository.findPendingItemAssetIds()
     }
 
-    /** Validate every item's asset, and that assets are available (no active holder, not in another pending handover, no duplicates). */
-    private async validateItems(items: {assetId: number, note?: string | null}[], excludeHandoverId?: number): Promise<void> {
+    /**
+     * Validate a handover's items depending on its transaction type.
+     * Common rules: at least one item, no duplicates, and no asset already in another pending handover.
+     * - `assign`: each asset must be free (no active holder).
+     * - `return`: each asset must currently be held by the returning employee (`handedOverById`).
+     */
+    private async validateItems(
+        transactionType: HandoverTransactionType,
+        items: { assetId: number; note?: string | null }[],
+        handedOverById: number,
+        excludeHandoverId?: number
+    ): Promise<void> {
         if (!items || items.length === 0) {
             throw new BadRequestException("At least one item is required")
         }
@@ -80,33 +91,64 @@ export class AssetHandoverService {
             // Validate asset exists (throws NotFoundException if not found)
             const asset = await this.assetService.getById(item.assetId)
 
-            // Asset must not already have an active holder
-            const activeHolder = await this.assetHolderService.findActiveHolder(item.assetId)
-            if (activeHolder) {
-                throw new BadRequestException(`Asset "${asset.name}" already has an active holder`)
-            }
-
-            // Asset must not be part of another pending handover
+            // Asset must not be part of another pending handover (assign or return)
             if (pendingAssetIds.has(item.assetId)) {
                 throw new BadRequestException(`Asset "${asset.name}" is already in another pending handover`)
+            }
+
+            const activeHolder = await this.assetHolderService.findActiveHolder(item.assetId)
+
+            if (transactionType === "return") {
+                // Return: the asset must currently be held by the returning employee.
+                if (!activeHolder) {
+                    throw new BadRequestException(`Asset "${asset.name}" has no active holder to return`)
+                }
+                if (activeHolder.employeeId !== handedOverById) {
+                    throw new BadRequestException(`Asset "${asset.name}" is not currently held by the returning employee`)
+                }
+            } else {
+                // Assign: the asset must be free.
+                if (activeHolder) {
+                    throw new BadRequestException(`Asset "${asset.name}" already has an active holder`)
+                }
             }
         }
     }
 
-    async create(data: CreateAssetHandoverValidator, userId?: number): Promise<HandoverWithAttachments> {
-        // Validate employee exists & active
+    private async resolveParentHandoverId(assetIds: number[]): Promise<number | null> {
+        const originIds: number[] = []
+        for (const assetId of assetIds) {
+            const holder = await this.assetHolderService.findActiveHolder(assetId)
+            if (!holder?.assignHandoverId) return null
+            if (!originIds.includes(holder.assignHandoverId)) {
+                originIds.push(holder.assignHandoverId)
+            }
+        }
+        return originIds.length === 1 ? originIds[0]! : null
+    }
+
+    async create(data: CreateHandoverValidator, userId?: number): Promise<HandoverWithAttachments> {
+        const isReturn = data.transactionType === "return"
+
+        // Receiving employee must exist & be active.
         const receivedByEmployee = await this.employeeService.getById(data.receivedById)
         if (!receivedByEmployee.isActive) {
             throw new BadRequestException(`Cannot hand over asset to inactive employee "${receivedByEmployee.name}"`)
         }
 
-        // Validate handing over employee exists & active
+        // Handing-over employee must exist. For a return they may be inactive
+        // (e.g. offboarding), so the active check only applies to assigns.
         const handedOverBy = await this.employeeService.getById(data.handedOverById)
-        if (!handedOverBy.isActive) {
+        if (!isReturn && !handedOverBy.isActive) {
             throw new BadRequestException(`Handing over employee "${handedOverBy.name}" is inactive`)
         }
 
-        await this.validateItems(data.items)
+        await this.validateItems(data.transactionType, data.items, data.handedOverById)
+
+        // A return handover links back (best-effort) to the origin assign handover.
+        const parentHandoverId = isReturn
+            ? await this.resolveParentHandoverId(data.items.map((i) => i.assetId))
+            : null
 
         const handover = await withTransaction(async (manager) => {
             const created = await this.repository.save({
@@ -115,6 +157,7 @@ export class AssetHandoverService {
                 transactionType: data.transactionType,
                 note: data.note ?? null,
                 status: "pending",
+                parentHandoverId,
                 createdByUserId: userId ?? null,
             }, manager)
 
@@ -139,7 +182,7 @@ export class AssetHandoverService {
     }
 
     /** Build the handover PDF form, attach it to the handover, and submit it to e-sign. */
-    private async dispatchForSigning(handover: AssetHandover): Promise<void> {
+    private async dispatchForSigning(handover: Handover): Promise<void> {
         const pdfBytes = await generateHandoverPdf(handover)
         const fileName = `handover-${handover.id}.pdf`
         const file = new File([pdfBytes as any], fileName, { type: "application/pdf" })
@@ -179,6 +222,21 @@ export class AssetHandoverService {
             throw new BadRequestException(`Only pending handovers can be approved (current status: "${handover.status}")`)
         }
 
+        const affectedHolders = handover.transactionType === "return"
+            ? await this.applyReturn(handover)
+            : await this.applyAssign(handover)
+
+        // On approval from e-sign, point the handover's document at the signed
+        // file URL and attach that signed document to every affected holder.
+        if (fileUrl) {
+            await this.attachSignedDocument(handover.id, affectedHolders, fileUrl)
+        }
+
+        return await this.getById(id)
+    }
+
+    /** Approve an `assign` handover: create a new active holder per item. */
+    private async applyAssign(handover: Handover): Promise<AssetHolder[]> {
         const items = handover.items || []
         const createdHolders: AssetHolder[] = []
 
@@ -193,7 +251,7 @@ export class AssetHandoverService {
                 const holder = await this.assetHolderService.save({
                     assetId: item.assetId,
                     employeeId: handover.receivedById,
-                    handoverId: handover.id,
+                    assignHandoverId: handover.id,
                     assignedDate: new Date().toISOString(),
                     assignNote: item.note ?? null,
                     createdByUserId: handover.createdByUserId ?? null,
@@ -206,23 +264,54 @@ export class AssetHandoverService {
                     action: "assign",
                     description: `Asset assigned via handover #${handover.id} to employee "${handover.receivedBy?.name || handover.receivedById}".`,
                     createdByUserId: handover.createdByUserId ?? null,
-                    newValue: { handoverId: handover.id, assetHolderId: holder.id },
+                    newValue: { assignHandoverId: handover.id, assetHolderId: holder.id },
                 }, manager)
             }
 
-            this.repository.merge(handover, {
-                status: "approve",
-            })
+            this.repository.merge(handover, { status: "approve" })
             await this.repository.save(handover, manager)
         })
 
-        // On approval from e-sign, point the handover's document at the signed
-        // file URL and attach that signed document to every created holder.
-        if (fileUrl) {
-            await this.attachSignedDocument(handover.id, createdHolders, fileUrl)
-        }
+        return createdHolders
+    }
 
-        return await this.getById(id)
+    /** Approve a `return` handover: mark each item's active holder as returned. */
+    private async applyReturn(handover: Handover): Promise<AssetHolder[]> {
+        const items = handover.items || []
+        const returnedHolders: AssetHolder[] = []
+
+        await withTransaction(async (manager) => {
+            for (const item of items) {
+                const activeHolder = await this.assetHolderService.findActiveHolder(item.assetId)
+                if (!activeHolder) {
+                    throw new BadRequestException(`Asset "${item.asset?.name || item.assetId}" has no active holder to return`)
+                }
+                if (activeHolder.employeeId !== handover.handedOverById) {
+                    throw new BadRequestException(`Asset "${item.asset?.name || item.assetId}" is not held by the returning employee`)
+                }
+
+                activeHolder.returnedDate = new Date().toISOString()
+                activeHolder.returnNote = item.note ?? handover.note ?? null
+                activeHolder.returnedByUserId = handover.createdByUserId ?? null
+                activeHolder.returnHandoverId = handover.id
+                const returned = await this.assetHolderService.save(activeHolder, manager)
+                returnedHolders.push(returned)
+
+                await this.assetLogService.log({
+                    assetId: item.assetId,
+                    module: "holder",
+                    action: "return",
+                    description: `Asset returned via handover #${handover.id} by employee "${handover.handedOverBy?.name || handover.handedOverById}".`,
+                    createdByUserId: handover.createdByUserId ?? null,
+                    newValue: { returnHandoverId: handover.id, assetHolderId: activeHolder.id },
+                }, manager)
+            }
+
+            this.repository.merge(handover, { status: "approve" })
+            await this.repository.save(handover, manager)
+        })
+
+        return returnedHolders
     }
 
     /** Swap the handover attachment to the signed URL and attach it to each holder. */

@@ -91,8 +91,8 @@ export class AssetSerializer {
             })),
             activeHolder: asset.activeHolder ? {
                 id: asset.activeHolder.id,
-                employeeId: asset.activeHolder.employeeId,
                 assignedDate: asset.activeHolder.assignedDate,
+                assignHandoverId: asset.activeHolder.assignHandoverId || null,
                 employee: asset.activeHolder.employee ? {
                     id: asset.activeHolder.employee.id,
                     name: asset.activeHolder.employee.name,

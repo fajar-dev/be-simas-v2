@@ -128,8 +128,8 @@ describe("POST /api/book/borrow", () => {
         expect(res.status).toBe(201)
         expect(res.body.success).toBe(true)
         expect(res.body.message).toBe("Book borrowed successfully")
-        expect(res.body.data.assetId).toBe(bookAssetId)
-        expect(res.body.data.employeeId).toBe(employeeId)
+        expect(res.body.data.asset.id).toBe(bookAssetId)
+        expect(res.body.data.employee.id).toBe(employeeId)
         expect(res.body.data.assignNote).toBe("For reading club")
         expect(res.body.data.returnedDate).toBeNull()
     })
@@ -493,7 +493,7 @@ describe("GET /api/book/my-books", () => {
 
         expect(res.status).toBe(200)
         expect(res.body.data.length).toBe(1)
-        expect(res.body.data[0].assetId).toBe(bookAssetId)
+        expect(res.body.data[0].asset.id).toBe(bookAssetId)
         expect(res.body.data[0].returnedDate).toBeNull()
     })
 

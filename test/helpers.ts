@@ -18,7 +18,7 @@ export function createUserData(overrides: Record<string, any> = {}) {
 
 // ── Asset Handover Test Data ────────────────────────────────────────────────
 
-export function createAssetHandoverData(
+export function createHandoverData(
     items: { assetId: number; note?: string }[],
     receivedById: number,
     overrides: Record<string, any> = {}

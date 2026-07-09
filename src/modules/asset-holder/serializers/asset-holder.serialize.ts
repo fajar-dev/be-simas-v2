@@ -8,13 +8,10 @@ export class AssetHolderSerializer {
     static async single(log: AssetHolder, attachments: Attachment[] = []) {
         return {
             id: log.id,
-            assetId: log.assetId,
-            employeeId: log.employeeId,
             assignedDate: log.assignedDate,
             returnedDate: log.returnedDate || null,
             assignNote: log.assignNote || null,
             returnNote: log.returnNote || null,
-            handoverId: log.handoverId || null,
             createdAt: log.createdAt,
             updatedAt: log.updatedAt,
             asset: log.asset ? {
@@ -41,12 +38,19 @@ export class AssetHolderSerializer {
                 name: log.returnedBy.name,
                 photo: await resolveFileUrl(log.returnedBy.photo),
             } : null,
-            handover: log.handover ? {
-                id: log.handover.id,
-                status: log.handover.status,
-                transactionType: log.handover.transactionType,
-                note: log.handover.note || null,
-                createdAt: log.handover.createdAt,
+            assignHandover: log.assignHandover ? {
+                id: log.assignHandover.id,
+                status: log.assignHandover.status,
+                transactionType: log.assignHandover.transactionType,
+                note: log.assignHandover.note || null,
+                createdAt: log.assignHandover.createdAt,
+            } : null,
+            returnHandover: log.returnHandover ? {
+                id: log.returnHandover.id,
+                status: log.returnHandover.status,
+                transactionType: log.returnHandover.transactionType,
+                note: log.returnHandover.note || null,
+                createdAt: log.returnHandover.createdAt,
             } : null,
             attachments: await AttachmentSerializer.collection(attachments),
         }
