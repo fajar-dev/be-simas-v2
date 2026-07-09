@@ -11,16 +11,22 @@ import { minio } from "../../core/helpers/minio"
 import { attachmentService } from "../attachment/attachment.module"
 import { assetLogService } from "../asset-log/asset-log.module"
 import { withTransaction } from "../../core/helpers/transaction"
+import { AssetHolderService } from "../asset-holder/asset-holder.service"
+import { AssetLocationService } from "../asset-location/asset-location.service"
+import { AssetStatusService } from "../asset-status/asset-status.service"
+import { EmployeeService } from "../employee/employee.service"
+import { LocationService } from "../location/location.service"
 
 export class AssetService {
-    constructor(private readonly repository: IAssetRepository) {}
+    constructor(
+        private readonly repository: IAssetRepository,
+        private readonly assetHolderService: AssetHolderService,
+        private readonly assetLocationService: AssetLocationService,
+        private readonly assetStatusService: AssetStatusService,
+        private readonly employeeService: EmployeeService,
+        private readonly locationService: LocationService
+    ) {}
 
-    // Lazy getters — resolve circular deps at call-time, not import-time
-    private get assetHolderService() { return require("../asset-holder/asset-holder.module").assetHolderService }
-    private get assetLocationService() { return require("../asset-location/asset-location.module").assetLocationService }
-    private get assetStatusService() { return require("../asset-status/asset-status.module").assetStatusService }
-    private get employeeService() { return require("../employee/employee.module").employeeService }
-    private get locationService() { return require("../location/location.module").locationService }
 
     async getAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC', filters?: AssetFilter): Promise<{ data: Asset[]; total: number }> {
         const { data, total } = await this.repository.findAll(page, limit, q, sortBy, order, filters)

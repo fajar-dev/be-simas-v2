@@ -4,16 +4,18 @@ import { NotFoundException, BadRequestException } from "../../core/exceptions/ba
 import { AttachmentService } from "../attachment/attachment.service"
 import { Attachment } from "../attachment/entities/attachment.entity"
 import { assetLogService } from "../asset-log/asset-log.module"
-import type { AssetService } from "../asset/asset.service"
-import type { EmployeeService } from "../employee/employee.service"
+import { EmployeeService } from "../employee/employee.service"
 import { withTransaction } from "../../core/helpers/transaction"
 import { EntityManager } from "typeorm"
+import { AppDataSource } from "../../config/database"
+import { Asset } from "../asset/entities/asset.entity"
+import { AssetHandoverItem } from "../asset-handover/entities/asset-handover-item.entity"
+import { AssetStatus } from "../asset-status/entities/asset-status.entity"
 
 export class AssetHolderService {
     constructor(
         private readonly repository: IAssetHolderRepository,
         private readonly attachmentService: AttachmentService,
-        private readonly assetService: AssetService,
         private readonly employeeService: EmployeeService
     ) {}
 
@@ -52,9 +54,16 @@ export class AssetHolderService {
         return { log, attachments }
     }
 
+    async findActiveByHandoverId(handoverId: number): Promise<AssetHolder[]> {
+        return await this.repository.findActiveByHandoverId(handoverId)
+    }
+
     async create(data: Partial<AssetHolder> & { attachmentIds?: number[] }): Promise<AssetHolder> {
-        // Validate asset exists (throws NotFoundException if not found)
-        await this.assetService.getById(data.assetId!)
+        // Validate asset exists
+        const assetExists = await AppDataSource.getRepository(Asset).findOneBy({ id: data.assetId! })
+        if (!assetExists) {
+            throw new NotFoundException("Asset not found")
+        }
 
         // Validate employee exists (throws NotFoundException if not found)
         const employee = await this.employeeService.getById(data.employeeId!)
@@ -68,9 +77,23 @@ export class AssetHolderService {
             throw new BadRequestException("Asset is currently assigned and must be returned first")
         }
 
+        // Block manual assignment while the asset is part of a pending handover
+        const pendingItems = await AppDataSource.getRepository(AssetHandoverItem)
+            .createQueryBuilder("item")
+            .innerJoin("item.handover", "handover")
+            .where("handover.status = :status", { status: "pending" })
+            .select("item.assetId", "assetId")
+            .getRawMany()
+        const pendingAssetIds = pendingItems.map(item => item.assetId)
+        if (pendingAssetIds.includes(data.assetId!)) {
+            throw new BadRequestException("Asset is awaiting handover approval and cannot be assigned")
+        }
+
         // Block assignment if asset status is not "active"
-        const { assetStatusService } = require("../asset-status/asset-status.module")
-        const lastStatus = await assetStatusService.findLastStatus(data.assetId!)
+        const lastStatus = await AppDataSource.getRepository(AssetStatus).findOne({
+            where: { assetId: data.assetId! },
+            order: { id: "DESC" }
+        })
         if (lastStatus && lastStatus.status !== "active") {
             throw new BadRequestException(`Cannot assign holder: asset status is "${lastStatus.status}", must be "active"`)
         }

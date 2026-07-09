@@ -26,6 +26,7 @@ export class AssetHolderRepository implements IAssetHolderRepository {
             .leftJoinAndSelect("holder.employee", "employee")
             .leftJoinAndSelect("holder.createdBy", "createdBy")
             .leftJoinAndSelect("holder.returnedBy", "returnedBy")
+            .leftJoinAndSelect("holder.handover", "handover")
 
         if (q) {
             query.where(
@@ -71,7 +72,7 @@ export class AssetHolderRepository implements IAssetHolderRepository {
     async findById(id: number): Promise<AssetHolder | null> {
         return await this.repository.findOne({
             where: { id },
-            relations: ["asset", "employee", "createdBy", "returnedBy"],
+            relations: ["asset", "employee", "createdBy", "returnedBy", "handover"],
         })
     }
 
@@ -81,7 +82,17 @@ export class AssetHolderRepository implements IAssetHolderRepository {
                 assetId,
                 returnedDate: IsNull(),
             },
-            relations: ["asset", "employee", "createdBy", "returnedBy"],
+            relations: ["asset", "employee", "createdBy", "returnedBy", "handover"],
+        })
+    }
+
+    async findActiveByHandoverId(handoverId: number): Promise<AssetHolder[]> {
+        return await this.repository.find({
+            where: {
+                handoverId,
+                returnedDate: IsNull(),
+            },
+            relations: ["asset", "employee", "createdBy", "returnedBy", "handover"],
         })
     }
 

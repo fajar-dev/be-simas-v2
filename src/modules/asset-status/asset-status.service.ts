@@ -2,12 +2,16 @@ import { AssetStatus } from "./entities/asset-status.entity"
 import { IAssetStatusRepository } from "./interfaces/asset-status.repository.interface"
 import { assetLogService } from "../asset-log/asset-log.module"
 import { EntityManager } from "typeorm"
+import { AppDataSource } from "../../config/database"
+import { Asset } from "../asset/entities/asset.entity"
+import { NotFoundException } from "../../core/exceptions/base"
+import { AssetHolderService } from "../asset-holder/asset-holder.service"
 
 export class AssetStatusService {
-    constructor(private readonly repository: IAssetStatusRepository) {}
-
-    private get assetService() { return require("../asset/asset.module").assetService }
-    private get assetHolderService() { return require("../asset-holder/asset-holder.module").assetHolderService }
+    constructor(
+        private readonly repository: IAssetStatusRepository,
+        private readonly assetHolderService: AssetHolderService
+    ) {}
 
     async getByAssetId(assetId: number, page: number, limit: number): Promise<{ data: AssetStatus[]; total: number }> {
         return await this.repository.findByAssetId(assetId, page, limit)
@@ -19,7 +23,10 @@ export class AssetStatusService {
 
     async create(data: { assetId: number; status: string; note?: string | null; createdByUserId?: number | null; returnActiveHolders?: boolean }): Promise<AssetStatus> {
         // Validate asset exists
-        await this.assetService.getById(data.assetId)
+        const assetExists = await AppDataSource.getRepository(Asset).findOneBy({ id: data.assetId })
+        if (!assetExists) {
+            throw new NotFoundException("Asset not found")
+        }
 
         const record = await this.repository.save({
             assetId: data.assetId,

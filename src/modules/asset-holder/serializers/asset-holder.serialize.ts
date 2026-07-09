@@ -14,6 +14,7 @@ export class AssetHolderSerializer {
             returnedDate: log.returnedDate || null,
             assignNote: log.assignNote || null,
             returnNote: log.returnNote || null,
+            handoverId: log.handoverId || null,
             createdAt: log.createdAt,
             updatedAt: log.updatedAt,
             asset: log.asset ? {
@@ -39,6 +40,15 @@ export class AssetHolderSerializer {
                 id: log.returnedBy.id,
                 name: log.returnedBy.name,
                 photo: await resolveFileUrl(log.returnedBy.photo),
+            } : null,
+            handover: log.handover ? {
+                id: log.handover.id,
+                status: log.handover.status,
+                transactionType: log.handover.transactionType,
+                category: log.handover.category,
+                purpose: log.handover.purpose || null,
+                estimatedReturnDate: log.handover.estimatedReturnDate || null,
+                createdAt: log.handover.createdAt,
             } : null,
             attachments: await AttachmentSerializer.collection(attachments),
         }

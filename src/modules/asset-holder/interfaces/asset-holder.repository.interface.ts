@@ -13,5 +13,6 @@ export interface IAssetHolderRepository {
     ): Promise<{ data: AssetHolder[]; total: number }>
     findById(id: number): Promise<AssetHolder | null>
     findActiveByAssetId(assetId: number): Promise<AssetHolder | null>
+    findActiveByHandoverId(handoverId: number): Promise<AssetHolder[]>
     save(data: Partial<AssetHolder>, manager?: EntityManager): Promise<AssetHolder>
 }

@@ -781,6 +781,86 @@ components:
             name: { type: string, example: "John Doe" }
             photo: { type: string, nullable: true, example: "users/avatar.png" }
 
+    AssetHandoverItemRequest:
+      type: object
+      required: [assetId]
+      properties:
+        assetId: { type: integer, example: 1 }
+        note: { type: string, nullable: true, example: "Charger + bag, minor scratches", description: "Keterangan/kondisi per item — shown in the generated form" }
+
+    CreateAssetHandoverRequest:
+      type: object
+      required: [receivedById, handedOverById, transactionType, category, items]
+      properties:
+        receivedById: { type: integer, example: 1, description: "Employee receiving the asset (penerima)" }
+        handedOverById: { type: integer, example: 2, description: "Employee handing over the asset (penyerah)" }
+        transactionType: { type: string, enum: [serah_terima, peminjaman, pengembalian], example: "serah_terima" }
+        category: { type: string, enum: [inventaris_kantor, aset_program_cicilan], example: "inventaris_kantor" }
+        purpose: { type: string, nullable: true, example: "Operational use" }
+        estimatedReturnDate: { type: string, nullable: true, example: "2026-08-08", description: "Only relevant for peminjaman" }
+        items:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/AssetHandoverItemRequest" }
+
+    AssetHandoverResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        received:
+          type: object
+          nullable: true
+          description: "Employee receiving the asset (penerima)"
+          properties:
+            id: { type: integer, example: 1 }
+            name: { type: string, example: "Alice Smith" }
+            employeeId: { type: string, example: "EMP001" }
+            jobPosition: { type: string, example: "Software Engineer" }
+            photo: { type: string, nullable: true }
+        handedOver:
+          type: object
+          nullable: true
+          description: "Employee handing over the asset (penyerah)"
+          properties:
+            id: { type: integer, example: 2 }
+            name: { type: string, example: "John Doe" }
+            employeeId: { type: string, example: "EMP002" }
+            jobPosition: { type: string, example: "IT Support" }
+            photo: { type: string, nullable: true }
+        status: { type: string, enum: [pending, approve, reject], example: "pending" }
+        transactionType: { type: string, enum: [serah_terima, peminjaman, pengembalian] }
+        category: { type: string, enum: [inventaris_kantor, aset_program_cicilan] }
+        purpose: { type: string, nullable: true }
+        estimatedReturnDate: { type: string, nullable: true, example: "2026-08-01" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        createdBy:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer, example: 1 }
+            name: { type: string, example: "Admin User" }
+            photo: { type: string, nullable: true }
+        attachments:
+          type: array
+          description: "Signing form PDF on create; replaced with the signed document URL after the e-sign webhook completes."
+          items: { $ref: "#/components/schemas/AttachmentResponse" }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer, example: 1 }
+              note: { type: string, nullable: true, example: "Lengkap dengan charger" }
+              asset:
+                type: object
+                nullable: true
+                properties:
+                  id: { type: integer, example: 1 }
+                  name: { type: string, example: "MacBook Pro M3" }
+                  code: { type: string, example: "AST-001" }
+                  image: { type: string, nullable: true, example: "http://cdn.test.com/stock/assets/laptop.jpg" }
+
     AssignAssetRequest:
       type: object
       required: [assetId, employeeId, assignedDate]
@@ -815,6 +895,7 @@ components:
         returnedDate: { type: string, format: date, nullable: true, example: "2026-06-25" }
         assignNote: { type: string, nullable: true, example: "Assigned for development work" }
         returnNote: { type: string, nullable: true, example: "Returned in good condition" }
+        handoverId: { type: integer, nullable: true, example: 5 }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         asset:
@@ -847,6 +928,18 @@ components:
             id: { type: integer, example: 1 }
             name: { type: string, example: "John Doe" }
             photo: { type: string, nullable: true, example: "users/avatar.png" }
+        handover:
+          type: object
+          nullable: true
+          description: "Source handover if this holder was created from an asset handover; null otherwise."
+          properties:
+            id: { type: integer, example: 5 }
+            status: { type: string, enum: [pending, approve, reject], example: "approve" }
+            transactionType: { type: string, enum: [serah_terima, peminjaman, pengembalian], example: "serah_terima" }
+            category: { type: string, enum: [inventaris_kantor, aset_program_cicilan], example: "inventaris_kantor" }
+            purpose: { type: string, nullable: true, example: "Operational use" }
+            estimatedReturnDate: { type: string, nullable: true, example: "2026-08-01" }
+            createdAt: { type: string, format: date-time }
         attachments:
           type: array
           items:
@@ -3556,6 +3649,95 @@ paths:
         "404": { description: Asset assignment record not found }
         "422": { description: Validation error }
 
+  /asset-handover:
+    get:
+      tags: [Asset Handover]
+      summary: Get list of asset handovers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+        - name: q
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string, enum: [pending, approve, reject] }
+        - name: transactionType
+          in: query
+          schema: { type: string, enum: [serah_terima, peminjaman, pengembalian] }
+      responses:
+        "200":
+          description: Asset handovers retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/AssetHandoverResponse" }
+        "401": { description: Unauthorized }
+
+    post:
+      tags: [Asset Handover]
+      summary: Create an asset handover (status pending)
+      description: "Creates a handover document, generates the 'FORM SERAH TERIMA ASET/BARANG' PDF (returned as an attachment), and submits it to the e-sign provider for signing. Each item's asset must have no active holder and must not be part of another pending handover. One employee may receive multiple assets. Approval/rejection is driven by the e-sign webhook (POST /webhook/esign), not a direct endpoint."
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateAssetHandoverRequest" }
+      responses:
+        "201":
+          description: Asset handover created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/AssetHandoverResponse" }
+        "400": { description: "Asset already has a holder, is in another pending handover, duplicated, or employee inactive" }
+        "401": { description: Unauthorized }
+        "404": { description: Asset or Employee not found }
+        "422": { description: Validation error }
+
+  /asset-handover/{id}:
+    get:
+      tags: [Asset Handover]
+      summary: Get asset handover details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Asset handover retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/AssetHandoverResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Asset handover not found }
+
   /asset-log:
     get:
       tags: [Asset Log]
@@ -3772,6 +3954,49 @@ paths:
                                 assetId: { type: integer, example: 1 }
                                 locationId: { type: integer, example: 1 }
         "401": { description: "Invalid webhook secret" }
+
+  /webhook/esign:
+    post:
+      tags: [Webhook]
+      summary: E-sign signing callback (public)
+      description: >
+        Called by the e-sign provider when a handover document reaches a final state.
+        `status = COMPLETED` approves the handover referenced by `external_reference_id`
+        (auto-assigns a holder per item, swaps the handover attachment to the signed
+        `file_url`, and attaches the signed document to each holder). Any other status
+        rejects the handover. No JWT required.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [external_reference_id, status]
+              properties:
+                external_reference_id: { type: string, example: "42", description: "The handover ID passed at submission time" }
+                status: { type: string, example: "COMPLETED", description: "COMPLETED approves; any other value rejects" }
+                file_url: { type: string, nullable: true, example: "https://esign.example/documents/signed.pdf", description: "URL of the signed document (present on COMPLETED)" }
+                document_id: { type: string, nullable: true, example: "01kx0sv40tzgcc80vm89tn3mjy" }
+                completed_at: { type: string, nullable: true, example: "2026-07-08T19:05:48+07:00" }
+                uploader_name: { type: string, nullable: true, example: "Oskar Hutasoit" }
+      responses:
+        "200":
+          description: Esign webhook handled successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          handover: { $ref: "#/components/schemas/AssetHandoverResponse" }
+                          attachments:
+                            type: array
+                            items: { $ref: "#/components/schemas/AttachmentResponse" }
+        "400": { description: "Invalid external reference ID, or handover cannot transition (e.g. not pending)" }
 
   # ── AI ──────────────────────────────────────────────────────────────────────
   /ai/decode-barcode:

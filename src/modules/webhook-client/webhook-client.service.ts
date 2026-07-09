@@ -1,6 +1,7 @@
 import { AssetService } from "../asset/asset.service"
 import { LocationService } from "../location/location.service"
 import { AssetLocationService } from "../asset-location/asset-location.service"
+import { AssetHandoverService } from "../asset-handover/asset-handover.service"
 import { config } from "../../config/config"
 
 interface MistZoneEvent {
@@ -12,23 +13,25 @@ interface MistZoneEvent {
     name?: string
 }
 
-export class MistWebhookService {
+export class WebhookClientService {
     constructor(
         private readonly assetService: AssetService,
         private readonly locationService: LocationService,
-        private readonly assetLocationService: AssetLocationService
+        private readonly assetLocationService: AssetLocationService,
+        private readonly assetHandoverService: AssetHandoverService
     ) {}
 
-    verifySecret(secret: string): boolean {
+    // Mist Logic
+    verifyMistSecret(secret: string): boolean {
         const expected = process.env.MIST_WEBHOOK_SECRET || config.mist.webhookSecret
         if (!expected) return true // No secret configured = allow all (dev mode)
         return secret === expected
     }
 
-    async handleZoneEvent(event: MistZoneEvent): Promise<{ status: string; assetId?: number; locationId?: number }> {
+    async handleMistZoneEvent(event: MistZoneEvent): Promise<{ status: string; assetId?: number; locationId?: number }> {
         // Only process 'enter' events
         if (event.type !== 'enter') {
-            return { status: 'skipped', }
+            return { status: 'skipped' }
         }
 
         // Normalize MAC: lowercase, colon-separated
@@ -77,5 +80,20 @@ export class MistWebhookService {
         }
 
         return { status: 'relocated', assetId: asset.id, locationId: location.id }
+    }
+
+    // Esign Logic
+    async handleEsignEvent(body: any): Promise<any> {
+        const externalReferenceId = Number(body.external_reference_id)
+        if (isNaN(externalReferenceId)) {
+            throw new Error("Invalid external reference ID")
+        }
+
+        const status = body.status
+        if (status === "COMPLETED") {
+            return await this.assetHandoverService.approve(externalReferenceId, body.file_url)
+        } else {
+            return await this.assetHandoverService.reject(externalReferenceId)
+        }
     }
 }

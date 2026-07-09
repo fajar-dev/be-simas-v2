@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 import { Asset } from "../../asset/entities/asset.entity"
 import { Employee } from "../../employee/entities/employee.entity"
 import { User } from "../../user/entities/user.entity"
+import type { AssetHandover } from "../../asset-handover/entities/asset-handover.entity"
 
 @Entity("asset_holders")
 export class AssetHolder {
@@ -50,6 +51,14 @@ export class AssetHolder {
     @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
     @JoinColumn({ name: "returned_by" })
     returnedBy?: User | null
+
+    @Index()
+    @Column({ name: "handover_id", nullable: true })
+    handoverId?: number | null
+
+    @ManyToOne("AssetHandover", { onDelete: "SET NULL", nullable: true })
+    @JoinColumn({ name: "handover_id" })
+    handover?: AssetHandover | null
 
     @CreateDateColumn({ name: "created_at" })
     createdAt!: Date

@@ -75,6 +75,12 @@ export const config = {
         clientId: process.env.NUSAWORK_CLIENT_ID || '',
         clientSecret: process.env.NUSAWORK_CLIENT_SECRET || '',
     },
+    esign: {
+        apiUrl: process.env.ESIGN_API_URL || '',
+        clientId: process.env.ESIGN_CLIENT_ID || '',
+        clientSecret: process.env.ESIGN_CLIENT_SECRET || '',
+        tenantSlug: process.env.ESIGN_TENANT_SLUG || 'nusawork',
+    },
     gemini: {
         apiKey: process.env.GEMINI_API_KEY || '',
         model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',

@@ -19,6 +19,7 @@ import { StoreFeedbackValidator } from "../modules/feedback/validators/feedback.
 import { CreateAssetStatusValidator, BulkCreateAssetStatusValidator } from "../modules/asset-status/validators/asset-status.validator"
 import { CreateRoleValidator, UpdateRoleValidator } from "../modules/role/validators/role.validator"
 import { DecodeBarcodeValidator } from "../modules/ai/validators/ai.validator"
+import { CreateAssetHandoverValidator } from "../modules/asset-handover/validators/asset-handover.validator"
 
 // ── Middlewares ──────────────────────────────────────────────────────────────
 import { authMiddleware } from "../core/middlewares/auth.middleware"
@@ -45,10 +46,11 @@ import { assetLogController } from "../modules/asset-log/asset-log.module"
 import { assetStatusController } from "../modules/asset-status/asset-status.module"
 import { statisticController } from "../modules/statistic/statistic.module"
 import { roleController } from "../modules/role/role.module"
-import { mistWebhookController } from "../modules/mist-webhook/mist-webhook.module"
+import { webhookClientController } from "../modules/webhook-client/webhook-client.module"
 import { aiController } from "../modules/ai/ai.module"
 import { bookController } from "../modules/book/book.module"
 import { BorrowBookValidator, ReturnBookValidator } from "../modules/book/validators/book.validator"
+import { assetHandoverController } from "../modules/asset-handover/asset-handover.module"
 import { apiKeyMiddleware } from "../core/middlewares/api-key.middleware"
 
 // ── Routes ───────────────────────────────────────────────────────────────────
@@ -176,6 +178,11 @@ routes.get("/asset-status", authMiddleware, requirePermission("asset-status:read
 routes.post("/asset-status/bulk", authMiddleware, requirePermission("asset-status:create"), zValidator("json", BulkCreateAssetStatusValidator, validationHook), (c) => assetStatusController.bulkStore(c))
 routes.post("/asset-status", authMiddleware, requirePermission("asset-status:create"), zValidator("json", CreateAssetStatusValidator, validationHook), (c) => assetStatusController.store(c))
 
+// Asset Handover
+routes.get("/asset-handover", authMiddleware, requirePermission("asset-handover:read"), (c) => assetHandoverController.index(c))
+routes.get("/asset-handover/:id", authMiddleware, requirePermission("asset-handover:read"), (c) => assetHandoverController.show(c))
+routes.post("/asset-handover", authMiddleware, requirePermission("asset-handover:create"), zValidator("json", CreateAssetHandoverValidator, validationHook), (c) => assetHandoverController.store(c))
+
 // Statistic
 routes.get("/statistic/summary", authMiddleware, requirePermission("dashboard:read"), (c) => statisticController.summary(c))
 routes.get("/statistic/assets-by-category", authMiddleware, requirePermission("dashboard:read"), (c) => statisticController.assetsByCategory(c))
@@ -230,7 +237,8 @@ routes.get("/proxy", async (c) => {
 routes.post("/ai/decode-barcode", authMiddleware, zValidator("form", DecodeBarcodeValidator, validationHook), (c) => aiController.decodeBarcode(c))
 
 // Mist BLE Webhook (no auth - uses its own secret verification)
-routes.post("/webhook/mist", (c) => mistWebhookController.handleWebhook(c))
+routes.post("/webhook/mist", (c) => webhookClientController.handleMist(c))
+routes.post("/webhook/esign", (c) => webhookClientController.handleEsign(c))
 
 // Book (Borrow/Return)
 routes.get("/book/loan", apiKeyMiddleware, (c) => bookController.loans(c))

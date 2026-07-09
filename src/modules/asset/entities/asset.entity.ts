@@ -74,7 +74,7 @@ export class Asset {
 
     // Transient/virtual fields populated at service layer
     labels?: { id: number; key: string; value: string }[]
-    activeHolder?: AssetHolder
-    lastLocation?: AssetLocation
-    lastStatus?: AssetStatus
+    activeHolder?: AssetHolder | null
+    lastLocation?: AssetLocation | null
+    lastStatus?: AssetStatus | null
 }

@@ -3,8 +3,10 @@ import ExcelJS from "exceljs"
 import { config } from "../../config/config"
 import { AppDataSource } from "../../config/database"
 import { SubCategory } from "../sub-category/entities/sub-category.entity"
+import type { AssetService } from "./asset.service"
 
 export class AssetUtilService {
+    constructor(private readonly assetService: AssetService) {}
 
     async export(data: Asset[], labelKeys: string[]): Promise<Buffer> {
         const workbook = new ExcelJS.Workbook()
@@ -367,8 +369,6 @@ export class AssetUtilService {
         const subCategories = await subCategoryRepo.find()
         const scMap = new Map(subCategories.map(sc => [sc.code.toLowerCase(), sc]))
 
-        // Lazy import to avoid circular deps
-        const { assetService } = require("./asset.module")
 
         const errors: { row: number; message: string }[] = []
         let success = 0
@@ -451,7 +451,7 @@ export class AssetUtilService {
             const finalUsefulLife = (usefulLife && !isNaN(usefulLife) && price && !isNaN(price) && purchaseDate) ? usefulLife : undefined
 
             try {
-                await assetService.create({
+                await this.assetService.create({
                     code,
                     name,
                     description: description || undefined,
