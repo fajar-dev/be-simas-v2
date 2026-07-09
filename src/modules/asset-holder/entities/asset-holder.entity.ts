@@ -1,8 +1,19 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from "typeorm"
+import {
+    Entity,
+    PrimaryGeneratedColumn,
+    Column,
+    CreateDateColumn,
+    UpdateDateColumn,
+    ManyToOne,
+    JoinColumn,
+    Index,
+} from "typeorm"
+import type { Relation } from "typeorm"
+
 import { Asset } from "../../asset/entities/asset.entity"
 import { Employee } from "../../employee/entities/employee.entity"
 import { User } from "../../user/entities/user.entity"
-import type { AssetHandover } from "../../asset-handover/entities/asset-handover.entity"
+import { AssetHandover } from "../../asset-handover/entities/asset-handover.entity"
 
 @Entity("asset_holders")
 export class AssetHolder {
@@ -15,7 +26,7 @@ export class AssetHolder {
 
     @ManyToOne(() => Asset, { onDelete: "RESTRICT" })
     @JoinColumn({ name: "asset_id" })
-    asset!: Asset
+    asset!: Relation<Asset>
 
     @Index()
     @Column({ name: "employee_id" })
@@ -23,7 +34,7 @@ export class AssetHolder {
 
     @ManyToOne(() => Employee, { onDelete: "RESTRICT" })
     @JoinColumn({ name: "employee_id" })
-    employee!: Employee
+    employee!: Relation<Employee>
 
     @Column({ name: "assigned_date", type: "varchar" })
     assignedDate!: string
@@ -43,22 +54,22 @@ export class AssetHolder {
 
     @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
     @JoinColumn({ name: "created_by" })
-    createdBy?: User | null
+    createdBy?: Relation<User> | null
 
     @Column({ name: "returned_by", nullable: true })
     returnedByUserId?: number | null
 
     @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
     @JoinColumn({ name: "returned_by" })
-    returnedBy?: User | null
+    returnedBy?: Relation<User> | null
 
     @Index()
     @Column({ name: "handover_id", nullable: true })
     handoverId?: number | null
 
-    @ManyToOne("AssetHandover", { onDelete: "SET NULL", nullable: true })
+    @ManyToOne(() => AssetHandover, { onDelete: "SET NULL", nullable: true })
     @JoinColumn({ name: "handover_id" })
-    handover?: AssetHandover | null
+    handover?: Relation<AssetHandover> | null
 
     @CreateDateColumn({ name: "created_at" })
     createdAt!: Date
