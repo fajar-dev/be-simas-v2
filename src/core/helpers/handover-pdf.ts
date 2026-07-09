@@ -113,7 +113,7 @@ export async function generateHandoverPdf(handover: AssetHandover): Promise<Uint
                 { text: "Aset Program Cicilan", checkbox: true, checked: cat === "aset_program_cicilan", bold: true },
             ],
         },
-        { label: "Keperluan", lines: [{ text: handover.purpose || "-" }] },
+        { label: "Catatan", lines: [{ text: handover.note || "-" }] },
         { label: "Estimasi Tanggal Kembali", lines: [{ text: formatDate(handover.estimatedReturnDate) }] },
     ]
 

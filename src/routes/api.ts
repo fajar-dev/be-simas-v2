@@ -182,6 +182,7 @@ routes.post("/asset-status", authMiddleware, requirePermission("asset-status:cre
 routes.get("/asset-handover", authMiddleware, requirePermission("asset-handover:read"), (c) => assetHandoverController.index(c))
 routes.get("/asset-handover/:id", authMiddleware, requirePermission("asset-handover:read"), (c) => assetHandoverController.show(c))
 routes.post("/asset-handover", authMiddleware, requirePermission("asset-handover:create"), zValidator("json", CreateAssetHandoverValidator, validationHook), (c) => assetHandoverController.store(c))
+routes.post("/asset-handover/:id/cancel", authMiddleware, requirePermission("asset-handover:cancel"), (c) => assetHandoverController.cancel(c))
 
 // Statistic
 routes.get("/statistic/summary", authMiddleware, requirePermission("dashboard:read"), (c) => statisticController.summary(c))

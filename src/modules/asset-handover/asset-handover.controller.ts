@@ -36,4 +36,11 @@ export class AssetHandoverController {
         const data = await AssetHandoverSerializer.single(handover, attachments)
         return ApiResponse.success(c, data, "Asset handover created successfully", 201)
     }
+
+    async cancel(c: Context) {
+        const id = Number(c.req.param("id"))
+        const { handover, attachments } = await this.service.cancel(id)
+        const data = await AssetHandoverSerializer.single(handover, attachments)
+        return ApiResponse.success(c, data, "Asset handover cancelled successfully")
+    }
 }

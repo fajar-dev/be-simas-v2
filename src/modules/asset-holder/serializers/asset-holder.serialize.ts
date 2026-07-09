@@ -46,7 +46,7 @@ export class AssetHolderSerializer {
                 status: log.handover.status,
                 transactionType: log.handover.transactionType,
                 category: log.handover.category,
-                purpose: log.handover.purpose || null,
+                note: log.handover.note || null,
                 estimatedReturnDate: log.handover.estimatedReturnDate || null,
                 createdAt: log.handover.createdAt,
             } : null,

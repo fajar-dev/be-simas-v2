@@ -109,6 +109,7 @@ describe("Asset Handover API", () => {
         expect(res.body.success).toBe(true)
         expect(res.body.data.status).toBe("pending")
         expect(res.body.data.transactionType).toBe("serah_terima")
+        expect(res.body.data.note).toBe("Operational use")
         expect(res.body.data.items.length).toBe(2)
         expect(res.body.data.createdBy.name).toBe("Test User")
         expect(res.body.data.items[0].asset.code).toBe("AST-HO01")
@@ -290,6 +291,85 @@ describe("Asset Handover API", () => {
         expect(holder.body.data).toBeNull()
     })
 
+    // ── Cancel (user-initiated, pending only) ──────────────────────────────────
+    test("POST /api/asset-handover/:id/cancel - requires auth", async () => {
+        const res = await request(app, "/api/asset-handover/1/cancel", { method: "POST", body: {} })
+        expect(res.status).toBe(401)
+    })
+
+    test("POST /api/asset-handover/:id/cancel - cancels a pending handover without assigning holders", async () => {
+        const created = await request(app, "/api/asset-handover", { method: "POST", headers: authHeaders, body: createAssetHandoverData([{ assetId }], employeeId) })
+        const id = created.body.data.id
+
+        const res = await request(app, `/api/asset-handover/${id}/cancel`, { method: "POST", headers: authHeaders })
+        expect(res.status).toBe(200)
+        expect(res.body.success).toBe(true)
+        expect(res.body.data.status).toBe("cancel")
+
+        const detail = await request(app, `/api/asset-handover/${id}`, { headers: authHeaders })
+        expect(detail.body.data.status).toBe("cancel")
+
+        // No holder is created on cancellation.
+        const holder = await request(app, `/api/asset-holder/active/${assetId}`, { headers: authHeaders })
+        expect(holder.body.data).toBeNull()
+    })
+
+    test("POST /api/asset-handover/:id/cancel - frees the asset for reassignment", async () => {
+        const created = await request(app, "/api/asset-handover", { method: "POST", headers: authHeaders, body: createAssetHandoverData([{ assetId }], employeeId) })
+        const id = created.body.data.id
+
+        // While pending, manual holder assignment is blocked.
+        const blocked = await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, employeeId, assignedDate: "2026-07-05" },
+        })
+        expect(blocked.status).toBe(400)
+
+        await request(app, `/api/asset-handover/${id}/cancel`, { method: "POST", headers: authHeaders })
+
+        // After cancellation the asset is free again.
+        const ok = await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, employeeId, assignedDate: "2026-07-06" },
+        })
+        expect(ok.status).toBe(201)
+    })
+
+    test("POST /api/asset-handover/:id/cancel - cannot cancel an approved handover", async () => {
+        const created = await request(app, "/api/asset-handover", { method: "POST", headers: authHeaders, body: createAssetHandoverData([{ assetId }], employeeId) })
+        const id = created.body.data.id
+
+        // Approve via e-sign webhook.
+        await request(app, "/api/webhook/esign", { method: "POST", body: { external_reference_id: String(id), status: "COMPLETED", file_url: SIGNED_URL } })
+
+        const res = await request(app, `/api/asset-handover/${id}/cancel`, { method: "POST", headers: authHeaders })
+        expect(res.status).toBe(400)
+
+        // Status stays approved.
+        const detail = await request(app, `/api/asset-handover/${id}`, { headers: authHeaders })
+        expect(detail.body.data.status).toBe("approve")
+    })
+
+    test("POST /api/asset-handover/:id/cancel - 404 for non-existent handover", async () => {
+        const res = await request(app, "/api/asset-handover/999999/cancel", { method: "POST", headers: authHeaders })
+        expect(res.status).toBe(404)
+    })
+
+    test("POST /api/webhook/esign - COMPLETED cannot approve a cancelled handover", async () => {
+        const created = await request(app, "/api/asset-handover", { method: "POST", headers: authHeaders, body: createAssetHandoverData([{ assetId }], employeeId) })
+        const id = created.body.data.id
+
+        await request(app, `/api/asset-handover/${id}/cancel`, { method: "POST", headers: authHeaders })
+
+        const webhook = await request(app, "/api/webhook/esign", { method: "POST", body: { external_reference_id: String(id), status: "COMPLETED", file_url: SIGNED_URL } })
+        expect(webhook.status).toBe(400)
+
+        const detail = await request(app, `/api/asset-handover/${id}`, { headers: authHeaders })
+        expect(detail.body.data.status).toBe("cancel")
+    })
+
     // ── Unsupported methods (module is create/read + webhook only) ──────────────
     test("PUT & DELETE /api/asset-handover/:id - not supported", async () => {
         const created = await request(app, "/api/asset-handover", { method: "POST", headers: authHeaders, body: createAssetHandoverData([{ assetId }], employeeId) })
@@ -298,7 +378,7 @@ describe("Asset Handover API", () => {
         const put = await app.request(`/api/asset-handover/${id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json", ...authHeaders },
-            body: JSON.stringify({ purpose: "x" }),
+            body: JSON.stringify({ note: "x" }),
         })
         expect(put.status).toBe(404)
 

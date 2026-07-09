@@ -29,7 +29,7 @@ export function createAssetHandoverData(
         location: "HQ Jakarta",
         transactionType: "serah_terima",
         category: "inventaris_kantor",
-        purpose: "Operational use",
+        note: "Operational use",
         items,
         ...overrides,
     }

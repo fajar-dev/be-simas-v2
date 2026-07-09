@@ -16,7 +16,7 @@ import { AssetHandoverItem } from "./asset-handover-item.entity"
 
 export type HandoverTransactionType = "serah_terima" | "peminjaman" | "pengembalian"
 export type HandoverCategory = "inventaris_kantor" | "aset_program_cicilan"
-export type HandoverStatus = "pending" | "approve" | "reject"
+export type HandoverStatus = "pending" | "approve" | "reject" | "cancel"
 
 @Entity("asset_handovers")
 export class AssetHandover {
@@ -45,8 +45,8 @@ export class AssetHandover {
     @Column({ name: "category", type: "varchar" })
     category!: HandoverCategory
 
-    @Column({ type: "text", nullable: true })
-    purpose?: string | null
+    @Column({ name: "note", type: "text", nullable: true })
+    note?: string | null
 
     @Column({ name: "estimated_return_date", type: "varchar", nullable: true })
     estimatedReturnDate?: string | null

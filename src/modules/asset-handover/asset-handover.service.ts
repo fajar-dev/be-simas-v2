@@ -114,7 +114,7 @@ export class AssetHandoverService {
                 handedOverById: data.handedOverById,
                 transactionType: data.transactionType,
                 category: data.category,
-                purpose: data.purpose ?? null,
+                note: data.note ?? null,
                 estimatedReturnDate: data.estimatedReturnDate ?? null,
                 status: "pending",
                 createdByUserId: userId ?? null,
@@ -254,6 +254,19 @@ export class AssetHandoverService {
         }
 
         this.repository.merge(handover, { status: "reject" })
+        await this.repository.save(handover)
+
+        return await this.getById(id)
+    }
+
+    /** User-initiated cancellation. Only pending handovers can be cancelled; once approved it is locked. */
+    async cancel(id: number): Promise<HandoverWithAttachments> {
+        const handover = await this.findOrFail(id)
+        if (handover.status !== "pending") {
+            throw new BadRequestException(`Only pending handovers can be cancelled (current status: "${handover.status}")`)
+        }
+
+        this.repository.merge(handover, { status: "cancel" })
         await this.repository.save(handover)
 
         return await this.getById(id)

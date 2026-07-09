@@ -796,7 +796,7 @@ components:
         handedOverById: { type: integer, example: 2, description: "Employee handing over the asset (penyerah)" }
         transactionType: { type: string, enum: [serah_terima, peminjaman, pengembalian], example: "serah_terima" }
         category: { type: string, enum: [inventaris_kantor, aset_program_cicilan], example: "inventaris_kantor" }
-        purpose: { type: string, nullable: true, example: "Operational use" }
+        note: { type: string, nullable: true, example: "Operational use" }
         estimatedReturnDate: { type: string, nullable: true, example: "2026-08-08", description: "Only relevant for peminjaman" }
         items:
           type: array
@@ -827,10 +827,10 @@ components:
             employeeId: { type: string, example: "EMP002" }
             jobPosition: { type: string, example: "IT Support" }
             photo: { type: string, nullable: true }
-        status: { type: string, enum: [pending, approve, reject], example: "pending" }
+        status: { type: string, enum: [pending, approve, reject, cancel], example: "pending" }
         transactionType: { type: string, enum: [serah_terima, peminjaman, pengembalian] }
         category: { type: string, enum: [inventaris_kantor, aset_program_cicilan] }
-        purpose: { type: string, nullable: true }
+        note: { type: string, nullable: true }
         estimatedReturnDate: { type: string, nullable: true, example: "2026-08-01" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
@@ -934,10 +934,10 @@ components:
           description: "Source handover if this holder was created from an asset handover; null otherwise."
           properties:
             id: { type: integer, example: 5 }
-            status: { type: string, enum: [pending, approve, reject], example: "approve" }
+            status: { type: string, enum: [pending, approve, reject, cancel], example: "approve" }
             transactionType: { type: string, enum: [serah_terima, peminjaman, pengembalian], example: "serah_terima" }
             category: { type: string, enum: [inventaris_kantor, aset_program_cicilan], example: "inventaris_kantor" }
-            purpose: { type: string, nullable: true, example: "Operational use" }
+            note: { type: string, nullable: true, example: "Operational use" }
             estimatedReturnDate: { type: string, nullable: true, example: "2026-08-01" }
             createdAt: { type: string, format: date-time }
         attachments:
@@ -3667,7 +3667,7 @@ paths:
           schema: { type: string }
         - name: status
           in: query
-          schema: { type: string, enum: [pending, approve, reject] }
+          schema: { type: string, enum: [pending, approve, reject, cancel] }
         - name: transactionType
           in: query
           schema: { type: string, enum: [serah_terima, peminjaman, pengembalian] }
@@ -3736,6 +3736,34 @@ paths:
                     properties:
                       data: { $ref: "#/components/schemas/AssetHandoverResponse" }
         "401": { description: Unauthorized }
+        "404": { description: Asset handover not found }
+
+  /asset-handover/{id}/cancel:
+    post:
+      tags: [Asset Handover]
+      summary: Cancel a pending asset handover
+      description: Only handovers with status "pending" can be cancelled. Once approved, the handover is locked and cannot be cancelled.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Asset handover cancelled successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/AssetHandoverResponse" }
+        "400": { description: Only pending handovers can be cancelled }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden - missing asset-handover:cancel permission }
         "404": { description: Asset handover not found }
 
   /asset-log:

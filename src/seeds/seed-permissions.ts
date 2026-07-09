@@ -54,6 +54,7 @@ const PERMISSIONS = [
     { module: 'asset-handover', action: 'delete' },
     { module: 'asset-handover', action: 'approve' },
     { module: 'asset-handover', action: 'reject' },
+    { module: 'asset-handover', action: 'cancel' },
     { module: 'user', action: 'read' },
     { module: 'user', action: 'create' },
     { module: 'user', action: 'update' },

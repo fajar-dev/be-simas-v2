@@ -32,7 +32,7 @@ export class TypeOrmAssetHandoverRepository implements IAssetHandoverRepository 
 
         if (q) {
             query.where(
-                "(handover.note LIKE :q OR handover.purpose LIKE :q OR asset.name LIKE :q OR asset.code LIKE :q OR receivedBy.name LIKE :q OR handedOverBy.name LIKE :q)",
+                "(handover.note LIKE :q OR asset.name LIKE :q OR asset.code LIKE :q OR receivedBy.name LIKE :q OR handedOverBy.name LIKE :q)",
                 { q: `%${q}%` }
             )
         }

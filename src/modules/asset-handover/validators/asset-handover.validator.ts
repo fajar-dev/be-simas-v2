@@ -14,7 +14,7 @@ export const CreateAssetHandoverValidator = z.object({
     handedOverById: z.number("Handed over by ID is required"),
     transactionType: TransactionTypeEnum,
     category: categoryEnum,
-    purpose: z.string().trim().optional().nullable(),
+    note: z.string().trim().optional().nullable(),
     estimatedReturnDate: z.string().trim().optional().nullable(),
     items: z.array(HandoverItemValidator).min(1, "At least one item is required"),
 })
