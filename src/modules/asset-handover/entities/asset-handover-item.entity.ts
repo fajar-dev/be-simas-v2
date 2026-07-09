@@ -1,5 +1,15 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from "typeorm"
-import type { AssetHandover } from "./asset-handover.entity"
+import {
+    Entity,
+    PrimaryGeneratedColumn,
+    Column,
+    CreateDateColumn,
+    UpdateDateColumn,
+    ManyToOne,
+    JoinColumn,
+    Index,
+} from "typeorm"
+
+import { AssetHandover } from "./asset-handover.entity"
 import { Asset } from "../../asset/entities/asset.entity"
 
 @Entity("asset_handover_items")
@@ -11,7 +21,9 @@ export class AssetHandoverItem {
     @Column({ name: "handover_id" })
     handoverId!: number
 
-    @ManyToOne("AssetHandover", (handover: AssetHandover) => handover.items, { onDelete: "CASCADE" })
+    @ManyToOne(() => AssetHandover, (handover) => handover.items, {
+        onDelete: "CASCADE",
+    })
     @JoinColumn({ name: "handover_id" })
     handover!: AssetHandover
 
