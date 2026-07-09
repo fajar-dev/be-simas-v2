@@ -1,4 +1,16 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany, Index } from "typeorm"
+import {
+    Entity,
+    PrimaryGeneratedColumn,
+    Column,
+    CreateDateColumn,
+    UpdateDateColumn,
+    ManyToOne,
+    JoinColumn,
+    OneToMany,
+    Index,
+    Relation,
+} from "typeorm"
+
 import { User } from "../../user/entities/user.entity"
 import { Employee } from "../../employee/entities/employee.entity"
 import { AssetHandoverItem } from "./asset-handover-item.entity"
@@ -18,7 +30,7 @@ export class AssetHandover {
 
     @ManyToOne(() => Employee, { onDelete: "RESTRICT" })
     @JoinColumn({ name: "received_by_id" })
-    receivedBy!: Employee
+    receivedBy!: Relation<Employee>
 
     @Index()
     @Column({ name: "handed_over_by_id", nullable: true })
@@ -26,7 +38,7 @@ export class AssetHandover {
 
     @ManyToOne(() => Employee, { onDelete: "RESTRICT", nullable: true })
     @JoinColumn({ name: "handed_over_by_id" })
-    handedOverBy?: Employee | null
+    handedOverBy?: Relation<Employee> | null
 
     @Column({ name: "transaction_type", type: "varchar" })
     transactionType!: HandoverTransactionType
@@ -49,10 +61,10 @@ export class AssetHandover {
 
     @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
     @JoinColumn({ name: "created_by" })
-    createdBy?: User | null
+    createdBy?: Relation<User> | null
 
     @OneToMany(() => AssetHandoverItem, (item) => item.handover)
-    items?: AssetHandoverItem[]
+    items?: Relation<AssetHandoverItem[]>
 
     @CreateDateColumn({ name: "created_at" })
     createdAt!: Date

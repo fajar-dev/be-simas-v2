@@ -7,6 +7,7 @@ import {
     ManyToOne,
     JoinColumn,
     Index,
+    Relation,
 } from "typeorm"
 
 import { AssetHandover } from "./asset-handover.entity"
@@ -25,7 +26,7 @@ export class AssetHandoverItem {
         onDelete: "CASCADE",
     })
     @JoinColumn({ name: "handover_id" })
-    handover!: AssetHandover
+    handover!: Relation<AssetHandover>
 
     @Index()
     @Column({ name: "asset_id" })
@@ -33,7 +34,7 @@ export class AssetHandoverItem {
 
     @ManyToOne(() => Asset, { onDelete: "RESTRICT" })
     @JoinColumn({ name: "asset_id" })
-    asset!: Asset
+    asset!: Relation<Asset>
 
     @Column({ type: "text", nullable: true })
     note?: string | null
