@@ -113,9 +113,7 @@ export class AssetHandoverService {
                 receivedById: data.receivedById,
                 handedOverById: data.handedOverById,
                 transactionType: data.transactionType,
-                category: data.category,
                 note: data.note ?? null,
-                estimatedReturnDate: data.estimatedReturnDate ?? null,
                 status: "pending",
                 createdByUserId: userId ?? null,
             }, manager)

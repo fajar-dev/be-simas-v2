@@ -108,7 +108,7 @@ describe("Asset Handover API", () => {
         expect(res.status).toBe(201)
         expect(res.body.success).toBe(true)
         expect(res.body.data.status).toBe("pending")
-        expect(res.body.data.transactionType).toBe("serah_terima")
+        expect(res.body.data.transactionType).toBe("assign")
         expect(res.body.data.note).toBe("Operational use")
         expect(res.body.data.items.length).toBe(2)
         expect(res.body.data.createdBy.name).toBe("Test User")

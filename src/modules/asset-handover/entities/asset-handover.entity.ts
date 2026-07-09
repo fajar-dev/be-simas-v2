@@ -13,10 +13,7 @@ import type { Relation } from "typeorm"
 import { User } from "../../user/entities/user.entity"
 import { Employee } from "../../employee/entities/employee.entity"
 import { AssetHandoverItem } from "./asset-handover-item.entity"
-
-export type HandoverTransactionType = "serah_terima" | "peminjaman" | "pengembalian"
-export type HandoverCategory = "inventaris_kantor" | "aset_program_cicilan"
-export type HandoverStatus = "pending" | "approve" | "reject" | "cancel"
+import type { HandoverTransactionType, HandoverStatus } from "../../../core/enums"
 
 @Entity("asset_handovers")
 export class AssetHandover {
@@ -42,14 +39,8 @@ export class AssetHandover {
     @Column({ name: "transaction_type", type: "varchar" })
     transactionType!: HandoverTransactionType
 
-    @Column({ name: "category", type: "varchar" })
-    category!: HandoverCategory
-
     @Column({ name: "note", type: "text", nullable: true })
     note?: string | null
-
-    @Column({ name: "estimated_return_date", type: "varchar", nullable: true })
-    estimatedReturnDate?: string | null
 
     @Index()
     @Column({ type: "varchar", default: "pending" })

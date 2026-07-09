@@ -38,9 +38,7 @@ export class AssetHandoverSerializer {
             } : null,
             status: handover.status,
             transactionType: handover.transactionType,
-            category: handover.category,
             note: handover.note || null,
-            estimatedReturnDate: handover.estimatedReturnDate || null,
             createdAt: handover.createdAt,
             updatedAt: handover.updatedAt,
             createdBy: handover.createdBy ? {

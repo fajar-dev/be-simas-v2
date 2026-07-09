@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 import { Asset } from "../../asset/entities/asset.entity"
 import { Location } from "../../location/entities/location.entity"
 import { User } from "../../user/entities/user.entity"
+import type { AssetLocationSource } from "../../../core/enums"
 
 @Entity("asset_locations")
 export class AssetLocation {
@@ -38,7 +39,7 @@ export class AssetLocation {
     note?: string
 
     @Column({ type: "varchar", default: "manual", name: "source" })
-    source!: string
+    source!: AssetLocationSource
 
     @CreateDateColumn({ name: "created_at" })
     createdAt!: Date

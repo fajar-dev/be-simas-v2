@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from "pdf-lib"
-import type { AssetHandover, HandoverTransactionType, HandoverCategory } from "../../modules/asset-handover/entities/asset-handover.entity"
+import type { AssetHandover } from "../../modules/asset-handover/entities/asset-handover.entity"
+import type { HandoverTransactionType } from "../enums"
 
 const A4 = { w: 595.28, h: 841.89 }
 const MARGIN = 40
@@ -92,29 +93,19 @@ export async function generateHandoverPdf(handover: AssetHandover): Promise<Uint
 
     // ---- Info table ----
     const tt = handover.transactionType as HandoverTransactionType
-    const cat = handover.category as HandoverCategory
     const receivedName = handover.receivedBy?.name ?? "-"
 
     const infoRows: { label: string; lines: Line[] }[] = [
         { label: "Tanggal", lines: [{ text: formatDate(handover.createdAt) }] },
         { label: "Nama Karyawan", lines: [{ text: receivedName }] },
         {
-            label: "Jenis Transaksi",
+            label: "Type",
             lines: [
-                { text: "Serah Terima Aset", checkbox: true, checked: tt === "serah_terima", bold: true },
-                { text: "Peminjaman Sementara", checkbox: true, checked: tt === "peminjaman", bold: true },
-                { text: "Pengembalian Aset", checkbox: true, checked: tt === "pengembalian", bold: true },
-            ],
-        },
-        {
-            label: "Status Asset",
-            lines: [
-                { text: "Inventaris Kantor", checkbox: true, checked: cat === "inventaris_kantor", bold: true },
-                { text: "Aset Program Cicilan", checkbox: true, checked: cat === "aset_program_cicilan", bold: true },
+                { text: "Penetapan", checkbox: true, checked: tt === "assign", bold: true },
+                { text: "Pengembalian", checkbox: true, checked: tt === "return", bold: true },
             ],
         },
         { label: "Catatan", lines: [{ text: handover.note || "-" }] },
-        { label: "Estimasi Tanggal Kembali", lines: [{ text: formatDate(handover.estimatedReturnDate) }] },
     ]
 
     const labelW = 175
