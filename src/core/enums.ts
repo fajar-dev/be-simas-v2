@@ -16,6 +16,10 @@ export type AssetStatusValue = (typeof ASSET_STATUSES)[number]
 export const HANDOVER_TRANSACTION_TYPES = ["assign", "return"] as const
 export type HandoverTransactionType = (typeof HANDOVER_TRANSACTION_TYPES)[number]
 
+/** What a handover carries — column `handovers.item_kind`. */
+export const HANDOVER_ITEM_KINDS = ["asset", "stock"] as const
+export type HandoverItemKind = (typeof HANDOVER_ITEM_KINDS)[number]
+
 /** Asset handover approval status — column `handovers.status`. */
 export const HANDOVER_STATUSES = ["pending", "approve", "reject", "cancel"] as const
 export type HandoverStatus = (typeof HANDOVER_STATUSES)[number]
@@ -27,3 +31,11 @@ export type HandoverFieldType = (typeof HANDOVER_FIELD_TYPES)[number]
 /** Origin of an asset location record — column `asset_locations.source`. */
 export const ASSET_LOCATION_SOURCES = ["manual", "ble"] as const
 export type AssetLocationSource = (typeof ASSET_LOCATION_SOURCES)[number]
+
+/** Stock condition — column `inventory_stock_balances.condition` / `inventory_stock_movements.condition`. */
+export const STOCK_CONDITIONS = ["new", "used"] as const
+export type StockCondition = (typeof STOCK_CONDITIONS)[number]
+
+/** Stock ledger movement type — column `inventory_stock_movements.type`. */
+export const STOCK_MOVEMENT_TYPES = ["entry", "adjustment", "transfer_out", "transfer_in", "assign_out", "return_in"] as const
+export type StockMovementType = (typeof STOCK_MOVEMENT_TYPES)[number]

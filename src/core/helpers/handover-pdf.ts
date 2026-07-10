@@ -156,10 +156,12 @@ export async function generateHandoverPdf(handover: Handover): Promise<Uint8Arra
     y -= 12
 
     // ---- Items table ----
+    const isStock = handover.itemKind === "stock"
+    const conditionLabel = (c: string) => (c === "new" ? "Baru" : c === "used" ? "Bekas" : c)
     const cols = [
         { title: "No.", w: 34 },
-        { title: "Nama Asset/Barang", w: 165 },
-        { title: "Code", w: 110 },
+        { title: "Nama Barang", w: 165 },
+        { title: isStock ? "Jumlah" : "Code", w: 110 },
         { title: "Keterangan", w: CONTENT_W - 34 - 165 - 110 },
     ]
     const colX: number[] = []
@@ -180,13 +182,31 @@ export async function generateHandoverPdf(handover: Handover): Promise<Uint8Arra
     }
     y -= headerH
 
+    // Normalize asset / stock lines into a common {name, code, note} shape.
+    const rows: { name: string; code: string; note: string }[] = isStock
+        ? (handover.stockItems ?? []).map((item) => {
+            const productName = item.variant?.product?.name ?? "-"
+            const variantName = item.variant?.name ? ` - ${item.variant.name}` : ""
+            const unit = item.variant?.unit ? ` ${item.variant.unit}` : ""
+            const branch = item.branch?.name ? `Cabang: ${item.branch.name}` : ""
+            return {
+                name: `${productName}${variantName} (${conditionLabel(item.condition)})`,
+                code: `${item.quantity}${unit}`,
+                note: [branch, item.note || ""].filter(Boolean).join(" — ") || "-",
+            }
+        })
+        : (handover.items ?? []).map((item) => ({
+            name: item.asset?.name ?? "-",
+            code: item.asset?.code ?? "-",
+            note: item.note || "-",
+        }))
+
     // Rows
-    const items = handover.items ?? []
-    items.forEach((item, idx) => {
+    rows.forEach((item, idx) => {
         const no = String(idx + 1)
-        const name = item.asset?.name ?? "-"
-        const code = item.asset?.code ?? "-"
-        const note = item.note || "-"
+        const name = item.name
+        const code = item.code
+        const note = item.note
 
         const nameLines = wrapText(name, font, size, cols[1].w - 12)
         const codeLines = wrapText(code, font, size, cols[2].w - 12)

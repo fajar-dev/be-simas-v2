@@ -13,7 +13,8 @@ import type { Relation } from "typeorm"
 import { User } from "../../user/entities/user.entity"
 import { Employee } from "../../employee/entities/employee.entity"
 import { HandoverItem } from "./handover-item.entity"
-import type { HandoverTransactionType, HandoverStatus } from "../../../core/enums"
+import { HandoverStockItem } from "./handover-stock-item.entity"
+import type { HandoverTransactionType, HandoverStatus, HandoverItemKind } from "../../../core/enums"
 
 @Entity("handovers")
 export class Handover {
@@ -38,6 +39,10 @@ export class Handover {
 
     @Column({ name: "transaction_type", type: "varchar" })
     transactionType!: HandoverTransactionType
+
+    /** Whether this handover carries assets or stock. */
+    @Column({ name: "item_kind", type: "varchar", default: "asset" })
+    itemKind!: HandoverItemKind
 
     @Column({ name: "note", type: "text", nullable: true })
     note?: string | null
@@ -72,6 +77,9 @@ export class Handover {
 
     @OneToMany(() => HandoverItem, (item) => item.handover)
     items?: Relation<HandoverItem[]>
+
+    @OneToMany(() => HandoverStockItem, (item) => item.handover)
+    stockItems?: Relation<HandoverStockItem[]>
 
     @CreateDateColumn({ name: "created_at" })
     createdAt!: Date

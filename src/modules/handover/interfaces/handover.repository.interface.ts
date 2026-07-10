@@ -1,6 +1,7 @@
 import { EntityManager } from "typeorm"
 import { Handover } from "../entities/handover.entity"
 import { HandoverItem } from "../entities/handover-item.entity"
+import { HandoverStockItem } from "../entities/handover-stock-item.entity"
 
 export interface HandoverFilter {
     status?: string
@@ -20,6 +21,7 @@ export interface IHandoverRepository {
     findPendingItemAssetIds(excludeHandoverId?: number): Promise<number[]>
     save(data: Partial<Handover>, manager?: EntityManager): Promise<Handover>
     saveItem(data: Partial<HandoverItem>, manager?: EntityManager): Promise<HandoverItem>
+    saveStockItem(data: Partial<HandoverStockItem>, manager?: EntityManager): Promise<HandoverStockItem>
     deleteItems(handoverId: number, manager?: EntityManager): Promise<void>
     delete(id: number, manager?: EntityManager): Promise<void>
     merge(entity: Handover, data: Partial<Handover>): Handover

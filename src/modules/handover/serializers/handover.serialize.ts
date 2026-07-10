@@ -1,5 +1,6 @@
 import { Handover } from "../entities/handover.entity"
 import { HandoverItem } from "../entities/handover-item.entity"
+import { HandoverStockItem } from "../entities/handover-stock-item.entity"
 import { resolveFileUrl } from "../../../core/helpers/serializer-utils"
 import { Attachment } from "../../attachment/entities/attachment.entity"
 import { AttachmentSerializer } from "../../attachment/serializers/attachment.serialize"
@@ -15,6 +16,23 @@ export class HandoverSerializer {
                 name: item.asset.name,
                 code: item.asset.code,
                 image: await resolveFileUrl(item.asset.image),
+            } : null,
+        }
+    }
+
+    private static stockItem(item: HandoverStockItem) {
+        return {
+            id: item.id,
+            condition: item.condition,
+            quantity: item.quantity,
+            note: item.note || null,
+            branch: item.branch ? { id: item.branch.id, name: item.branch.name } : null,
+            variant: item.variant ? {
+                id: item.variant.id,
+                name: item.variant.name,
+                code: item.variant.code || null,
+                unit: item.variant.unit,
+                product: item.variant.product ? { id: item.variant.product.id, name: item.variant.product.name, code: item.variant.product.code || null } : null,
             } : null,
         }
     }
@@ -38,6 +56,7 @@ export class HandoverSerializer {
             } : null,
             status: handover.status,
             transactionType: handover.transactionType,
+            itemKind: handover.itemKind,
             note: handover.note || null,
             customFields: handover.customFields || [],
             parentHandover: handover.parentHandover ? {
@@ -54,6 +73,7 @@ export class HandoverSerializer {
             } : null,
             attachments: await AttachmentSerializer.collection(attachments),
             items: await Promise.all((handover.items || []).map((item) => this.item(item))),
+            stockItems: (handover.stockItems || []).map((item) => this.stockItem(item)),
         }
     }
 

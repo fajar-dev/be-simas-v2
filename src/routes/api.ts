@@ -21,6 +21,9 @@ import { CreateRoleValidator, UpdateRoleValidator } from "../modules/role/valida
 import { DecodeBarcodeValidator } from "../modules/ai/validators/ai.validator"
 import { CreateHandoverValidator } from "../modules/handover/validators/handover.validator"
 import { ReplaceHandoverFieldsValidator } from "../modules/handover-field/validators/handover-field.validator"
+import { CreateInventoryValidator, UpdateInventoryValidator } from "../modules/inventory/validators/inventory.validator"
+import { CreateInventoryVariantValidator, UpdateInventoryVariantValidator } from "../modules/inventory-variant/validators/inventory-variant.validator"
+import { InventoryStockEntryValidator, InventoryStockTransferValidator, InventoryStockAssignValidator, InventoryStockReturnValidator } from "../modules/inventory-stock/validators/inventory-stock.validator"
 
 // ── Middlewares ──────────────────────────────────────────────────────────────
 import { authMiddleware } from "../core/middlewares/auth.middleware"
@@ -53,6 +56,9 @@ import { bookController } from "../modules/book/book.module"
 import { BorrowBookValidator, ReturnBookValidator } from "../modules/book/validators/book.validator"
 import { handoverController } from "../modules/handover/handover.module"
 import { handoverFieldController } from "../modules/handover-field/handover-field.module"
+import { inventoryController } from "../modules/inventory/inventory.module"
+import { inventoryVariantController } from "../modules/inventory-variant/inventory-variant.module"
+import { inventoryStockController } from "../modules/inventory-stock/inventory-stock.module"
 import { apiKeyMiddleware } from "../core/middlewares/api-key.middleware"
 
 // ── Routes ───────────────────────────────────────────────────────────────────
@@ -187,6 +193,32 @@ routes.post("/handover", authMiddleware, requirePermission("handover:create"), z
 routes.post("/handover/:id/cancel", authMiddleware, requirePermission("handover:cancel"), (c) => handoverController.cancel(c))
 routes.get("/handover-field", authMiddleware, requirePermission("handover-field:read"), (c) => handoverFieldController.index(c))
 routes.put("/handover-field/:transactionType", authMiddleware, requirePermission("handover-field:manage"), zValidator("json", ReplaceHandoverFieldsValidator, validationHook), (c) => handoverFieldController.replace(c))
+
+// Inventory Stock (balance / entry / transfer / movement / holding)
+// NOTE: registered before "/inventory/:id" so the static "/inventory/stock*" paths win.
+routes.get("/inventory/stock/entry-template", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockController.entryTemplate(c))
+routes.get("/inventory/stock/movement", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockController.movements(c))
+routes.get("/inventory/stock/holding", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockController.holdings(c))
+routes.get("/inventory/stock", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockController.index(c))
+routes.post("/inventory/stock/entry", authMiddleware, requirePermission("inventory-stock:entry"), zValidator("json", InventoryStockEntryValidator, validationHook), (c) => inventoryStockController.entry(c))
+routes.post("/inventory/stock/transfer", authMiddleware, requirePermission("inventory-stock:transfer"), zValidator("json", InventoryStockTransferValidator, validationHook), (c) => inventoryStockController.transfer(c))
+routes.post("/inventory/stock/assign", authMiddleware, requirePermission("inventory-stock:assign"), zValidator("json", InventoryStockAssignValidator, validationHook), (c) => inventoryStockController.assign(c))
+routes.post("/inventory/stock/return", authMiddleware, requirePermission("inventory-stock:return"), zValidator("json", InventoryStockReturnValidator, validationHook), (c) => inventoryStockController.returnStock(c))
+
+// Inventory (master item)
+routes.get("/inventory", authMiddleware, requirePermission("inventory:read"), (c) => inventoryController.index(c))
+routes.get("/inventory/list", authMiddleware, requirePermission("inventory:read"), (c) => inventoryController.list(c))
+routes.get("/inventory/:id", authMiddleware, requirePermission("inventory:read"), (c) => inventoryController.show(c))
+routes.post("/inventory", authMiddleware, requirePermission("inventory:create"), zValidator("json", CreateInventoryValidator, validationHook), (c) => inventoryController.store(c))
+routes.put("/inventory/:id", authMiddleware, requirePermission("inventory:update"), zValidator("json", UpdateInventoryValidator, validationHook), (c) => inventoryController.update(c))
+routes.delete("/inventory/:id", authMiddleware, requirePermission("inventory:delete"), (c) => inventoryController.destroy(c))
+
+// Inventory Variant
+routes.get("/inventory-variant", authMiddleware, requirePermission("inventory-variant:read"), (c) => inventoryVariantController.index(c))
+routes.get("/inventory-variant/:id", authMiddleware, requirePermission("inventory-variant:read"), (c) => inventoryVariantController.show(c))
+routes.post("/inventory-variant", authMiddleware, requirePermission("inventory-variant:create"), zValidator("json", CreateInventoryVariantValidator, validationHook), (c) => inventoryVariantController.store(c))
+routes.put("/inventory-variant/:id", authMiddleware, requirePermission("inventory-variant:update"), zValidator("json", UpdateInventoryVariantValidator, validationHook), (c) => inventoryVariantController.update(c))
+routes.delete("/inventory-variant/:id", authMiddleware, requirePermission("inventory-variant:delete"), (c) => inventoryVariantController.destroy(c))
 
 // Statistic
 routes.get("/statistic/summary", authMiddleware, requirePermission("dashboard:read"), (c) => statisticController.summary(c))

@@ -2,15 +2,18 @@ import { EntityManager, Repository } from "typeorm"
 import { AppDataSource } from "../../../config/database"
 import { Handover } from "../entities/handover.entity"
 import { HandoverItem } from "../entities/handover-item.entity"
+import { HandoverStockItem } from "../entities/handover-stock-item.entity"
 import { IHandoverRepository, HandoverFilter } from "../interfaces/handover.repository.interface"
 
 export class TypeOrmHandoverRepository implements IHandoverRepository {
     private readonly repository: Repository<Handover>
     private readonly itemRepository: Repository<HandoverItem>
+    private readonly stockItemRepository: Repository<HandoverStockItem>
 
     constructor() {
         this.repository = AppDataSource.getRepository(Handover)
         this.itemRepository = AppDataSource.getRepository(HandoverItem)
+        this.stockItemRepository = AppDataSource.getRepository(HandoverStockItem)
     }
 
     async findAll(
@@ -26,6 +29,10 @@ export class TypeOrmHandoverRepository implements IHandoverRepository {
         const query = this.repository.createQueryBuilder("handover")
             .leftJoinAndSelect("handover.items", "items")
             .leftJoinAndSelect("items.asset", "asset")
+            .leftJoinAndSelect("handover.stockItems", "stockItems")
+            .leftJoinAndSelect("stockItems.variant", "inventoryVariant")
+            .leftJoinAndSelect("inventoryVariant.product", "inventory")
+            .leftJoinAndSelect("stockItems.branch", "stockBranch")
             .leftJoinAndSelect("handover.receivedBy", "receivedBy")
             .leftJoinAndSelect("handover.handedOverBy", "handedOverBy")
             .leftJoinAndSelect("handover.createdBy", "createdBy")
@@ -71,6 +78,10 @@ export class TypeOrmHandoverRepository implements IHandoverRepository {
             relations: [
                 "items",
                 "items.asset",
+                "stockItems",
+                "stockItems.variant",
+                "stockItems.variant.product",
+                "stockItems.branch",
                 "receivedBy",
                 "handedOverBy",
                 "createdBy",
@@ -100,6 +111,11 @@ export class TypeOrmHandoverRepository implements IHandoverRepository {
 
     async saveItem(data: Partial<HandoverItem>, manager?: EntityManager): Promise<HandoverItem> {
         const repo = manager ? manager.getRepository(HandoverItem) : this.itemRepository
+        return await repo.save(data)
+    }
+
+    async saveStockItem(data: Partial<HandoverStockItem>, manager?: EntityManager): Promise<HandoverStockItem> {
+        const repo = manager ? manager.getRepository(HandoverStockItem) : this.stockItemRepository
         return await repo.save(data)
     }
 

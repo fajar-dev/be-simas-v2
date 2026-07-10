@@ -17,7 +17,13 @@ import { AssetLog } from "../modules/asset-log/entities/asset-log.entity"
 import { AssetStatus } from "../modules/asset-status/entities/asset-status.entity"
 import { Handover } from "../modules/handover/entities/handover.entity"
 import { HandoverItem } from "../modules/handover/entities/handover-item.entity"
+import { HandoverStockItem } from "../modules/handover/entities/handover-stock-item.entity"
 import { HandoverField } from "../modules/handover-field/entities/handover-field.entity"
+import { Inventory } from "../modules/inventory/entities/inventory.entity"
+import { InventoryVariant } from "../modules/inventory-variant/entities/inventory-variant.entity"
+import { InventoryStockBalance } from "../modules/inventory-stock/entities/inventory-stock-balance.entity"
+import { InventoryStockMovement } from "../modules/inventory-stock/entities/inventory-stock-movement.entity"
+import { InventoryStockHolding } from "../modules/inventory-stock/entities/inventory-stock-holding.entity"
 import { Role } from "../modules/role/entities/role.entity"
 import { Permission } from "../modules/role/entities/permission.entity"
 import { config } from "./config"
@@ -38,7 +44,7 @@ const defaultDataSource = new DataSource({
     password: config.database.pass,
     database: config.database.name,
     synchronize: config.database.sync,
-    entities: [User, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetNote, AssetLocation, AssetHolder, AssetLog, AssetStatus, Handover, HandoverItem, HandoverField, Role, Permission, PasswordResetToken],
+    entities: [User, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetNote, AssetLocation, AssetHolder, AssetLog, AssetStatus, Handover, HandoverItem, HandoverStockItem, HandoverField, Inventory, InventoryVariant, InventoryStockBalance, InventoryStockMovement, InventoryStockHolding, Role, Permission, PasswordResetToken],
     migrations: [],
     subscribers: [],
 })

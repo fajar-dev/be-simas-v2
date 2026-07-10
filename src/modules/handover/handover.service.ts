@@ -13,6 +13,7 @@ import { AssetHolder } from "../asset-holder/entities/asset-holder.entity"
 import { generateHandoverPdf } from "../../core/helpers/handover-pdf"
 import { esignHelper, EsignSigner } from "../../core/helpers/esign"
 import { HandoverFieldService } from "../handover-field/handover-field.service"
+import { InventoryStockService } from "../inventory-stock/inventory-stock.service"
 import type { HandoverTransactionType } from "../../core/enums"
 
 const ENTITY_HANDOVER = "Handover"
@@ -28,7 +29,8 @@ export class HandoverService {
         private readonly assetHolderService: AssetHolderService,
         private readonly assetLogService: AssetLogService,
         private readonly attachmentService: AttachmentService,
-        private readonly handoverFieldService: HandoverFieldService
+        private readonly handoverFieldService: HandoverFieldService,
+        private readonly inventoryStockService: InventoryStockService
     ) {}
 
 
@@ -135,7 +137,7 @@ export class HandoverService {
         // Receiving employee must exist & be active.
         const receivedByEmployee = await this.employeeService.getById(data.receivedById)
         if (!receivedByEmployee.isActive) {
-            throw new BadRequestException(`Cannot hand over asset to inactive employee "${receivedByEmployee.name}"`)
+            throw new BadRequestException(`Cannot hand over to inactive employee "${receivedByEmployee.name}"`)
         }
 
         // Handing-over employee must exist. For a return they may be inactive
@@ -145,21 +147,43 @@ export class HandoverService {
             throw new BadRequestException(`Handing over employee "${handedOverBy.name}" is inactive`)
         }
 
-        await this.validateItems(data.transactionType, data.items, data.handedOverById)
-
         // Snapshot the configured custom fields + values (self-contained; unaffected by later edits).
         const customFields = await this.handoverFieldService.resolveSnapshot(data.transactionType, data.customFields ?? {})
 
+        const handover = data.itemKind === "stock"
+            ? await this.createStockHandover(data, userId, isReturn, customFields)
+            : await this.createAssetHandover(data, userId, isReturn, customFields)
+
+        const full = await this.findOrFail(handover.id)
+
+        // Generate the signed-handover form, store it as an attachment, and
+        // send it to the e-sign provider for the two parties to sign.
+        await this.dispatchForSigning(full)
+
+        return await this.getById(handover.id)
+    }
+
+    /** Persist an asset-kind handover (existing behaviour). */
+    private async createAssetHandover(
+        data: CreateHandoverValidator,
+        userId: number | undefined,
+        isReturn: boolean,
+        customFields: { key: string; label: string; type: string; value: string | null }[]
+    ): Promise<Handover> {
+        const items = data.items ?? []
+        await this.validateItems(data.transactionType, items, data.handedOverById)
+
         // A return handover links back (best-effort) to the origin assign handover.
         const parentHandoverId = isReturn
-            ? await this.resolveParentHandoverId(data.items.map((i) => i.assetId))
+            ? await this.resolveParentHandoverId(items.map((i) => i.assetId))
             : null
 
-        const handover = await withTransaction(async (manager) => {
+        return await withTransaction(async (manager) => {
             const created = await this.repository.save({
                 receivedById: data.receivedById,
                 handedOverById: data.handedOverById,
                 transactionType: data.transactionType,
+                itemKind: "asset",
                 note: data.note ?? null,
                 customFields: customFields.length ? customFields : null,
                 status: "pending",
@@ -167,7 +191,7 @@ export class HandoverService {
                 createdByUserId: userId ?? null,
             }, manager)
 
-            for (const item of data.items) {
+            for (const item of items) {
                 await this.repository.saveItem({
                     handoverId: created.id,
                     assetId: item.assetId,
@@ -177,14 +201,55 @@ export class HandoverService {
 
             return created
         })
+    }
 
-        const full = await this.findOrFail(handover.id)
+    /** Persist a stock-kind handover. Stock availability is validated up front and again (locked) on approval. */
+    private async createStockHandover(
+        data: CreateHandoverValidator,
+        userId: number | undefined,
+        isReturn: boolean,
+        customFields: { key: string; label: string; type: string; value: string | null }[]
+    ): Promise<Handover> {
+        const stockItems = data.stockItems ?? []
 
-        // Generate the signed-handover form, store it as an attachment, and
-        // send it to the e-sign provider for the two parties to sign.
-        await this.dispatchForSigning(full)
+        if (isReturn) {
+            // The handing-over employee returns stock they currently hold.
+            await this.inventoryStockService.assertCanReturn(
+                data.handedOverById,
+                stockItems.map((si) => ({ variantId: si.variantId, branchId: si.branchId, quantity: si.quantity }))
+            )
+        } else {
+            await this.inventoryStockService.assertCanAssign(
+                stockItems.map((si) => ({ variantId: si.variantId, branchId: si.branchId, condition: si.condition, quantity: si.quantity }))
+            )
+        }
 
-        return await this.getById(handover.id)
+        return await withTransaction(async (manager) => {
+            const created = await this.repository.save({
+                receivedById: data.receivedById,
+                handedOverById: data.handedOverById,
+                transactionType: data.transactionType,
+                itemKind: "stock",
+                note: data.note ?? null,
+                customFields: customFields.length ? customFields : null,
+                status: "pending",
+                parentHandoverId: null,
+                createdByUserId: userId ?? null,
+            }, manager)
+
+            for (const si of stockItems) {
+                await this.repository.saveStockItem({
+                    handoverId: created.id,
+                    variantId: si.variantId,
+                    branchId: si.branchId,
+                    condition: si.condition,
+                    quantity: si.quantity,
+                    note: si.note ?? null,
+                }, manager)
+            }
+
+            return created
+        })
     }
 
     /** Build the handover PDF form, attach it to the handover, and submit it to e-sign. */
@@ -228,9 +293,18 @@ export class HandoverService {
             throw new BadRequestException(`Only pending handovers can be approved (current status: "${handover.status}")`)
         }
 
-        const affectedHolders = handover.transactionType === "return"
-            ? await this.applyReturn(handover)
-            : await this.applyAssign(handover)
+        let affectedHolders: AssetHolder[] = []
+        if (handover.itemKind === "stock") {
+            if (handover.transactionType === "return") {
+                await this.applyStockReturn(handover)
+            } else {
+                await this.applyStockAssign(handover)
+            }
+        } else {
+            affectedHolders = handover.transactionType === "return"
+                ? await this.applyReturn(handover)
+                : await this.applyAssign(handover)
+        }
 
         // On approval from e-sign, point the handover's document at the signed
         // file URL and attach that signed document to every affected holder.
@@ -239,6 +313,39 @@ export class HandoverService {
         }
 
         return await this.getById(id)
+    }
+
+    /** Approve a stock `assign` handover: move branch stock into the receiver's holdings. */
+    private async applyStockAssign(handover: Handover): Promise<void> {
+        const items = (handover.stockItems || []).map((si) => ({
+            variantId: si.variantId,
+            branchId: si.branchId,
+            condition: si.condition,
+            quantity: si.quantity,
+        }))
+        await this.inventoryStockService.assign(
+            { employeeId: handover.receivedById, note: handover.note ?? null, items },
+            handover.createdByUserId ?? undefined,
+            { handoverId: handover.id }
+        )
+        this.repository.merge(handover, { status: "approve" })
+        await this.repository.save(handover)
+    }
+
+    /** Approve a stock `return` handover: return the holder's stock back into `used` at the branch. */
+    private async applyStockReturn(handover: Handover): Promise<void> {
+        const items = (handover.stockItems || []).map((si) => ({
+            variantId: si.variantId,
+            branchId: si.branchId,
+            quantity: si.quantity,
+        }))
+        await this.inventoryStockService.returnStock(
+            { employeeId: handover.handedOverById!, note: handover.note ?? null, items },
+            handover.createdByUserId ?? undefined,
+            { handoverId: handover.id }
+        )
+        this.repository.merge(handover, { status: "approve" })
+        await this.repository.save(handover)
     }
 
     /** Approve an `assign` handover: create a new active holder per item. */
