@@ -42,6 +42,13 @@ export class Handover {
     @Column({ name: "note", type: "text", nullable: true })
     note?: string | null
 
+    /**
+     * Snapshot of the custom fields (definition + value) captured at creation time.
+     * Self-contained so later edits to HandoverField definitions never affect this handover.
+     */
+    @Column({ name: "custom_fields", type: "simple-json", nullable: true })
+    customFields?: { key: string; label: string; type: string; value: string | null }[] | null
+
     @Index()
     @Column({ type: "varchar", default: "pending" })
     status!: HandoverStatus

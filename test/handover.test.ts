@@ -480,6 +480,49 @@ describe("Asset Handover API", () => {
         expect(res.status).toBe(400)
     })
 
+    // ── Custom fields (snapshot per handover) ──────────────────────────────────
+    test("POST /api/handover - snapshots custom field values", async () => {
+        await request(app, "/api/handover-field/assign", { method: "PUT", headers: authHeaders, body: { fields: [
+            { label: "PIC Name", type: "text", required: true },
+            { label: "Condition", type: "select", options: ["Good", "Damaged"] },
+        ] } })
+
+        const res = await request(app, "/api/handover", {
+            method: "POST", headers: authHeaders,
+            body: createHandoverData([{ assetId }], employeeId, { customFields: { pic_name: "Budi", condition: "Good" } }),
+        })
+        expect(res.status).toBe(201)
+        const cf = res.body.data.customFields
+        expect(cf.length).toBe(2)
+        expect(cf.find((f: any) => f.key === "pic_name")).toMatchObject({ label: "PIC Name", value: "Budi" })
+        expect(cf.find((f: any) => f.key === "condition")).toMatchObject({ value: "Good" })
+    })
+
+    test("POST /api/handover - rejects when a required custom field is missing", async () => {
+        await request(app, "/api/handover-field/assign", { method: "PUT", headers: authHeaders, body: { fields: [{ label: "PIC Name", type: "text", required: true }] } })
+        const res = await request(app, "/api/handover", {
+            method: "POST", headers: authHeaders,
+            body: createHandoverData([{ assetId }], employeeId, { customFields: {} }),
+        })
+        expect(res.status).toBe(400)
+    })
+
+    test("POST /api/handover - editing a field definition does NOT affect existing handovers", async () => {
+        await request(app, "/api/handover-field/assign", { method: "PUT", headers: authHeaders, body: { fields: [{ label: "PIC Name", type: "text" }] } })
+        const created = await request(app, "/api/handover", {
+            method: "POST", headers: authHeaders,
+            body: createHandoverData([{ assetId }], employeeId, { customFields: { pic_name: "Budi" } }),
+        })
+        const id = created.body.data.id
+
+        // Change the field definition afterwards.
+        await request(app, "/api/handover-field/assign", { method: "PUT", headers: authHeaders, body: { fields: [{ label: "Different Field", type: "number" }] } })
+
+        // The old handover keeps its original snapshot.
+        const detail = await request(app, `/api/handover/${id}`, { headers: authHeaders })
+        expect(detail.body.data.customFields).toEqual([{ key: "pic_name", label: "PIC Name", type: "text", value: "Budi" }])
+    })
+
     // ── Unsupported methods (module is create/read + webhook only) ──────────────
     test("PUT & DELETE /api/handover/:id - not supported", async () => {
         const created = await request(app, "/api/handover", { method: "POST", headers: authHeaders, body: createHandoverData([{ assetId }], employeeId) })

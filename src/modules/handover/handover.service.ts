@@ -12,6 +12,7 @@ import { Attachment } from "../attachment/entities/attachment.entity"
 import { AssetHolder } from "../asset-holder/entities/asset-holder.entity"
 import { generateHandoverPdf } from "../../core/helpers/handover-pdf"
 import { esignHelper, EsignSigner } from "../../core/helpers/esign"
+import { HandoverFieldService } from "../handover-field/handover-field.service"
 import type { HandoverTransactionType } from "../../core/enums"
 
 const ENTITY_HANDOVER = "Handover"
@@ -26,7 +27,8 @@ export class HandoverService {
         private readonly employeeService: EmployeeService,
         private readonly assetHolderService: AssetHolderService,
         private readonly assetLogService: AssetLogService,
-        private readonly attachmentService: AttachmentService
+        private readonly attachmentService: AttachmentService,
+        private readonly handoverFieldService: HandoverFieldService
     ) {}
 
 
@@ -145,6 +147,9 @@ export class HandoverService {
 
         await this.validateItems(data.transactionType, data.items, data.handedOverById)
 
+        // Snapshot the configured custom fields + values (self-contained; unaffected by later edits).
+        const customFields = await this.handoverFieldService.resolveSnapshot(data.transactionType, data.customFields ?? {})
+
         // A return handover links back (best-effort) to the origin assign handover.
         const parentHandoverId = isReturn
             ? await this.resolveParentHandoverId(data.items.map((i) => i.assetId))
@@ -156,6 +161,7 @@ export class HandoverService {
                 handedOverById: data.handedOverById,
                 transactionType: data.transactionType,
                 note: data.note ?? null,
+                customFields: customFields.length ? customFields : null,
                 status: "pending",
                 parentHandoverId,
                 createdByUserId: userId ?? null,

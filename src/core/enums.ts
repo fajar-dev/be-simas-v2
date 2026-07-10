@@ -20,6 +20,10 @@ export type HandoverTransactionType = (typeof HANDOVER_TRANSACTION_TYPES)[number
 export const HANDOVER_STATUSES = ["pending", "approve", "reject", "cancel"] as const
 export type HandoverStatus = (typeof HANDOVER_STATUSES)[number]
 
+/** Custom-field input type — column `handover_fields.type`. */
+export const HANDOVER_FIELD_TYPES = ["text", "number", "select", "radio", "date", "datetime"] as const
+export type HandoverFieldType = (typeof HANDOVER_FIELD_TYPES)[number]
+
 /** Origin of an asset location record — column `asset_locations.source`. */
 export const ASSET_LOCATION_SOURCES = ["manual", "ble"] as const
 export type AssetLocationSource = (typeof ASSET_LOCATION_SOURCES)[number]

@@ -39,6 +39,7 @@ export class HandoverSerializer {
             status: handover.status,
             transactionType: handover.transactionType,
             note: handover.note || null,
+            customFields: handover.customFields || [],
             parentHandover: handover.parentHandover ? {
                 id: handover.parentHandover.id,
                 transactionType: handover.parentHandover.transactionType,

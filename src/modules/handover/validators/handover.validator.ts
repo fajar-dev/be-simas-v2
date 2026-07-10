@@ -13,6 +13,8 @@ export const CreateHandoverValidator = z.object({
     handedOverById: z.number("Handed over by ID is required"),
     transactionType: TransactionTypeEnum,
     note: z.string().trim().optional().nullable(),
+    // Values for the configured custom fields, keyed by field key.
+    customFields: z.record(z.string(), z.union([z.string(), z.number(), z.null()])).optional(),
     items: z.array(HandoverItemValidator).min(1, "At least one item is required"),
 })
 

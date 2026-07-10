@@ -106,6 +106,8 @@ export async function generateHandoverPdf(handover: Handover): Promise<Uint8Arra
             ],
         },
         { label: "Catatan", lines: [{ text: handover.note || "-" }] },
+        // Snapshotted custom fields (label : value)
+        ...(handover.customFields || []).map((f) => ({ label: f.label, lines: [{ text: f.value || "-" }] })),
     ]
 
     const labelW = 175

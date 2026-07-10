@@ -55,6 +55,8 @@ const PERMISSIONS = [
     { module: 'handover', action: 'approve' },
     { module: 'handover', action: 'reject' },
     { module: 'handover', action: 'cancel' },
+    { module: 'handover-field', action: 'read' },
+    { module: 'handover-field', action: 'manage' },
     { module: 'user', action: 'read' },
     { module: 'user', action: 'create' },
     { module: 'user', action: 'update' },

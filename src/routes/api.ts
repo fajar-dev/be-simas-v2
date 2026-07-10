@@ -20,6 +20,7 @@ import { CreateAssetStatusValidator, BulkCreateAssetStatusValidator } from "../m
 import { CreateRoleValidator, UpdateRoleValidator } from "../modules/role/validators/role.validator"
 import { DecodeBarcodeValidator } from "../modules/ai/validators/ai.validator"
 import { CreateHandoverValidator } from "../modules/handover/validators/handover.validator"
+import { ReplaceHandoverFieldsValidator } from "../modules/handover-field/validators/handover-field.validator"
 
 // ── Middlewares ──────────────────────────────────────────────────────────────
 import { authMiddleware } from "../core/middlewares/auth.middleware"
@@ -51,6 +52,7 @@ import { aiController } from "../modules/ai/ai.module"
 import { bookController } from "../modules/book/book.module"
 import { BorrowBookValidator, ReturnBookValidator } from "../modules/book/validators/book.validator"
 import { handoverController } from "../modules/handover/handover.module"
+import { handoverFieldController } from "../modules/handover-field/handover-field.module"
 import { apiKeyMiddleware } from "../core/middlewares/api-key.middleware"
 
 // ── Routes ───────────────────────────────────────────────────────────────────
@@ -183,6 +185,8 @@ routes.get("/handover", authMiddleware, requirePermission("handover:read"), (c) 
 routes.get("/handover/:id", authMiddleware, requirePermission("handover:read"), (c) => handoverController.show(c))
 routes.post("/handover", authMiddleware, requirePermission("handover:create"), zValidator("json", CreateHandoverValidator, validationHook), (c) => handoverController.store(c))
 routes.post("/handover/:id/cancel", authMiddleware, requirePermission("handover:cancel"), (c) => handoverController.cancel(c))
+routes.get("/handover-field", authMiddleware, requirePermission("handover-field:read"), (c) => handoverFieldController.index(c))
+routes.put("/handover-field/:transactionType", authMiddleware, requirePermission("handover-field:manage"), zValidator("json", ReplaceHandoverFieldsValidator, validationHook), (c) => handoverFieldController.replace(c))
 
 // Statistic
 routes.get("/statistic/summary", authMiddleware, requirePermission("dashboard:read"), (c) => statisticController.summary(c))

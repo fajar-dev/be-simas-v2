@@ -21,6 +21,7 @@ import { AssetLog } from "../src/modules/asset-log/entities/asset-log.entity"
 import { AssetStatus } from "../src/modules/asset-status/entities/asset-status.entity"
 import { Handover } from "../src/modules/handover/entities/handover.entity"
 import { HandoverItem } from "../src/modules/handover/entities/handover-item.entity"
+import { HandoverField } from "../src/modules/handover-field/entities/handover-field.entity"
 import { PasswordResetToken } from "../src/modules/auth/entities/password-reset-token.entity"
 import { ApiResponse } from "../src/core/helpers/response"
 import { BaseException, ValidationException } from "../src/core/exceptions/base"
@@ -44,7 +45,7 @@ const TestDataSource = new DataSource({
     database: testDbName,
     synchronize: true,
     dropSchema: true,
-    entities: [User, Role, Permission, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetNote, AssetLocation, AssetHolder, AssetLog, AssetStatus, Handover, HandoverItem, PasswordResetToken],
+    entities: [User, Role, Permission, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetNote, AssetLocation, AssetHolder, AssetLog, AssetStatus, Handover, HandoverItem, HandoverField, PasswordResetToken],
     logging: false,
 })
 
