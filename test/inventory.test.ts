@@ -43,7 +43,7 @@ beforeEach(async () => {
     variant2 = v2.body.data.id
 })
 
-// helper: set stock for a branch/product
+// helper: set stock for a branch/inventory item
 const setStock = (branchId: number, items: { variantId: number; new: number; used: number }[]) =>
     request(app, "/api/inventory/stock/entry", { method: "POST", headers: authHeaders, body: { branchId, inventoryId, items } })
 
@@ -68,8 +68,8 @@ describe("Inventory API", () => {
         expect((await request(app, "/api/inventory")).status).toBe(401)
     })
 
-    // ── Product & Variant ─────────────────────────────────────────────────────
-    test("product delete blocked while it has variants; variant created OK", async () => {
+    // ── Inventory item & Variant ─────────────────────────────────────────────────────
+    test("inventory item delete blocked while it has variants; variant created OK", async () => {
         const del = await request(app, `/api/inventory/${inventoryId}`, { method: "DELETE", headers: authHeaders })
         expect(del.status).toBe(409)
 
@@ -108,9 +108,9 @@ describe("Inventory API", () => {
         expect(mon.body.data[0].quantity).toBe(4)
     })
 
-    test("entry rejects a variant that does not belong to the product", async () => {
-        const otherProduct = await request(app, "/api/inventory", { method: "POST", headers: authHeaders, body: { name: "Other" } })
-        const otherVariant = await request(app, "/api/inventory-variant", { method: "POST", headers: authHeaders, body: { inventoryId: otherProduct.body.data.id, name: "X" } })
+    test("entry rejects a variant that does not belong to the inventory item", async () => {
+        const otherItem = await request(app, "/api/inventory", { method: "POST", headers: authHeaders, body: { name: "Other" } })
+        const otherVariant = await request(app, "/api/inventory-variant", { method: "POST", headers: authHeaders, body: { inventoryId: otherItem.body.data.id, name: "X" } })
         const res = await setStock(branchA, [{ variantId: otherVariant.body.data.id, new: 1, used: 0 }])
         expect(res.status).toBe(400)
     })

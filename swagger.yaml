@@ -1408,6 +1408,30 @@ paths:
         "401": { description: Invalid credentials }
         "422": { description: Validation error }
 
+  # ── Nusawork Login ────────────────────────────────────────────────────────
+  /auth/nusawork-login:
+    post:
+      tags: [Auth]
+      summary: Login with Nusawork credentials
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRequest" }
+      responses:
+        "200":
+          description: Logged in successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/AuthResponse" }
+        "401": { description: Invalid credentials }
+        "422": { description: Validation error }
+
   # ── Google Login ──────────────────────────────────────────────────────────
   /auth/google:
     post:
@@ -4155,7 +4179,7 @@ paths:
   /inventory:
     get:
       tags: [Inventory]
-      summary: List stock products (paginated)
+      summary: List inventory items (paginated)
       security:
         - bearerAuth: []
       parameters:
@@ -4166,7 +4190,7 @@ paths:
         - { name: order, in: query, required: false, schema: { type: string, enum: [ASC, DESC] } }
       responses:
         "200":
-          description: Stock products retrieved successfully
+          description: Inventory items retrieved successfully
           content:
             application/json:
               schema:
@@ -4263,7 +4287,7 @@ paths:
         - bearerAuth: []
       responses:
         "200":
-          description: Stock products retrieved successfully
+          description: Inventory items retrieved successfully
           content:
             application/json:
               schema:
@@ -4277,14 +4301,14 @@ paths:
   /inventory/{id}:
     get:
       tags: [Inventory]
-      summary: Get a stock product by id
+      summary: Get an inventory item by id
       security:
         - bearerAuth: []
       parameters:
         - { name: id, in: path, required: true, schema: { type: integer } }
       responses:
         "200":
-          description: Stock product retrieved successfully
+          description: Inventory item retrieved successfully
           content:
             application/json:
               schema:
@@ -4297,7 +4321,7 @@ paths:
         "404": { description: Not found }
     put:
       tags: [Inventory]
-      summary: Update a stock product
+      summary: Update an inventory item
       security:
         - bearerAuth: []
       parameters:
@@ -4329,8 +4353,8 @@ paths:
         "422": { description: Validation error }
     delete:
       tags: [Inventory]
-      summary: Delete a stock product
-      description: Fails with 409 if the product still has variants.
+      summary: Delete an inventory item
+      description: Fails with 409 if the item still has variants.
       security:
         - bearerAuth: []
       parameters:
@@ -4339,12 +4363,12 @@ paths:
         "200": { description: Deleted }
         "401": { description: Unauthorized }
         "404": { description: Not found }
-        "409": { description: Conflict - product still has variants }
+        "409": { description: Conflict - item still has variants }
 
   /inventory-variant:
     get:
       tags: [Inventory]
-      summary: List variants of a product
+      summary: List variants of an inventory item
       security:
         - bearerAuth: []
       parameters:
@@ -4391,7 +4415,7 @@ paths:
                     properties:
                       data: { $ref: "#/components/schemas/InventoryVariantResponse" }
         "401": { description: Unauthorized }
-        "404": { description: Product not found }
+        "404": { description: Inventory item not found }
         "422": { description: Validation error }
 
   /inventory-variant/{id}:
@@ -4491,7 +4515,7 @@ paths:
   /inventory/stock/entry-template:
     get:
       tags: [Inventory]
-      summary: Get the nested-input entry template for a branch + product
+      summary: Get the nested-input entry template for a branch + inventory item
       description: Returns each variant with its current on-hand new/used quantities, ready for the stock entry table.
       security:
         - bearerAuth: []
@@ -4515,7 +4539,7 @@ paths:
   /inventory/stock/entry:
     post:
       tags: [Inventory]
-      summary: Set stock quantities (opname) for a branch + product
+      summary: Set stock quantities (opname) for a branch + inventory item
       description: SET semantics — each variant's new/used values become the absolute on-hand quantity. A movement is recorded with the signed delta.
       security:
         - bearerAuth: []
@@ -4550,7 +4574,7 @@ paths:
                   - type: object
                     properties:
                       data: { type: array, items: { $ref: "#/components/schemas/InventoryStockBalanceResponse" } }
-        "400": { description: Invalid branch/product or variant not belonging to product }
+        "400": { description: Invalid branch/item or variant not belonging to item }
         "401": { description: Unauthorized }
         "403": { description: Forbidden - missing inventory-stock:entry }
         "422": { description: Validation error }

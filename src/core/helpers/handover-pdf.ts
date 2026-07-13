@@ -185,12 +185,12 @@ export async function generateHandoverPdf(handover: Handover): Promise<Uint8Arra
     // Normalize asset / stock lines into a common {name, code, note} shape.
     const rows: { name: string; code: string; note: string }[] = isStock
         ? (handover.stockItems ?? []).map((item) => {
-            const productName = item.variant?.inventory?.name ?? "-"
+            const inventoryName = item.variant?.inventory?.name ?? "-"
             const variantName = item.variant?.name ? ` - ${item.variant.name}` : ""
             const unit = item.variant?.inventory?.unit ? ` ${item.variant.inventory.unit}` : ""
             const branch = item.branch?.name ? `Cabang: ${item.branch.name}` : ""
             return {
-                name: `${productName}${variantName} (${conditionLabel(item.condition)})`,
+                name: `${inventoryName}${variantName} (${conditionLabel(item.condition)})`,
                 code: `${item.quantity}${unit}`,
                 note: [branch, item.note || ""].filter(Boolean).join(" — ") || "-",
             }

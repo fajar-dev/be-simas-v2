@@ -74,6 +74,10 @@ export const config = {
         apiUrl: process.env.NUSAWORK_API_URL || '',
         clientId: process.env.NUSAWORK_CLIENT_ID || '',
         clientSecret: process.env.NUSAWORK_CLIENT_SECRET || '',
+        auth: {
+            clientId: process.env.NUSAWORK_AUTH_CLIENT_ID || '',
+            clientSecret: process.env.NUSAWORK_AUTH_CLIENT_SECRET || '',
+        }
     },
     esign: {
         apiUrl: process.env.ESIGN_API_URL || '',

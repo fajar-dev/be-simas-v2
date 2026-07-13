@@ -4,34 +4,34 @@ import { attachmentService } from "../../attachment/attachment.module"
 import { AttachmentSerializer } from "../../attachment/serializers/attachment.serialize"
 
 export class InventorySerializer {
-    static async single(product: Inventory) {
+    static async single(item: Inventory) {
         return {
-            id: product.id,
-            code: product.code || null,
-            name: product.name,
-            description: product.description || null,
-            image: await resolveFileUrl(product.image),
-            unit: product.unit,
-            isActive: product.isActive,
-            category: product.subCategory?.category
-                ? { id: product.subCategory.category.id, name: product.subCategory.category.name }
+            id: item.id,
+            code: item.code || null,
+            name: item.name,
+            description: item.description || null,
+            image: await resolveFileUrl(item.image),
+            unit: item.unit,
+            isActive: item.isActive,
+            category: item.subCategory?.category
+                ? { id: item.subCategory.category.id, name: item.subCategory.category.name }
                 : null,
-            subCategory: product.subCategory
-                ? { id: product.subCategory.id, name: product.subCategory.name }
+            subCategory: item.subCategory
+                ? { id: item.subCategory.id, name: item.subCategory.name }
                 : null,
-            labels: (product.labels || []).map((l) => ({ id: l.id, key: l.key, value: l.value })),
-            createdAt: product.createdAt,
-            updatedAt: product.updatedAt,
-            createdBy: product.createdBy ? {
-                id: product.createdBy.id,
-                name: product.createdBy.name,
-                photo: await resolveFileUrl(product.createdBy.photo),
+            labels: (item.labels || []).map((l) => ({ id: l.id, key: l.key, value: l.value })),
+            createdAt: item.createdAt,
+            updatedAt: item.updatedAt,
+            createdBy: item.createdBy ? {
+                id: item.createdBy.id,
+                name: item.createdBy.name,
+                photo: await resolveFileUrl(item.createdBy.photo),
             } : null,
-            attachments: await AttachmentSerializer.collection(await attachmentService.getForEntity("Inventory", product.id)),
+            attachments: await AttachmentSerializer.collection(await attachmentService.getForEntity("Inventory", item.id)),
         }
     }
 
-    static async collection(products: Inventory[]) {
-        return Promise.all(products.map((p) => this.single(p)))
+    static async collection(items: Inventory[]) {
+        return Promise.all(items.map((p) => this.single(p)))
     }
 }

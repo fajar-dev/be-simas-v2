@@ -8,6 +8,9 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] — 2026-07-10
 
+### Changed
+- **Refactor sisa penamaan `product` → `inventory`/`item`**: variabel lokal & parameter di modul inventory (`inventory.service.ts`, `inventory.controller.ts`, `inventory.serialize.ts`, `countVariants(productId)` → `countVariants(inventoryId)` di interface), `productName` → `inventoryName` pada PDF handover, serta redaksi `swagger.yaml` ("stock product" → "inventory item", "Product not found" → "Inventory item not found", dll.) dan komentar/variabel test. Tidak ada perubahan endpoint/kolom.
+
 ### Added
 - **Riwayat transfer stok (dokumen transfer)**: transfer kini mencatat dokumen tersendiri — tabel `inventory_stock_transfers` (cabang asal/tujuan, catatan, pembuat) + `inventory_stock_transfer_items` (varian · kondisi · qty). `POST /inventory/stock/transfer` menerima `attachmentIds` (ditautkan ke entity `"InventoryStockTransfer"`) selain tetap menulis saldo/movement seperti sebelumnya (atomik). Endpoint baru `GET /inventory/stock/transfer?inventoryId=` (permission `inventory-stock:read`) mengembalikan riwayat transfer per item beserta item, pembuat, dan lampiran. Swagger (`InventoryStockTransferResponse`) + `test/inventory.test.ts` diperbarui.
 - **Lampiran & pembuat pada item Inventory**: `POST/PUT /inventory` menerima `attachmentIds` (ditautkan ke entity `"Inventory"`); response `InventoryResponse` mengembalikan `attachments` + `createdBy`. Swagger + test disesuaikan.

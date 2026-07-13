@@ -27,21 +27,21 @@ export class InventoryController {
     }
 
     async show(c: Context) {
-        const product = await this.service.getById(Number(c.req.param("id")))
-        return ApiResponse.success(c, await InventorySerializer.single(product))
+        const item = await this.service.getById(Number(c.req.param("id")))
+        return ApiResponse.success(c, await InventorySerializer.single(item))
     }
 
     async store(c: Context) {
         const user = c.get("user")
         const data = c.req.valid("json" as never) as any
-        const product = await this.service.create(data, user?.id)
-        return ApiResponse.success(c, await InventorySerializer.single(product), "Created", 201)
+        const item = await this.service.create(data, user?.id)
+        return ApiResponse.success(c, await InventorySerializer.single(item), "Created", 201)
     }
 
     async update(c: Context) {
         const data = c.req.valid("json" as never) as any
-        const product = await this.service.update(Number(c.req.param("id")), data)
-        return ApiResponse.success(c, await InventorySerializer.single(product), "Updated")
+        const item = await this.service.update(Number(c.req.param("id")), data)
+        return ApiResponse.success(c, await InventorySerializer.single(item), "Updated")
     }
 
     async destroy(c: Context) {

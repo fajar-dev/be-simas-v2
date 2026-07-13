@@ -54,6 +54,16 @@ mock.module("../src/config/smtp", () => ({
     },
 }))
 
+// ── Mock Nusawork Helper to prevent real connections ───────────────────────
+
+mock.module("../src/core/helpers/nusawork", () => ({
+    nusaworkHelper: {
+        authLogin: async (_email: string, pass: string) => pass === "valid-nusawork-pass",
+        getEmployees: async () => [],
+        getBranch: async () => [],
+    },
+}))
+
 // ── Setup ───────────────────────────────────────────────────────────────────
 
 let app: Hono
@@ -212,6 +222,55 @@ describe("POST /api/auth/login", () => {
 
         expect(status).toBe(422)
         expect(body.success).toBe(false)
+    })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// POST /api/auth/nusawork-login
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("POST /api/auth/nusawork-login", () => {
+    test("should login successfully with valid nusawork credentials for registered user", async () => {
+        const userData = createUserData()
+        await request(app, "/api/auth/register", { method: "POST", body: userData })
+
+        const { status, body } = await request(app, "/api/auth/nusawork-login", {
+            method: "POST",
+            body: { email: userData.email, password: "valid-nusawork-pass" },
+        })
+
+        expect(status).toBe(200)
+        expect(body.success).toBe(true)
+        expect(body.message).toBe("Logged in successfully")
+        expect(body.data.user).toBeDefined()
+        expect(body.data.user.email).toBe(userData.email)
+        expect(body.data.accessToken).toBeDefined()
+        expect(body.data.refreshToken).toBeDefined()
+    })
+
+    test("should fail with unregistered email", async () => {
+        const { status, body } = await request(app, "/api/auth/nusawork-login", {
+            method: "POST",
+            body: { email: "notexist@example.com", password: "valid-nusawork-pass" },
+        })
+
+        expect(status).toBe(401)
+        expect(body.success).toBe(false)
+        expect(body.message).toBe("User not registered")
+    })
+
+    test("should fail when nusawork auth returns invalid credentials (non-200)", async () => {
+        const userData = createUserData()
+        await request(app, "/api/auth/register", { method: "POST", body: userData })
+
+        const { status, body } = await request(app, "/api/auth/nusawork-login", {
+            method: "POST",
+            body: { email: userData.email, password: "wrongpassword" },
+        })
+
+        expect(status).toBe(401)
+        expect(body.success).toBe(false)
+        expect(body.message).toBe("Invalid credentials")
     })
 })
 

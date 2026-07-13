@@ -27,9 +27,9 @@ export class InventoryService {
     }
 
     async getById(id: number): Promise<Inventory> {
-        const product = await this.repository.findById(id)
-        if (!product) throw new NotFoundException("Inventory item not found")
-        return product
+        const item = await this.repository.findById(id)
+        if (!item) throw new NotFoundException("Inventory item not found")
+        return item
     }
 
     async getLabelKeys(): Promise<string[]> {
@@ -92,8 +92,8 @@ export class InventoryService {
     }
 
     async update(id: number, data: UpdateInventoryValidator): Promise<Inventory> {
-        const product = await this.getById(id)
-        this.repository.merge(product, {
+        const item = await this.getById(id)
+        this.repository.merge(item, {
             ...(data.code !== undefined ? { code: data.code ?? null } : {}),
             ...(data.name !== undefined ? { name: data.name } : {}),
             ...(data.description !== undefined ? { description: data.description ?? null } : {}),
@@ -102,7 +102,7 @@ export class InventoryService {
             ...(data.subCategoryId !== undefined ? { subCategoryId: data.subCategoryId ?? null } : {}),
             ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
         })
-        await this.repository.save(product)
+        await this.repository.save(item)
 
         if (data.labels !== undefined) {
             await this.repository.deleteLabels(id)

@@ -53,6 +53,27 @@ export class NusaworkHelper {
 
         return (res?.data?.data as any[]) ?? []
     }
+
+    async authLogin(email: string, password: string): Promise<boolean> {
+        try {
+            const res = await this.http.post<any>('/auth/api/oauth/token', {
+                grant_type: 'password',
+                username: email,
+                password: password,
+                client_id: config.nusawork.auth.clientId,
+                client_secret: config.nusawork.auth.clientSecret,
+            }, {
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                validateStatus: () => true,
+            })
+
+            return res.status === 200
+        } catch {
+            return false
+        }
+    }
 }
 
 export const nusaworkHelper = new NusaworkHelper()

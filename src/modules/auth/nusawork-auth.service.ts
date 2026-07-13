@@ -1,8 +1,10 @@
 import { UnauthorizedException } from "../../core/exceptions/base"
 import { UserService } from "../user/user.service"
 import { AuthHelper } from "../../core/helpers/auth"
+import { LoginValidator } from "./validators/auth.validator"
+import { nusaworkHelper } from "../../core/helpers/nusawork"
 
-export class QrCodeAuthService {
+export class NusaworkAuthService {
     constructor(private readonly userService: UserService) {}
 
     /**
@@ -23,6 +25,26 @@ export class QrCodeAuthService {
             timeoutMinutes: body.time_out_in_minute || 1,
             expired: body.expired,
         }
+    }
+
+    async passwordLogin(data: LoginValidator) {
+        const user = await this.userService.getByEmailWithPassword(data.email)
+        if (!user) {
+            throw new UnauthorizedException("User not registered")
+        }
+
+        if (!user.isActive) {
+            throw new UnauthorizedException("Account is inactive")
+        }
+
+        const isValid = await nusaworkHelper.authLogin(data.email, data.password)
+        if (!isValid) {
+            throw new UnauthorizedException("Invalid credentials")
+        }
+
+        const { accessToken, refreshToken } = await AuthHelper.generateTokens(user)
+        // Biarkan controller+serializer yang strip sensitive data
+        return { user, accessToken, refreshToken }
     }
 
     /**
