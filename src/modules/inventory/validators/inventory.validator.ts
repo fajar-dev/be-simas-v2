@@ -27,6 +27,7 @@ export const CreateInventoryValidator = z.object({
     isActive: z.boolean().optional(),
     labels: z.array(LabelSchema).optional(),
     variants: z.array(VariantSchema).optional(),
+    attachmentIds: z.array(z.number()).optional().nullable(),
 })
 export type CreateInventoryValidator = z.infer<typeof CreateInventoryValidator>
 
@@ -39,5 +40,6 @@ export const UpdateInventoryValidator = z.object({
     subCategoryId: z.number().int().positive().optional().nullable(),
     isActive: z.boolean().optional(),
     labels: z.array(LabelSchema).optional(),
+    attachmentIds: z.array(z.number()).optional().nullable(),
 })
 export type UpdateInventoryValidator = z.infer<typeof UpdateInventoryValidator>

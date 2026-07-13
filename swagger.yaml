@@ -824,6 +824,9 @@ components:
               id: { type: integer }
               key: { type: string, example: "Brand" }
               value: { type: string, example: "Belden" }
+        attachments:
+          type: array
+          items: { $ref: "#/components/schemas/AttachmentResponse" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         createdBy:
@@ -4166,6 +4169,7 @@ paths:
                             branchId: { type: integer }
                             new: { type: integer, minimum: 0 }
                             used: { type: integer, minimum: 0 }
+                attachmentIds: { type: array, items: { type: integer }, nullable: true }
       responses:
         "201":
           description: Created

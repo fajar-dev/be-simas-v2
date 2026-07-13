@@ -5,13 +5,17 @@ import { IInventoryStockRepository } from "../inventory-stock/interfaces/invento
 import { NotFoundException, ConflictException } from "../../core/exceptions/base"
 import { withTransaction } from "../../core/helpers/transaction"
 import { CreateInventoryValidator, UpdateInventoryValidator } from "./validators/inventory.validator"
+import { AttachmentService } from "../attachment/attachment.service"
 import { STOCK_CONDITIONS } from "../../core/enums"
+
+const ENTITY_INVENTORY = "Inventory"
 
 export class InventoryService {
     constructor(
         private readonly repository: IInventoryRepository,
         private readonly variantRepository: IInventoryVariantRepository,
-        private readonly stockRepository: IInventoryStockRepository
+        private readonly stockRepository: IInventoryStockRepository,
+        private readonly attachmentService: AttachmentService
     ) {}
 
     async getAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC') {
@@ -77,6 +81,10 @@ export class InventoryService {
                 }
             }
 
+            if (data.attachmentIds?.length) {
+                await this.attachmentService.associate(data.attachmentIds, ENTITY_INVENTORY, item.id, manager)
+            }
+
             return item
         })
 
@@ -101,6 +109,10 @@ export class InventoryService {
             for (const label of data.labels) {
                 await this.repository.saveLabel({ inventoryId: id, key: label.key, value: label.value })
             }
+        }
+
+        if (data.attachmentIds?.length) {
+            await this.attachmentService.associate(data.attachmentIds, ENTITY_INVENTORY, id)
         }
 
         return await this.getById(id)

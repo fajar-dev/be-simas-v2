@@ -3,9 +3,10 @@ import { TypeOrmInventoryVariantRepository } from "../inventory-variant/reposito
 import { TypeOrmInventoryStockRepository } from "../inventory-stock/repositories/typeorm-inventory-stock.repository"
 import { InventoryService } from "./inventory.service"
 import { InventoryController } from "./inventory.controller"
+import { attachmentService } from "../attachment/attachment.module"
 
 const inventoryRepository = new TypeOrmInventoryRepository()
 const inventoryVariantRepository = new TypeOrmInventoryVariantRepository()
 const inventoryStockRepository = new TypeOrmInventoryStockRepository()
-export const inventoryService = new InventoryService(inventoryRepository, inventoryVariantRepository, inventoryStockRepository)
+export const inventoryService = new InventoryService(inventoryRepository, inventoryVariantRepository, inventoryStockRepository, attachmentService)
 export const inventoryController = new InventoryController(inventoryService)

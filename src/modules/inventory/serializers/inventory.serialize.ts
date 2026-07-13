@@ -1,5 +1,7 @@
 import { Inventory } from "../entities/inventory.entity"
 import { resolveFileUrl } from "../../../core/helpers/serializer-utils"
+import { attachmentService } from "../../attachment/attachment.module"
+import { AttachmentSerializer } from "../../attachment/serializers/attachment.serialize"
 
 export class InventorySerializer {
     static async single(product: Inventory) {
@@ -25,6 +27,7 @@ export class InventorySerializer {
                 name: product.createdBy.name,
                 photo: await resolveFileUrl(product.createdBy.photo),
             } : null,
+            attachments: await AttachmentSerializer.collection(await attachmentService.getForEntity("Inventory", product.id)),
         }
     }
 

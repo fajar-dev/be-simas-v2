@@ -9,6 +9,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] — 2026-07-10
 
 ### Added
+- **Lampiran & pembuat pada item Inventory**: `POST/PUT /inventory` menerima `attachmentIds` (ditautkan ke entity `"Inventory"`); response `InventoryResponse` mengembalikan `attachments` + `createdBy`. Swagger + test disesuaikan.
 - **Tambah Stok (stock-in)**: endpoint `POST /inventory/stock/add` (permission `inventory-stock:entry`) — **menambah** (increment) jumlah Baru/Bekas ke saldo, **multi-cabang × multi-varian** dalam satu request (`items: [{ branchId, variantId, new, used }]`). Mendukung **catatan** & **lampiran** (`attachmentIds` ditautkan ke movement, batch diberi `referenceId` `IN-…`); movement stock-in ikut mengembalikan `attachments`. Beda dengan `entry` yang bersifat opname (set absolut). Test `test/inventory.test.ts` + swagger.
 - **Item Inventory diperkaya seperti Asset**: kolom baru pada `inventories` — `image`, `unit` (satuan), `sub_category_id` (FK ke `SubCategory`, kategori diturunkan) — plus tabel **`inventory_labels`** untuk custom label. Endpoint `POST /inventory` kini **atomik**: sekaligus membuat item + label + varian + **stok awal per varian × cabang × kondisi** (satu transaksi). Tambah `GET /inventory/label-keys` (untuk kolom label dinamis). Swagger + `test/inventory.test.ts` diperbarui (create kaya + label-keys).
 - **Satuan dipindah ke level item**: kolom `unit` dihapus dari `inventory_variants`; semua saldo/tampilan stok memakai satuan item (`variant.inventory.unit`).

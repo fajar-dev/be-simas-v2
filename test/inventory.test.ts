@@ -271,6 +271,8 @@ describe("Inventory API", () => {
         expect(res.status).toBe(201)
         expect(res.body.data.unit).toBe("Roll")
         expect(res.body.data.labels.length).toBe(2)
+        expect(res.body.data.createdBy).toBeTruthy() // created-by is serialized
+        expect(Array.isArray(res.body.data.attachments)).toBe(true)
         const id = res.body.data.id
 
         // Both variants created
