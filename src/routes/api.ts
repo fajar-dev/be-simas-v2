@@ -208,6 +208,7 @@ routes.post("/inventory/stock/return", authMiddleware, requirePermission("invent
 // Inventory (master item)
 routes.get("/inventory", authMiddleware, requirePermission("inventory:read"), (c) => inventoryController.index(c))
 routes.get("/inventory/list", authMiddleware, requirePermission("inventory:read"), (c) => inventoryController.list(c))
+routes.get("/inventory/label-keys", authMiddleware, requirePermission("inventory:read"), (c) => inventoryController.labelKeys(c))
 routes.get("/inventory/:id", authMiddleware, requirePermission("inventory:read"), (c) => inventoryController.show(c))
 routes.post("/inventory", authMiddleware, requirePermission("inventory:create"), zValidator("json", CreateInventoryValidator, validationHook), (c) => inventoryController.store(c))
 routes.put("/inventory/:id", authMiddleware, requirePermission("inventory:update"), zValidator("json", UpdateInventoryValidator, validationHook), (c) => inventoryController.update(c))

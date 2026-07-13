@@ -6,13 +6,13 @@ import { StockCondition } from "../../../core/enums"
 
 export interface InventoryStockBalanceFilter {
     branchId?: number
-    productId?: number
+    inventoryId?: number
     variantId?: number
     condition?: StockCondition
 }
 
 export interface InventoryStockMovementFilter {
-    productId?: number
+    inventoryId?: number
     branchId?: number
     variantId?: number
     condition?: StockCondition
@@ -20,7 +20,7 @@ export interface InventoryStockMovementFilter {
 }
 
 export interface InventoryStockHoldingFilter {
-    productId?: number
+    inventoryId?: number
     variantId?: number
     employeeId?: number
     branchId?: number

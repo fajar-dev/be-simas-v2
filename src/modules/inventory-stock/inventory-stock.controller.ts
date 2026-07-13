@@ -10,10 +10,10 @@ export class InventoryStockController {
 
     async entryTemplate(c: Context) {
         const branchId = Number(c.req.query("branchId"))
-        const productId = Number(c.req.query("productId"))
-        if (!branchId || !productId) throw new BadRequestException("branchId and productId are required")
-        const { variants, balances } = await this.service.getEntryTemplate(branchId, productId)
-        return ApiResponse.success(c, InventoryStockSerializer.entryTemplate(variants, balances))
+        const inventoryId = Number(c.req.query("inventoryId"))
+        if (!branchId || !inventoryId) throw new BadRequestException("branchId and inventoryId are required")
+        const { variants, balances, unit } = await this.service.getEntryTemplate(branchId, inventoryId)
+        return ApiResponse.success(c, InventoryStockSerializer.entryTemplate(variants, balances, unit))
     }
 
     async entry(c: Context) {
@@ -28,7 +28,7 @@ export class InventoryStockController {
         const limit = Number(c.req.query("limit") || 20)
         const { data, total } = await this.service.getBalances(page, limit, {
             branchId: c.req.query("branchId") ? Number(c.req.query("branchId")) : undefined,
-            productId: c.req.query("productId") ? Number(c.req.query("productId")) : undefined,
+            inventoryId: c.req.query("inventoryId") ? Number(c.req.query("inventoryId")) : undefined,
             variantId: c.req.query("variantId") ? Number(c.req.query("variantId")) : undefined,
             condition: (c.req.query("condition") as StockCondition) || undefined,
         })
@@ -46,7 +46,7 @@ export class InventoryStockController {
         const page = Number(c.req.query("page") || 1)
         const limit = Number(c.req.query("limit") || 20)
         const { data, total } = await this.service.getMovements(page, limit, {
-            productId: c.req.query("productId") ? Number(c.req.query("productId")) : undefined,
+            inventoryId: c.req.query("inventoryId") ? Number(c.req.query("inventoryId")) : undefined,
             branchId: c.req.query("branchId") ? Number(c.req.query("branchId")) : undefined,
             variantId: c.req.query("variantId") ? Number(c.req.query("variantId")) : undefined,
             condition: (c.req.query("condition") as StockCondition) || undefined,
@@ -59,7 +59,7 @@ export class InventoryStockController {
         const page = Number(c.req.query("page") || 1)
         const limit = Number(c.req.query("limit") || 20)
         const { data, total } = await this.service.getHoldings(page, limit, {
-            productId: c.req.query("productId") ? Number(c.req.query("productId")) : undefined,
+            inventoryId: c.req.query("inventoryId") ? Number(c.req.query("inventoryId")) : undefined,
             variantId: c.req.query("variantId") ? Number(c.req.query("variantId")) : undefined,
             employeeId: c.req.query("employeeId") ? Number(c.req.query("employeeId")) : undefined,
             branchId: c.req.query("branchId") ? Number(c.req.query("branchId")) : undefined,

@@ -13,7 +13,7 @@ let app: Hono
 let authHeaders: Record<string, string>
 let branchA: number
 let branchB: number
-let productId: number
+let inventoryId: number
 let variant1: number
 let variant2: number
 
@@ -36,16 +36,16 @@ beforeEach(async () => {
     branchB = b.body.data.id
 
     const p = await request(app, "/api/inventory", { method: "POST", headers: authHeaders, body: { name: "UTP Cable" } })
-    productId = p.body.data.id
-    const v1 = await request(app, "/api/inventory-variant", { method: "POST", headers: authHeaders, body: { productId, name: "Cat6 305m", unit: "box" } })
+    inventoryId = p.body.data.id
+    const v1 = await request(app, "/api/inventory-variant", { method: "POST", headers: authHeaders, body: { inventoryId, name: "Cat6 305m", unit: "box" } })
     variant1 = v1.body.data.id
-    const v2 = await request(app, "/api/inventory-variant", { method: "POST", headers: authHeaders, body: { productId, name: "Cat5e 100m" } })
+    const v2 = await request(app, "/api/inventory-variant", { method: "POST", headers: authHeaders, body: { inventoryId, name: "Cat5e 100m" } })
     variant2 = v2.body.data.id
 })
 
 // helper: set stock for a branch/product
 const setStock = (branchId: number, items: { variantId: number; new: number; used: number }[]) =>
-    request(app, "/api/inventory/stock/entry", { method: "POST", headers: authHeaders, body: { branchId, productId, items } })
+    request(app, "/api/inventory/stock/entry", { method: "POST", headers: authHeaders, body: { branchId, inventoryId, items } })
 
 let employeeCounter = 0
 const createEmployee = async () => {
@@ -70,16 +70,16 @@ describe("Inventory API", () => {
 
     // ── Product & Variant ─────────────────────────────────────────────────────
     test("product delete blocked while it has variants; variant created OK", async () => {
-        const del = await request(app, `/api/inventory/${productId}`, { method: "DELETE", headers: authHeaders })
+        const del = await request(app, `/api/inventory/${inventoryId}`, { method: "DELETE", headers: authHeaders })
         expect(del.status).toBe(409)
 
-        const list = await request(app, `/api/inventory-variant?productId=${productId}`, { headers: authHeaders })
+        const list = await request(app, `/api/inventory-variant?inventoryId=${inventoryId}`, { headers: authHeaders })
         expect(list.body.data.length).toBe(2)
     })
 
     // ── Entry template & nested input ─────────────────────────────────────────
     test("entry-template lists all variants with zero on-hand", async () => {
-        const res = await request(app, `/api/inventory/stock/entry-template?branchId=${branchA}&productId=${productId}`, { headers: authHeaders })
+        const res = await request(app, `/api/inventory/stock/entry-template?branchId=${branchA}&inventoryId=${inventoryId}`, { headers: authHeaders })
         expect(res.status).toBe(200)
         expect(res.body.data.length).toBe(2)
         expect(res.body.data[0]).toMatchObject({ new: 0, used: 0 })
@@ -92,7 +92,7 @@ describe("Inventory API", () => {
         ])
         expect(res.status).toBe(200)
 
-        const tpl = await request(app, `/api/inventory/stock/entry-template?branchId=${branchA}&productId=${productId}`, { headers: authHeaders })
+        const tpl = await request(app, `/api/inventory/stock/entry-template?branchId=${branchA}&inventoryId=${inventoryId}`, { headers: authHeaders })
         const row1 = tpl.body.data.find((r: any) => r.variantId === variant1)
         expect(row1).toMatchObject({ new: 10, used: 3 })
 
@@ -110,7 +110,7 @@ describe("Inventory API", () => {
 
     test("entry rejects a variant that does not belong to the product", async () => {
         const otherProduct = await request(app, "/api/inventory", { method: "POST", headers: authHeaders, body: { name: "Other" } })
-        const otherVariant = await request(app, "/api/inventory-variant", { method: "POST", headers: authHeaders, body: { productId: otherProduct.body.data.id, name: "X" } })
+        const otherVariant = await request(app, "/api/inventory-variant", { method: "POST", headers: authHeaders, body: { inventoryId: otherProduct.body.data.id, name: "X" } })
         const res = await setStock(branchA, [{ variantId: otherVariant.body.data.id, new: 1, used: 0 }])
         expect(res.status).toBe(400)
     })
@@ -234,5 +234,42 @@ describe("Inventory API", () => {
         })
         expect(res.status).toBe(400)
         expect(await qtyAt(branchA, variant1, "used")).toBe(0) // nothing returned
+    })
+
+    // ── Rich create (unit, labels, variants + initial stock) ──────────────────
+    test("create item with unit, labels, variants + initial stock (atomic)", async () => {
+        const res = await request(app, "/api/inventory", {
+            method: "POST", headers: authHeaders,
+            body: {
+                name: "Kabel Fiber", unit: "Roll",
+                labels: [{ key: "Brand", value: "Belden" }, { key: "Warna", value: "Kuning" }],
+                variants: [
+                    { name: "SM 305m", initialStock: [{ branchId: branchA, new: 10, used: 2 }] },
+                    { name: "MM 100m" },
+                ],
+            },
+        })
+        expect(res.status).toBe(201)
+        expect(res.body.data.unit).toBe("Roll")
+        expect(res.body.data.labels.length).toBe(2)
+        const id = res.body.data.id
+
+        // Both variants created
+        const variants = await request(app, `/api/inventory-variant?inventoryId=${id}`, { headers: authHeaders })
+        expect(variants.body.data.length).toBe(2)
+        const sm = variants.body.data.find((v: any) => v.name === "SM 305m")
+
+        // Initial stock became a balance; unit is sourced from the item.
+        const bal = await request(app, `/api/inventory/stock?inventoryId=${id}&condition=new`, { headers: authHeaders })
+        const row = bal.body.data.find((b: any) => b.variant.id === sm.id)
+        expect(row.quantity).toBe(10)
+        expect(row.variant.unit).toBe("Roll")
+    })
+
+    test("label-keys returns distinct label keys", async () => {
+        await request(app, "/api/inventory", { method: "POST", headers: authHeaders, body: { name: "A", labels: [{ key: "Brand", value: "X" }, { key: "Color", value: "Red" }] } })
+        const res = await request(app, "/api/inventory/label-keys", { headers: authHeaders })
+        expect(res.status).toBe(200)
+        expect(res.body.data).toEqual(expect.arrayContaining(["Brand", "Color"]))
     })
 })

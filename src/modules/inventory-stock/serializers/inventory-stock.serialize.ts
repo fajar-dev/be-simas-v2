@@ -25,8 +25,8 @@ export class InventoryStockSerializer {
                 id: h.variant.id,
                 name: h.variant.name,
                 code: h.variant.code || null,
-                unit: h.variant.unit,
-                product: h.variant.product ? { id: h.variant.product.id, name: h.variant.product.name, code: h.variant.product.code || null } : null,
+                unit: h.variant.inventory?.unit ?? "",
+                inventory: h.variant.inventory ? { id: h.variant.inventory.id, name: h.variant.inventory.name, code: h.variant.inventory.code || null } : null,
             } : null,
         }
     }
@@ -45,11 +45,11 @@ export class InventoryStockSerializer {
                 id: balance.variant.id,
                 name: balance.variant.name,
                 code: balance.variant.code || null,
-                unit: balance.variant.unit,
-                product: balance.variant.product ? {
-                    id: balance.variant.product.id,
-                    name: balance.variant.product.name,
-                    code: balance.variant.product.code || null,
+                unit: balance.variant.inventory?.unit ?? "",
+                inventory: balance.variant.inventory ? {
+                    id: balance.variant.inventory.id,
+                    name: balance.variant.inventory.name,
+                    code: balance.variant.inventory.code || null,
                 } : null,
             } : null,
         }
@@ -63,14 +63,14 @@ export class InventoryStockSerializer {
      * Entry template: each variant with its current on-hand new/used quantities
      * for the selected branch, ready for the nested input table.
      */
-    static entryTemplate(variants: InventoryVariant[], balances: InventoryStockBalance[]) {
+    static entryTemplate(variants: InventoryVariant[], balances: InventoryStockBalance[], unit = "") {
         const byKey = new Map<string, number>()
         for (const b of balances) byKey.set(`${b.variantId}:${b.condition}`, b.quantity)
         return variants.map((v) => ({
             variantId: v.id,
             name: v.name,
             code: v.code || null,
-            unit: v.unit,
+            unit,
             new: byKey.get(`${v.id}:new`) ?? 0,
             used: byKey.get(`${v.id}:used`) ?? 0,
         }))
@@ -90,7 +90,7 @@ export class InventoryStockSerializer {
             variant: m.variant ? {
                 id: m.variant.id,
                 name: m.variant.name,
-                product: m.variant.product ? { id: m.variant.product.id, name: m.variant.product.name } : null,
+                inventory: m.variant.inventory ? { id: m.variant.inventory.id, name: m.variant.inventory.name } : null,
             } : null,
             createdBy: m.createdBy ? {
                 id: m.createdBy.id,

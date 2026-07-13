@@ -4,17 +4,16 @@ export class InventoryVariantSerializer {
     static single(variant: InventoryVariant) {
         return {
             id: variant.id,
-            productId: variant.productId,
+            inventoryId: variant.inventoryId,
             name: variant.name,
             code: variant.code || null,
-            unit: variant.unit,
             isActive: variant.isActive,
             createdAt: variant.createdAt,
             updatedAt: variant.updatedAt,
-            product: variant.product ? {
-                id: variant.product.id,
-                name: variant.product.name,
-                code: variant.product.code || null,
+            inventory: variant.inventory ? {
+                id: variant.inventory.id,
+                name: variant.inventory.name,
+                code: variant.inventory.code || null,
             } : null,
         }
     }

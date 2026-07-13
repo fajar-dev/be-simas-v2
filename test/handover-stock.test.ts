@@ -31,7 +31,7 @@ mock.module("../src/core/helpers/esign", () => {
 let app: Hono
 let authHeaders: Record<string, string>
 let branchA: number
-let productId: number
+let inventoryId: number
 let variantId: number
 let admin: number
 let holder: number
@@ -65,13 +65,13 @@ beforeEach(async () => {
     authHeaders = (await registerAndLogin(app)).headers
 
     branchA = (await request(app, "/api/branch", { method: "POST", headers: authHeaders, body: { code: "BR-A", name: "Branch A" } })).body.data.id
-    productId = (await request(app, "/api/inventory", { method: "POST", headers: authHeaders, body: { name: "UTP Cable" } })).body.data.id
-    variantId = (await request(app, "/api/inventory-variant", { method: "POST", headers: authHeaders, body: { productId, name: "Cat6 305m", unit: "box" } })).body.data.id
+    inventoryId = (await request(app, "/api/inventory", { method: "POST", headers: authHeaders, body: { name: "UTP Cable" } })).body.data.id
+    variantId = (await request(app, "/api/inventory-variant", { method: "POST", headers: authHeaders, body: { inventoryId, name: "Cat6 305m", unit: "box" } })).body.data.id
 
     admin = (await request(app, "/api/employee", { method: "POST", headers: authHeaders, body: { name: "Admin", employeeId: "ADM-1", jobPosition: "Admin", email: "admin@ex.com", phone: "0800" } })).body.data.id
     holder = (await request(app, "/api/employee", { method: "POST", headers: authHeaders, body: { name: "Holder", employeeId: "HLD-1", jobPosition: "Staff", email: "holder@ex.com", phone: "0801" } })).body.data.id
 
-    await request(app, "/api/inventory/stock/entry", { method: "POST", headers: authHeaders, body: { branchId: branchA, productId, items: [{ variantId, new: 10, used: 0 }] } })
+    await request(app, "/api/inventory/stock/entry", { method: "POST", headers: authHeaders, body: { branchId: branchA, inventoryId, items: [{ variantId, new: 10, used: 0 }] } })
 })
 
 describe("Inventory stock handover (assign & return)", () => {

@@ -31,7 +31,7 @@ export class TypeOrmHandoverRepository implements IHandoverRepository {
             .leftJoinAndSelect("items.asset", "asset")
             .leftJoinAndSelect("handover.stockItems", "stockItems")
             .leftJoinAndSelect("stockItems.variant", "inventoryVariant")
-            .leftJoinAndSelect("inventoryVariant.product", "inventory")
+            .leftJoinAndSelect("inventoryVariant.inventory", "inventory")
             .leftJoinAndSelect("stockItems.branch", "stockBranch")
             .leftJoinAndSelect("handover.receivedBy", "receivedBy")
             .leftJoinAndSelect("handover.handedOverBy", "handedOverBy")
@@ -80,7 +80,7 @@ export class TypeOrmHandoverRepository implements IHandoverRepository {
                 "items.asset",
                 "stockItems",
                 "stockItems.variant",
-                "stockItems.variant.product",
+                "stockItems.variant.inventory",
                 "stockItems.branch",
                 "receivedBy",
                 "handedOverBy",

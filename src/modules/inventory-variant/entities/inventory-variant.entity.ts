@@ -11,29 +11,25 @@ import {
 import type { Relation } from "typeorm"
 import { Inventory } from "../../inventory/entities/inventory.entity"
 
-/** A variant/specification (SKU level) of a stock product. */
+/** A variant/specification (SKU level) of an inventory item. */
 @Entity("inventory_variants")
 export class InventoryVariant {
     @PrimaryGeneratedColumn()
     id!: number
 
     @Index()
-    @Column({ name: "product_id" })
-    productId!: number
+    @Column({ name: "inventory_id" })
+    inventoryId!: number
 
-    @ManyToOne(() => Inventory, (product) => product.variants, { onDelete: "RESTRICT" })
-    @JoinColumn({ name: "product_id" })
-    product!: Relation<Inventory>
+    @ManyToOne(() => Inventory, (inventory) => inventory.variants, { onDelete: "RESTRICT" })
+    @JoinColumn({ name: "inventory_id" })
+    inventory!: Relation<Inventory>
 
     @Column({ type: "varchar" })
     name!: string
 
     @Column({ type: "varchar", nullable: true })
     code?: string | null
-
-    /** Unit of measure, e.g. pcs / meter / box. */
-    @Column({ type: "varchar", default: "pcs" })
-    unit!: string
 
     @Column({ name: "is_active", type: "boolean", default: true })
     isActive!: boolean

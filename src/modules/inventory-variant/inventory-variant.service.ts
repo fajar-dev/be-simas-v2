@@ -10,24 +10,23 @@ export class InventoryVariantService {
         private readonly inventoryService: InventoryService
     ) {}
 
-    async getByProduct(productId: number): Promise<InventoryVariant[]> {
-        await this.inventoryService.getById(productId) // ensures product exists
-        return await this.repository.findByProduct(productId)
+    async getByInventory(inventoryId: number): Promise<InventoryVariant[]> {
+        await this.inventoryService.getById(inventoryId) // ensures the item exists
+        return await this.repository.findByInventory(inventoryId)
     }
 
     async getById(id: number): Promise<InventoryVariant> {
         const variant = await this.repository.findById(id)
-        if (!variant) throw new NotFoundException("Stock variant not found")
+        if (!variant) throw new NotFoundException("Inventory variant not found")
         return variant
     }
 
     async create(data: CreateInventoryVariantValidator): Promise<InventoryVariant> {
-        await this.inventoryService.getById(data.productId)
+        await this.inventoryService.getById(data.inventoryId)
         const saved = await this.repository.save({
-            productId: data.productId,
+            inventoryId: data.inventoryId,
             name: data.name,
             code: data.code ?? null,
-            unit: data.unit || "pcs",
             isActive: data.isActive ?? true,
         })
         return await this.getById(saved.id)
@@ -38,7 +37,6 @@ export class InventoryVariantService {
         this.repository.merge(variant, {
             ...(data.name !== undefined ? { name: data.name } : {}),
             ...(data.code !== undefined ? { code: data.code ?? null } : {}),
-            ...(data.unit !== undefined ? { unit: data.unit } : {}),
             ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
         })
         await this.repository.save(variant)

@@ -6,6 +6,7 @@ import { InventoryStockEntryValidator, InventoryStockTransferValidator, Inventor
 import { BadRequestException } from "../../core/exceptions/base"
 import { withTransaction } from "../../core/helpers/transaction"
 import { InventoryVariantService } from "../inventory-variant/inventory-variant.service"
+import { InventoryService } from "../inventory/inventory.service"
 import { BranchService } from "../branch/branch.service"
 import { EmployeeService } from "../employee/employee.service"
 import { STOCK_CONDITIONS, StockCondition } from "../../core/enums"
@@ -20,25 +21,27 @@ export class InventoryStockService {
         private readonly repository: IInventoryStockRepository,
         private readonly inventoryVariantService: InventoryVariantService,
         private readonly branchService: BranchService,
-        private readonly employeeService: EmployeeService
+        private readonly employeeService: EmployeeService,
+        private readonly inventoryService: InventoryService
     ) {}
 
-    /** Variants of a product + current on-hand quantities for a branch (for the nested input form). */
-    async getEntryTemplate(branchId: number, productId: number): Promise<{ variants: InventoryVariant[]; balances: InventoryStockBalance[] }> {
+    /** Variants of an item + current on-hand quantities for a branch (for the nested input form). Unit comes from the item. */
+    async getEntryTemplate(branchId: number, inventoryId: number): Promise<{ variants: InventoryVariant[]; balances: InventoryStockBalance[]; unit: string }> {
         await this.branchService.getById(branchId)
-        const variants = await this.inventoryVariantService.getByProduct(productId)
+        const item = await this.inventoryService.getById(inventoryId)
+        const variants = await this.inventoryVariantService.getByInventory(inventoryId)
         const balances = await this.repository.findBalancesByBranchAndVariants(branchId, variants.map((v) => v.id))
-        return { variants, balances }
+        return { variants, balances, unit: item.unit }
     }
 
     /** Set absolute new/used quantities per variant for a branch (opname-style). Records deltas as movements. */
     async entry(data: InventoryStockEntryValidator, userId?: number): Promise<InventoryStockBalance[]> {
         await this.branchService.getById(data.branchId)
-        const variants = await this.inventoryVariantService.getByProduct(data.productId)
+        const variants = await this.inventoryVariantService.getByInventory(data.inventoryId)
         const validIds = new Set(variants.map((v) => v.id))
         for (const item of data.items) {
             if (!validIds.has(item.variantId)) {
-                throw new BadRequestException(`Variant ${item.variantId} does not belong to product ${data.productId}`)
+                throw new BadRequestException(`Variant ${item.variantId} does not belong to item ${data.inventoryId}`)
             }
         }
 

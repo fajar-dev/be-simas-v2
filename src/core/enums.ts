@@ -36,6 +36,10 @@ export type AssetLocationSource = (typeof ASSET_LOCATION_SOURCES)[number]
 export const STOCK_CONDITIONS = ["new", "used"] as const
 export type StockCondition = (typeof STOCK_CONDITIONS)[number]
 
+/** Suggested units of measure for an inventory item (`inventories.unit`). Free-text; this list only powers the select. */
+export const INVENTORY_UNITS = ["Pcs", "Unit", "Box", "Pack", "Set", "Roll", "Meter", "Cm", "Kg", "Gram", "Liter", "Lusin", "Rim"] as const
+export type InventoryUnit = (typeof INVENTORY_UNITS)[number]
+
 /** Stock ledger movement type — column `inventory_stock_movements.type`. */
 export const STOCK_MOVEMENT_TYPES = ["entry", "adjustment", "transfer_out", "transfer_in", "assign_out", "return_in"] as const
 export type StockMovementType = (typeof STOCK_MOVEMENT_TYPES)[number]

@@ -21,16 +21,16 @@ export class TypeOrmInventoryStockRepository implements IInventoryStockRepositor
         const query = this.balanceRepo.createQueryBuilder("balance")
             .leftJoinAndSelect("balance.branch", "branch")
             .leftJoinAndSelect("balance.variant", "variant")
-            .leftJoinAndSelect("variant.product", "product")
+            .leftJoinAndSelect("variant.inventory", "inventory")
 
         if (filters.branchId) query.andWhere("balance.branchId = :branchId", { branchId: filters.branchId })
         if (filters.variantId) query.andWhere("balance.variantId = :variantId", { variantId: filters.variantId })
         if (filters.condition) query.andWhere("balance.condition = :condition", { condition: filters.condition })
-        if (filters.productId) query.andWhere("variant.productId = :productId", { productId: filters.productId })
+        if (filters.inventoryId) query.andWhere("variant.inventoryId = :inventoryId", { inventoryId: filters.inventoryId })
 
         const total = await query.getCount()
         const data = await query
-            .orderBy("product.name", "ASC")
+            .orderBy("inventory.name", "ASC")
             .addOrderBy("variant.name", "ASC")
             .addOrderBy("balance.condition", "ASC")
             .skip((page - 1) * limit)
@@ -67,12 +67,12 @@ export class TypeOrmInventoryStockRepository implements IInventoryStockRepositor
         const query = this.movementRepo.createQueryBuilder("movement")
             .leftJoinAndSelect("movement.branch", "branch")
             .leftJoinAndSelect("movement.variant", "variant")
-            .leftJoinAndSelect("variant.product", "product")
+            .leftJoinAndSelect("variant.inventory", "inventory")
             .leftJoinAndSelect("movement.createdBy", "createdBy")
 
         if (filters.branchId) query.andWhere("movement.branchId = :branchId", { branchId: filters.branchId })
         if (filters.variantId) query.andWhere("movement.variantId = :variantId", { variantId: filters.variantId })
-        if (filters.productId) query.andWhere("variant.productId = :productId", { productId: filters.productId })
+        if (filters.inventoryId) query.andWhere("variant.inventoryId = :inventoryId", { inventoryId: filters.inventoryId })
         if (filters.condition) query.andWhere("movement.condition = :condition", { condition: filters.condition })
         if (filters.type) query.andWhere("movement.type = :type", { type: filters.type })
 
@@ -103,14 +103,14 @@ export class TypeOrmInventoryStockRepository implements IInventoryStockRepositor
     async findHoldings(page: number, limit: number, filters: InventoryStockHoldingFilter): Promise<{ data: InventoryStockHolding[]; total: number }> {
         const query = this.holdingRepo.createQueryBuilder("holding")
             .leftJoinAndSelect("holding.variant", "variant")
-            .leftJoinAndSelect("variant.product", "product")
+            .leftJoinAndSelect("variant.inventory", "inventory")
             .leftJoinAndSelect("holding.employee", "employee")
             .leftJoinAndSelect("holding.branch", "branch")
 
         if (filters.variantId) query.andWhere("holding.variantId = :variantId", { variantId: filters.variantId })
         if (filters.employeeId) query.andWhere("holding.employeeId = :employeeId", { employeeId: filters.employeeId })
         if (filters.branchId) query.andWhere("holding.branchId = :branchId", { branchId: filters.branchId })
-        if (filters.productId) query.andWhere("variant.productId = :productId", { productId: filters.productId })
+        if (filters.inventoryId) query.andWhere("variant.inventoryId = :inventoryId", { inventoryId: filters.inventoryId })
         if (filters.active) query.andWhere("holding.quantity > holding.quantityReturned")
 
         const total = await query.getCount()

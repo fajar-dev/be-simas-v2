@@ -31,8 +31,8 @@ export class HandoverSerializer {
                 id: item.variant.id,
                 name: item.variant.name,
                 code: item.variant.code || null,
-                unit: item.variant.unit,
-                product: item.variant.product ? { id: item.variant.product.id, name: item.variant.product.name, code: item.variant.product.code || null } : null,
+                unit: item.variant.inventory?.unit ?? "",
+                inventory: item.variant.inventory ? { id: item.variant.inventory.id, name: item.variant.inventory.name, code: item.variant.inventory.code || null } : null,
             } : null,
         }
     }

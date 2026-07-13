@@ -11,12 +11,12 @@ export class TypeOrmInventoryVariantRepository implements IInventoryVariantRepos
         this.repository = AppDataSource.getRepository(InventoryVariant)
     }
 
-    async findByProduct(productId: number): Promise<InventoryVariant[]> {
-        return await this.repository.find({ where: { productId }, order: { id: "ASC" } })
+    async findByInventory(inventoryId: number): Promise<InventoryVariant[]> {
+        return await this.repository.find({ where: { inventoryId }, order: { id: "ASC" } })
     }
 
     async findById(id: number): Promise<InventoryVariant | null> {
-        return await this.repository.findOne({ where: { id }, relations: ["product"] })
+        return await this.repository.findOne({ where: { id }, relations: ["inventory"] })
     }
 
     async countBalances(variantId: number): Promise<number> {

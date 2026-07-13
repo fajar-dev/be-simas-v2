@@ -8,9 +8,9 @@ export class InventoryVariantController {
     constructor(private readonly service: InventoryVariantService) {}
 
     async index(c: Context) {
-        const productId = Number(c.req.query("productId"))
-        if (!productId) throw new BadRequestException("productId is required")
-        const variants = await this.service.getByProduct(productId)
+        const inventoryId = Number(c.req.query("inventoryId"))
+        if (!inventoryId) throw new BadRequestException("inventoryId is required")
+        const variants = await this.service.getByInventory(inventoryId)
         return ApiResponse.success(c, InventoryVariantSerializer.collection(variants))
     }
 

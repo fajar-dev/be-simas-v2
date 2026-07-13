@@ -21,6 +21,11 @@ export class InventoryController {
         return ApiResponse.success(c, await InventorySerializer.collection(data))
     }
 
+    async labelKeys(c: Context) {
+        const keys = await this.service.getLabelKeys()
+        return ApiResponse.success(c, keys)
+    }
+
     async show(c: Context) {
         const product = await this.service.getById(Number(c.req.param("id")))
         return ApiResponse.success(c, await InventorySerializer.single(product))
