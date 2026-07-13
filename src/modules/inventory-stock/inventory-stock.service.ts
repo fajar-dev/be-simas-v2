@@ -2,14 +2,17 @@ import { InventoryStockBalance } from "./entities/inventory-stock-balance.entity
 import { InventoryStockHolding } from "./entities/inventory-stock-holding.entity"
 import { InventoryVariant } from "../inventory-variant/entities/inventory-variant.entity"
 import { IInventoryStockRepository, InventoryStockBalanceFilter, InventoryStockMovementFilter, InventoryStockHoldingFilter } from "./interfaces/inventory-stock.repository.interface"
-import { InventoryStockEntryValidator, InventoryStockTransferValidator, InventoryStockAssignValidator, InventoryStockReturnValidator } from "./validators/inventory-stock.validator"
+import { InventoryStockEntryValidator, InventoryStockAddValidator, InventoryStockTransferValidator, InventoryStockAssignValidator, InventoryStockReturnValidator } from "./validators/inventory-stock.validator"
 import { BadRequestException } from "../../core/exceptions/base"
 import { withTransaction } from "../../core/helpers/transaction"
 import { InventoryVariantService } from "../inventory-variant/inventory-variant.service"
 import { InventoryService } from "../inventory/inventory.service"
 import { BranchService } from "../branch/branch.service"
 import { EmployeeService } from "../employee/employee.service"
+import { AttachmentService } from "../attachment/attachment.service"
 import { STOCK_CONDITIONS, StockCondition } from "../../core/enums"
+
+const ENTITY_MOVEMENT = "InventoryStockMovement"
 
 /** Extra context passed when assign/return is driven by a handover approval. */
 export interface InventoryStockHandoverContext {
@@ -22,7 +25,8 @@ export class InventoryStockService {
         private readonly inventoryVariantService: InventoryVariantService,
         private readonly branchService: BranchService,
         private readonly employeeService: EmployeeService,
-        private readonly inventoryService: InventoryService
+        private readonly inventoryService: InventoryService,
+        private readonly attachmentService: AttachmentService
     ) {}
 
     /** Variants of an item + current on-hand quantities for a branch (for the nested input form). Unit comes from the item. */
@@ -73,6 +77,57 @@ export class InventoryStockService {
                         note: "Stock entry",
                         createdByUserId: userId ?? null,
                     }, manager)
+                    updated.push(bal)
+                }
+            }
+            return updated
+        })
+    }
+
+    /** Stock-in: ADD quantities to variants across one or more branches (increments). Optional note + attachments. */
+    async add(data: InventoryStockAddValidator, userId?: number): Promise<InventoryStockBalance[]> {
+        const variants = await this.inventoryVariantService.getByInventory(data.inventoryId)
+        const validIds = new Set(variants.map((v) => v.id))
+        const branchIds = new Set(data.items.map((i) => i.branchId))
+        for (const bid of branchIds) await this.branchService.getById(bid)
+        for (const item of data.items) {
+            if (!validIds.has(item.variantId)) {
+                throw new BadRequestException(`Variant ${item.variantId} does not belong to item ${data.inventoryId}`)
+            }
+        }
+
+        const referenceId = `IN-${Date.now()}`
+        const attachmentIds = data.attachmentIds ?? []
+
+        return await withTransaction(async (manager) => {
+            const updated: InventoryStockBalance[] = []
+            for (const item of data.items) {
+                for (const condition of STOCK_CONDITIONS) {
+                    const qty = condition === "new" ? item.new : item.used
+                    if (qty <= 0) continue
+                    const existing = await this.repository.findBalance(item.branchId, item.variantId, condition, manager, true)
+                    const newQty = (existing?.quantity ?? 0) + qty
+                    const bal = await this.repository.saveBalance({
+                        ...(existing ? { id: existing.id } : {}),
+                        branchId: item.branchId,
+                        variantId: item.variantId,
+                        condition,
+                        quantity: newQty,
+                    }, manager)
+                    const movement = await this.repository.saveMovement({
+                        variantId: item.variantId,
+                        branchId: item.branchId,
+                        condition,
+                        type: "entry",
+                        quantity: qty,
+                        balanceAfter: newQty,
+                        referenceId,
+                        note: data.note ?? "Stock in",
+                        createdByUserId: userId ?? null,
+                    }, manager)
+                    if (attachmentIds.length) {
+                        await this.attachmentService.associate(attachmentIds, ENTITY_MOVEMENT, movement.id, manager)
+                    }
                     updated.push(bal)
                 }
             }

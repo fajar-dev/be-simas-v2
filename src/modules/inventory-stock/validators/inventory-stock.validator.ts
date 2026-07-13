@@ -13,6 +13,20 @@ export const InventoryStockEntryValidator = z.object({
 })
 export type InventoryStockEntryValidator = z.infer<typeof InventoryStockEntryValidator>
 
+/** Stock-in: ADD quantities to variants across one or more branches (increments, not opname). */
+export const InventoryStockAddValidator = z.object({
+    inventoryId: z.number("Inventory ID is required"),
+    note: z.string().trim().optional().nullable(),
+    attachmentIds: z.array(z.number()).optional().nullable(),
+    items: z.array(z.object({
+        branchId: z.number("Branch ID is required"),
+        variantId: z.number("Variant ID is required"),
+        new: z.number().int().min(0, "Quantity cannot be negative"),
+        used: z.number().int().min(0, "Quantity cannot be negative"),
+    })).min(1, "At least one item is required"),
+})
+export type InventoryStockAddValidator = z.infer<typeof InventoryStockAddValidator>
+
 export const InventoryStockTransferValidator = z.object({
     fromBranchId: z.number("Source branch is required"),
     toBranchId: z.number("Destination branch is required"),

@@ -23,7 +23,7 @@ import { CreateHandoverValidator } from "../modules/handover/validators/handover
 import { ReplaceHandoverFieldsValidator } from "../modules/handover-field/validators/handover-field.validator"
 import { CreateInventoryValidator, UpdateInventoryValidator } from "../modules/inventory/validators/inventory.validator"
 import { CreateInventoryVariantValidator, UpdateInventoryVariantValidator } from "../modules/inventory-variant/validators/inventory-variant.validator"
-import { InventoryStockEntryValidator, InventoryStockTransferValidator, InventoryStockAssignValidator, InventoryStockReturnValidator } from "../modules/inventory-stock/validators/inventory-stock.validator"
+import { InventoryStockEntryValidator, InventoryStockAddValidator, InventoryStockTransferValidator, InventoryStockAssignValidator, InventoryStockReturnValidator } from "../modules/inventory-stock/validators/inventory-stock.validator"
 
 // ── Middlewares ──────────────────────────────────────────────────────────────
 import { authMiddleware } from "../core/middlewares/auth.middleware"
@@ -201,6 +201,7 @@ routes.get("/inventory/stock/movement", authMiddleware, requirePermission("inven
 routes.get("/inventory/stock/holding", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockController.holdings(c))
 routes.get("/inventory/stock", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockController.index(c))
 routes.post("/inventory/stock/entry", authMiddleware, requirePermission("inventory-stock:entry"), zValidator("json", InventoryStockEntryValidator, validationHook), (c) => inventoryStockController.entry(c))
+routes.post("/inventory/stock/add", authMiddleware, requirePermission("inventory-stock:entry"), zValidator("json", InventoryStockAddValidator, validationHook), (c) => inventoryStockController.add(c))
 routes.post("/inventory/stock/transfer", authMiddleware, requirePermission("inventory-stock:transfer"), zValidator("json", InventoryStockTransferValidator, validationHook), (c) => inventoryStockController.transfer(c))
 routes.post("/inventory/stock/assign", authMiddleware, requirePermission("inventory-stock:assign"), zValidator("json", InventoryStockAssignValidator, validationHook), (c) => inventoryStockController.assign(c))
 routes.post("/inventory/stock/return", authMiddleware, requirePermission("inventory-stock:return"), zValidator("json", InventoryStockReturnValidator, validationHook), (c) => inventoryStockController.returnStock(c))

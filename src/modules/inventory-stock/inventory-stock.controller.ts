@@ -23,6 +23,13 @@ export class InventoryStockController {
         return ApiResponse.success(c, InventoryStockSerializer.balances(balances), "Stock saved successfully")
     }
 
+    async add(c: Context) {
+        const user = c.get("user")
+        const data = c.req.valid("json" as never) as any
+        const balances = await this.service.add(data, user?.id)
+        return ApiResponse.success(c, InventoryStockSerializer.balances(balances), "Stock added successfully", 201)
+    }
+
     async index(c: Context) {
         const page = Number(c.req.query("page") || 1)
         const limit = Number(c.req.query("limit") || 20)

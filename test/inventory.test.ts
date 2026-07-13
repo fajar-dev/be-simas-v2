@@ -115,6 +115,25 @@ describe("Inventory API", () => {
         expect(res.status).toBe(400)
     })
 
+    // ── Stock-in (add) ────────────────────────────────────────────────────────
+    test("stock add increments on-hand across branches (not opname)", async () => {
+        await setStock(branchA, [{ variantId: variant1, new: 5, used: 2 }])
+        const res = await request(app, "/api/inventory/stock/add", {
+            method: "POST", headers: authHeaders,
+            body: {
+                inventoryId, note: "PO-123",
+                items: [
+                    { branchId: branchA, variantId: variant1, new: 3, used: 0 },
+                    { branchId: branchB, variantId: variant1, new: 4, used: 0 },
+                ],
+            },
+        })
+        expect(res.status).toBe(201)
+        expect(await qtyAt(branchA, variant1, "new")).toBe(8) // 5 + 3
+        expect(await qtyAt(branchA, variant1, "used")).toBe(2) // unchanged
+        expect(await qtyAt(branchB, variant1, "new")).toBe(4) // new branch
+    })
+
     // ── Transfer ──────────────────────────────────────────────────────────────
     test("transfer moves only the given condition; source decrements, dest increments", async () => {
         await setStock(branchA, [{ variantId: variant1, new: 10, used: 4 }])

@@ -4500,6 +4500,51 @@ paths:
         "403": { description: Forbidden - missing inventory-stock:entry }
         "422": { description: Validation error }
 
+  /inventory/stock/add:
+    post:
+      tags: [Inventory]
+      summary: Add (stock-in) quantities to variants across one or more branches
+      description: ADD semantics — quantities are added to each variant's current on-hand at its branch (increment, not opname). Multi-branch × multi-variant. Optional note + attachments (linked to the created movements). A movement of type `entry` is recorded per condition.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [inventoryId, items]
+              properties:
+                inventoryId: { type: integer, example: 1 }
+                note: { type: string, nullable: true }
+                attachmentIds: { type: array, items: { type: integer }, nullable: true }
+                items:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [branchId, variantId, new, used]
+                    properties:
+                      branchId: { type: integer, example: 1 }
+                      variantId: { type: integer, example: 1 }
+                      new: { type: integer, minimum: 0, example: 5 }
+                      used: { type: integer, minimum: 0, example: 0 }
+      responses:
+        "201":
+          description: Stock added successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/InventoryStockBalanceResponse" } }
+        "400": { description: Invalid branch/item or variant not belonging to item }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden - missing inventory-stock:entry }
+        "422": { description: Validation error }
+
   /inventory/stock/transfer:
     post:
       tags: [Inventory]

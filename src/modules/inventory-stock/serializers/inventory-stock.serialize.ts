@@ -3,6 +3,8 @@ import { InventoryStockMovement } from "../entities/inventory-stock-movement.ent
 import { InventoryStockHolding } from "../entities/inventory-stock-holding.entity"
 import { InventoryVariant } from "../../inventory-variant/entities/inventory-variant.entity"
 import { resolveFileUrl } from "../../../core/helpers/serializer-utils"
+import { attachmentService } from "../../attachment/attachment.module"
+import { AttachmentSerializer } from "../../attachment/serializers/attachment.serialize"
 
 export class InventoryStockSerializer {
 
@@ -97,6 +99,10 @@ export class InventoryStockSerializer {
                 name: m.createdBy.name,
                 photo: await resolveFileUrl(m.createdBy.photo),
             } : null,
+            // Stock-in movements ("IN-…") may carry uploaded attachments.
+            attachments: m.referenceId?.startsWith("IN-")
+                ? await AttachmentSerializer.collection(await attachmentService.getForEntity("InventoryStockMovement", m.id))
+                : [],
         }
     }
 
