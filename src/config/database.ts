@@ -25,6 +25,8 @@ import { InventoryVariant } from "../modules/inventory-variant/entities/inventor
 import { InventoryStockBalance } from "../modules/inventory-stock/entities/inventory-stock-balance.entity"
 import { InventoryStockMovement } from "../modules/inventory-stock/entities/inventory-stock-movement.entity"
 import { InventoryStockHolding } from "../modules/inventory-stock/entities/inventory-stock-holding.entity"
+import { InventoryStockTransfer } from "../modules/inventory-stock/entities/inventory-stock-transfer.entity"
+import { InventoryStockTransferItem } from "../modules/inventory-stock/entities/inventory-stock-transfer-item.entity"
 import { Role } from "../modules/role/entities/role.entity"
 import { Permission } from "../modules/role/entities/permission.entity"
 import { config } from "./config"
@@ -45,7 +47,7 @@ const defaultDataSource = new DataSource({
     password: config.database.pass,
     database: config.database.name,
     synchronize: config.database.sync,
-    entities: [User, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetNote, AssetLocation, AssetHolder, AssetLog, AssetStatus, Handover, HandoverItem, HandoverStockItem, HandoverField, Inventory, InventoryLabel, InventoryVariant, InventoryStockBalance, InventoryStockMovement, InventoryStockHolding, Role, Permission, PasswordResetToken],
+    entities: [User, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetNote, AssetLocation, AssetHolder, AssetLog, AssetStatus, Handover, HandoverItem, HandoverStockItem, HandoverField, Inventory, InventoryLabel, InventoryVariant, InventoryStockBalance, InventoryStockMovement, InventoryStockHolding, InventoryStockTransfer, InventoryStockTransferItem, Role, Permission, PasswordResetToken],
     migrations: [],
     subscribers: [],
 })

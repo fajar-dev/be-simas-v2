@@ -190,6 +190,36 @@ describe("Inventory API", () => {
         expect(src.body.data[0].quantity).toBe(5) // rolled back
     })
 
+    test("transfer records history retrievable per inventory item", async () => {
+        await setStock(branchA, [{ variantId: variant1, new: 10, used: 4 }])
+        const tr = await request(app, "/api/inventory/stock/transfer", {
+            method: "POST", headers: authHeaders,
+            body: {
+                fromBranchId: branchA, toBranchId: branchB, note: "relocation",
+                items: [{ variantId: variant1, condition: "used", quantity: 3 }],
+            },
+        })
+        expect(tr.status).toBe(200)
+
+        const history = await request(app, `/api/inventory/stock/transfer?inventoryId=${inventoryId}`, { headers: authHeaders })
+        expect(history.status).toBe(200)
+        expect(history.body.data.length).toBe(1)
+        const doc = history.body.data[0]
+        expect(doc.note).toBe("relocation")
+        expect(doc.fromBranch.id).toBe(branchA)
+        expect(doc.toBranch.id).toBe(branchB)
+        expect(doc.items.length).toBe(1)
+        expect(doc.items[0].quantity).toBe(3)
+        expect(doc.items[0].condition).toBe("used")
+        expect(doc.items[0].variant.id).toBe(variant1)
+        expect(doc.createdBy).not.toBeNull()
+    })
+
+    test("transfer history requires inventoryId", async () => {
+        const res = await request(app, "/api/inventory/stock/transfer", { headers: authHeaders })
+        expect(res.status).toBe(400)
+    })
+
     // ── Assign / Return ─────────────────────────────────────────────────────────
     test("assign reduces branch stock and creates a holding", async () => {
         await setStock(branchA, [{ variantId: variant1, new: 10, used: 0 }])

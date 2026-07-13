@@ -29,6 +29,8 @@ import { InventoryVariant } from "../src/modules/inventory-variant/entities/inve
 import { InventoryStockBalance } from "../src/modules/inventory-stock/entities/inventory-stock-balance.entity"
 import { InventoryStockMovement } from "../src/modules/inventory-stock/entities/inventory-stock-movement.entity"
 import { InventoryStockHolding } from "../src/modules/inventory-stock/entities/inventory-stock-holding.entity"
+import { InventoryStockTransfer } from "../src/modules/inventory-stock/entities/inventory-stock-transfer.entity"
+import { InventoryStockTransferItem } from "../src/modules/inventory-stock/entities/inventory-stock-transfer-item.entity"
 import { PasswordResetToken } from "../src/modules/auth/entities/password-reset-token.entity"
 import { ApiResponse } from "../src/core/helpers/response"
 import { BaseException, ValidationException } from "../src/core/exceptions/base"
@@ -52,7 +54,7 @@ const TestDataSource = new DataSource({
     database: testDbName,
     synchronize: true,
     dropSchema: true,
-    entities: [User, Role, Permission, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetNote, AssetLocation, AssetHolder, AssetLog, AssetStatus, Handover, HandoverItem, HandoverStockItem, HandoverField, Inventory, InventoryLabel, InventoryVariant, InventoryStockBalance, InventoryStockMovement, InventoryStockHolding, PasswordResetToken],
+    entities: [User, Role, Permission, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetNote, AssetLocation, AssetHolder, AssetLog, AssetStatus, Handover, HandoverItem, HandoverStockItem, HandoverField, Inventory, InventoryLabel, InventoryVariant, InventoryStockBalance, InventoryStockMovement, InventoryStockHolding, InventoryStockTransfer, InventoryStockTransferItem, PasswordResetToken],
     logging: false,
 })
 

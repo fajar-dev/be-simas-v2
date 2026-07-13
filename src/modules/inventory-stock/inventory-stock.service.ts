@@ -13,6 +13,7 @@ import { AttachmentService } from "../attachment/attachment.service"
 import { STOCK_CONDITIONS, StockCondition } from "../../core/enums"
 
 const ENTITY_MOVEMENT = "InventoryStockMovement"
+const ENTITY_TRANSFER = "InventoryStockTransfer"
 
 /** Extra context passed when assign/return is driven by a handover approval. */
 export interface InventoryStockHandoverContext {
@@ -139,8 +140,8 @@ export class InventoryStockService {
         return await this.repository.findBalances(page, limit, filters)
     }
 
-    /** Move stock between branches, preserving condition, atomic and non-negative. */
-    async transfer(data: InventoryStockTransferValidator, userId?: number): Promise<{ referenceId: string }> {
+    /** Move stock between branches, preserving condition, atomic and non-negative. Persists a transfer record (history + attachments). */
+    async transfer(data: InventoryStockTransferValidator, userId?: number): Promise<{ referenceId: string; transferId: number }> {
         if (data.fromBranchId === data.toBranchId) {
             throw new BadRequestException("Source and destination branch must be different")
         }
@@ -156,7 +157,15 @@ export class InventoryStockService {
         }
 
         const referenceId = `TRF-${Date.now()}`
-        await withTransaction(async (manager) => {
+        const attachmentIds = data.attachmentIds ?? []
+        const transferId = await withTransaction(async (manager) => {
+            const transfer = await this.repository.saveTransfer({
+                fromBranchId: data.fromBranchId,
+                toBranchId: data.toBranchId,
+                note: data.note ?? null,
+                createdByUserId: userId ?? null,
+            }, manager)
+
             for (const item of data.items) {
                 // Source: lock, check sufficiency, decrement (condition preserved)
                 const from = await this.repository.findBalance(data.fromBranchId, item.variantId, item.condition, manager, true)
@@ -185,9 +194,34 @@ export class InventoryStockService {
                     type: "transfer_in", quantity: item.quantity, balanceAfter: newTo,
                     referenceId, note: data.note ?? null, createdByUserId: userId ?? null,
                 }, manager)
+
+                await this.repository.saveTransferItem({
+                    transferId: transfer.id,
+                    variantId: item.variantId,
+                    condition: item.condition,
+                    quantity: item.quantity,
+                }, manager)
             }
+
+            if (attachmentIds.length) {
+                await this.attachmentService.associate(attachmentIds, ENTITY_TRANSFER, transfer.id, manager)
+            }
+            return transfer.id
         })
-        return { referenceId }
+        return { referenceId, transferId }
+    }
+
+    /** Paginated transfer history for an inventory item, with attachments resolved. */
+    async getTransfers(inventoryId: number, page: number, limit: number) {
+        await this.inventoryService.getById(inventoryId)
+        const { data, total } = await this.repository.findTransfers(inventoryId, page, limit)
+        const withAttachments = await Promise.all(
+            data.map(async (t) => ({
+                transfer: t,
+                attachments: await this.attachmentService.getForEntity(ENTITY_TRANSFER, t.id),
+            }))
+        )
+        return { data: withAttachments, total }
     }
 
     async getMovements(page: number, limit: number, filters: InventoryStockMovementFilter) {

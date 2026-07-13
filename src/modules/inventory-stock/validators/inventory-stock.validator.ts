@@ -31,6 +31,7 @@ export const InventoryStockTransferValidator = z.object({
     fromBranchId: z.number("Source branch is required"),
     toBranchId: z.number("Destination branch is required"),
     note: z.string().trim().optional().nullable(),
+    attachmentIds: z.array(z.number()).optional().nullable(),
     items: z.array(z.object({
         variantId: z.number("Variant ID is required"),
         condition: z.enum(STOCK_CONDITIONS),

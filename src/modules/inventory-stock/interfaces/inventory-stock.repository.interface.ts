@@ -2,6 +2,8 @@ import { EntityManager } from "typeorm"
 import { InventoryStockBalance } from "../entities/inventory-stock-balance.entity"
 import { InventoryStockMovement } from "../entities/inventory-stock-movement.entity"
 import { InventoryStockHolding } from "../entities/inventory-stock-holding.entity"
+import { InventoryStockTransfer } from "../entities/inventory-stock-transfer.entity"
+import { InventoryStockTransferItem } from "../entities/inventory-stock-transfer-item.entity"
 import { StockCondition } from "../../../core/enums"
 
 export interface InventoryStockBalanceFilter {
@@ -39,4 +41,7 @@ export interface IInventoryStockRepository {
     /** Employee's holdings for a variant that still have a remaining quantity, oldest first (FIFO). */
     findActiveHoldings(employeeId: number, variantId: number, manager?: EntityManager, lock?: boolean): Promise<InventoryStockHolding[]>
     findHoldings(page: number, limit: number, filters: InventoryStockHoldingFilter): Promise<{ data: InventoryStockHolding[]; total: number }>
+    saveTransfer(data: Partial<InventoryStockTransfer>, manager?: EntityManager): Promise<InventoryStockTransfer>
+    saveTransferItem(data: Partial<InventoryStockTransferItem>, manager?: EntityManager): Promise<InventoryStockTransferItem>
+    findTransfers(inventoryId: number, page: number, limit: number): Promise<{ data: InventoryStockTransfer[]; total: number }>
 }

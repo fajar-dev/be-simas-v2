@@ -199,6 +199,7 @@ routes.put("/handover-field/:transactionType", authMiddleware, requirePermission
 routes.get("/inventory/stock/entry-template", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockController.entryTemplate(c))
 routes.get("/inventory/stock/movement", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockController.movements(c))
 routes.get("/inventory/stock/holding", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockController.holdings(c))
+routes.get("/inventory/stock/transfer", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockController.transfers(c))
 routes.get("/inventory/stock", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockController.index(c))
 routes.post("/inventory/stock/entry", authMiddleware, requirePermission("inventory-stock:entry"), zValidator("json", InventoryStockEntryValidator, validationHook), (c) => inventoryStockController.entry(c))
 routes.post("/inventory/stock/add", authMiddleware, requirePermission("inventory-stock:entry"), zValidator("json", InventoryStockAddValidator, validationHook), (c) => inventoryStockController.add(c))

@@ -49,6 +49,15 @@ export class InventoryStockController {
         return ApiResponse.success(c, result, "Stock transferred successfully")
     }
 
+    async transfers(c: Context) {
+        const page = Number(c.req.query("page") || 1)
+        const limit = Number(c.req.query("limit") || 20)
+        const inventoryId = Number(c.req.query("inventoryId"))
+        if (!inventoryId) throw new BadRequestException("inventoryId is required")
+        const { data, total } = await this.service.getTransfers(inventoryId, page, limit)
+        return ApiResponse.paginate(c, await InventoryStockSerializer.transfers(data), total, page, limit)
+    }
+
     async movements(c: Context) {
         const page = Number(c.req.query("page") || 1)
         const limit = Number(c.req.query("limit") || 20)
