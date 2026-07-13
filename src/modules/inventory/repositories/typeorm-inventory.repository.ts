@@ -1,4 +1,4 @@
-import { EntityManager, Repository } from "typeorm"
+import { EntityManager, Repository, In } from "typeorm"
 import { AppDataSource } from "../../../config/database"
 import { Inventory } from "../entities/inventory.entity"
 import { InventoryLabel } from "../entities/inventory-label.entity"
@@ -6,6 +6,10 @@ import { InventoryVariant } from "../../inventory-variant/entities/inventory-var
 import { IInventoryRepository } from "../interfaces/inventory.repository.interface"
 
 const RELATIONS = ["createdBy", "subCategory", "subCategory.category", "labels"]
+
+// Correlated subqueries: number of variants, and total on-hand stock, per item.
+const VARIANT_COUNT_SQL = "(SELECT COUNT(*) FROM inventory_variants iv WHERE iv.inventory_id = item.id)"
+const BALANCE_COUNT_SQL = "(SELECT COALESCE(SUM(bal.quantity), 0) FROM inventory_stock_balances bal INNER JOIN inventory_variants ivb ON bal.variant_id = ivb.id WHERE ivb.inventory_id = item.id)"
 
 export class TypeOrmInventoryRepository implements IInventoryRepository {
     private readonly repository: Repository<Inventory>
@@ -17,31 +21,57 @@ export class TypeOrmInventoryRepository implements IInventoryRepository {
     }
 
     async findAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: Inventory[]; total: number }> {
-        const query = this.repository.createQueryBuilder("item")
-            .leftJoinAndSelect("item.createdBy", "createdBy")
-            .leftJoinAndSelect("item.subCategory", "subCategory")
-            .leftJoinAndSelect("subCategory.category", "category")
-            .leftJoinAndSelect("item.labels", "labels")
-
-        if (q) {
-            query.where("(item.code LIKE :q OR item.name LIKE :q OR item.description LIKE :q)", { q: `%${q}%` })
-        }
-
-        const total = await query.getCount()
-
+        const sortOrder = order === 'ASC' ? 'ASC' : 'DESC'
         const sortColumnMap: Record<string, string> = {
             code: "item.code",
             name: "item.name",
             createdAt: "item.createdAt",
+            unit: "item.unit",
+            category: "category.name",
+            subCategory: "subCategory.name",
+            variantCount: "variantCount",
+            balanceCount: "balanceCount",
         }
         const sortColumn = sortColumnMap[sortBy || ''] || "item.id"
-        const sortOrder = order === 'ASC' ? 'ASC' : 'DESC'
 
-        const data = await query
+        // 1) Resolve the page's item ids (+ counts) with one row per item, so
+        //    pagination/sorting are correct even with the one-to-many labels relation.
+        const idQuery = this.repository.createQueryBuilder("item")
+            .leftJoin("item.subCategory", "subCategory")
+            .leftJoin("subCategory.category", "category")
+            .select("item.id", "id")
+            .addSelect(VARIANT_COUNT_SQL, "variantCount")
+            .addSelect(BALANCE_COUNT_SQL, "balanceCount")
+
+        if (q) {
+            idQuery.where("(item.code LIKE :q OR item.name LIKE :q OR item.description LIKE :q)", { q: `%${q}%` })
+        }
+
+        const total = await idQuery.getCount()
+
+        const rawRows = await idQuery
             .orderBy(sortColumn, sortOrder)
-            .skip((page - 1) * limit)
-            .take(limit)
-            .getMany()
+            .offset((page - 1) * limit)
+            .limit(limit)
+            .getRawMany<{ id: number; variantCount: string | number; balanceCount: string | number }>()
+
+        const ids = rawRows.map((r) => Number(r.id))
+        if (ids.length === 0) return { data: [], total }
+
+        // 2) Load the full entities (with relations) and re-apply the page order.
+        const items = await this.repository.find({ where: { id: In(ids) }, relations: RELATIONS })
+        const byId = new Map(items.map((i) => [i.id, i]))
+        const countById = new Map(rawRows.map((r) => [Number(r.id), { variantCount: Number(r.variantCount), balanceCount: Number(r.balanceCount) }]))
+
+        const data = ids
+            .map((id) => byId.get(id))
+            .filter((i): i is Inventory => !!i)
+            .map((item) => {
+                const c = countById.get(item.id)
+                item.variantCount = c?.variantCount ?? 0
+                item.balanceCount = c?.balanceCount ?? 0
+                return item
+            })
 
         return { data, total }
     }

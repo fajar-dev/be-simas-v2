@@ -66,4 +66,10 @@ export class Inventory {
 
     @UpdateDateColumn({ name: "updated_at" })
     updatedAt!: Date
+
+    /** Not persisted — populated by the list query (number of variants). */
+    variantCount?: number
+
+    /** Not persisted — populated by the list query (total on-hand stock quantity). */
+    balanceCount?: number
 }

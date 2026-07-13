@@ -323,4 +323,20 @@ describe("Inventory API", () => {
         expect(res.status).toBe(200)
         expect(res.body.data).toEqual(expect.arrayContaining(["Brand", "Color"]))
     })
+
+    test("list returns variantCount and total balanceCount per item", async () => {
+        await setStock(branchA, [{ variantId: variant1, new: 7, used: 3 }])
+        await setStock(branchB, [{ variantId: variant1, new: 2, used: 0 }])
+        const res = await request(app, "/api/inventory", { headers: authHeaders })
+        expect(res.status).toBe(200)
+        const item = res.body.data.find((i: any) => i.id === inventoryId)
+        expect(item.variantCount).toBe(2)   // Cat6 + Cat5e
+        expect(item.balanceCount).toBe(12)  // 7 + 3 + 2 on-hand
+    })
+
+    test("list can sort by variantCount and balanceCount", async () => {
+        expect((await request(app, "/api/inventory?sortBy=variantCount&order=DESC", { headers: authHeaders })).status).toBe(200)
+        expect((await request(app, "/api/inventory?sortBy=balanceCount&order=ASC", { headers: authHeaders })).status).toBe(200)
+        expect((await request(app, "/api/inventory?sortBy=category&order=ASC", { headers: authHeaders })).status).toBe(200)
+    })
 })

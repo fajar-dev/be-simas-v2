@@ -20,6 +20,8 @@ export class InventorySerializer {
                 ? { id: item.subCategory.id, name: item.subCategory.name }
                 : null,
             labels: (item.labels || []).map((l) => ({ id: l.id, key: l.key, value: l.value })),
+            variantCount: item.variantCount ?? 0,
+            balanceCount: item.balanceCount ?? 0,
             createdAt: item.createdAt,
             updatedAt: item.updatedAt,
             createdBy: item.createdBy ? {

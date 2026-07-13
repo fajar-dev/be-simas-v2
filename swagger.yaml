@@ -824,6 +824,8 @@ components:
               id: { type: integer }
               key: { type: string, example: "Brand" }
               value: { type: string, example: "Belden" }
+        variantCount: { type: integer, description: "Number of variants (list only)", example: 3 }
+        balanceCount: { type: integer, description: "Total on-hand stock quantity across all variants/branches (list only)", example: 42 }
         attachments:
           type: array
           items: { $ref: "#/components/schemas/AttachmentResponse" }
@@ -4186,7 +4188,7 @@ paths:
         - { name: page, in: query, required: false, schema: { type: integer, default: 1 } }
         - { name: limit, in: query, required: false, schema: { type: integer, default: 10 } }
         - { name: q, in: query, required: false, schema: { type: string } }
-        - { name: sortBy, in: query, required: false, schema: { type: string } }
+        - { name: sortBy, in: query, required: false, schema: { type: string, enum: [name, code, category, subCategory, unit, variantCount, balanceCount, createdAt] } }
         - { name: order, in: query, required: false, schema: { type: string, enum: [ASC, DESC] } }
       responses:
         "200":
