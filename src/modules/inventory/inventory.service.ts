@@ -52,6 +52,11 @@ export class InventoryService {
                 isActive: data.isActive ?? true,
                 createdByUserId: userId ?? null,
             }, manager)
+            // Auto-fill code from the generated id when left empty (like category).
+            if (!data.code) {
+                item.code = String(item.id)
+                await this.repository.save(item, manager)
+            }
 
             for (const label of data.labels ?? []) {
                 await this.repository.saveLabel({ inventoryId: item.id, key: label.key, value: label.value }, manager)
@@ -62,8 +67,14 @@ export class InventoryService {
                     inventoryId: item.id,
                     name: v.name,
                     code: v.code ?? null,
+                    image: v.image ?? null,
+                    description: v.description ?? null,
                     isActive: true,
                 }, manager)
+                if (!v.code) {
+                    variant.code = String(variant.id)
+                    await this.variantRepository.save(variant, manager)
+                }
 
                 for (const s of v.initialStock ?? []) {
                     for (const condition of STOCK_CONDITIONS) {

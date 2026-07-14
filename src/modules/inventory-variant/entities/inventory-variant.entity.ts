@@ -31,6 +31,12 @@ export class InventoryVariant {
     @Column({ type: "varchar", nullable: true })
     code?: string | null
 
+    @Column({ type: "varchar", nullable: true })
+    image?: string | null
+
+    @Column({ type: "text", nullable: true })
+    description?: string | null
+
     @Column({ name: "is_active", type: "boolean", default: true })
     isActive!: boolean
 

@@ -846,7 +846,8 @@ components:
         inventoryId: { type: integer, example: 1 }
         name: { type: string, example: "305m / Roll" }
         code: { type: string, nullable: true }
-        unit: { type: string, example: "roll" }
+        image: { type: string, nullable: true }
+        description: { type: string, nullable: true }
         isActive: { type: boolean, example: true }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
@@ -4237,6 +4238,8 @@ paths:
                     properties:
                       name: { type: string }
                       code: { type: string, nullable: true }
+                      image: { type: string, nullable: true }
+                      description: { type: string, nullable: true }
                       initialStock:
                         type: array
                         items:
@@ -4404,7 +4407,9 @@ paths:
                 inventoryId: { type: integer, example: 1 }
                 name: { type: string, example: "305m / Roll" }
                 code: { type: string, nullable: true }
-                unit: { type: string, default: "pcs", example: "roll" }
+                image: { type: string, nullable: true }
+                description: { type: string, nullable: true }
+                isActive: { type: boolean }
       responses:
         "201":
           description: Created
@@ -4457,7 +4462,8 @@ paths:
               properties:
                 name: { type: string }
                 code: { type: string, nullable: true }
-                unit: { type: string }
+                image: { type: string, nullable: true }
+                description: { type: string, nullable: true }
                 isActive: { type: boolean }
       responses:
         "200":

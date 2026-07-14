@@ -77,6 +77,37 @@ describe("Inventory API", () => {
         expect(list.body.data.length).toBe(2)
     })
 
+    test("variant stores image & description and returns them", async () => {
+        const res = await request(app, "/api/inventory-variant", {
+            method: "POST", headers: authHeaders,
+            body: { inventoryId, name: "With media", code: "WM-1", image: "inventory/v.png", description: "Fiber single-mode" },
+        })
+        expect(res.status).toBe(201)
+        expect(res.body.data.description).toBe("Fiber single-mode")
+        expect(typeof res.body.data.image).toBe("string") // resolved URL
+
+        const upd = await request(app, `/api/inventory-variant/${res.body.data.id}`, {
+            method: "PUT", headers: authHeaders,
+            body: { description: "Updated desc" },
+        })
+        expect(upd.status).toBe(200)
+        expect(upd.body.data.description).toBe("Updated desc")
+    })
+
+    test("code auto-fills from id when empty (item & variant), like category", async () => {
+        const item = await request(app, "/api/inventory", { method: "POST", headers: authHeaders, body: { name: "No Code Item" } })
+        expect(item.status).toBe(201)
+        expect(item.body.data.code).toBe(String(item.body.data.id))
+
+        const v = await request(app, "/api/inventory-variant", { method: "POST", headers: authHeaders, body: { inventoryId: item.body.data.id, name: "No Code Variant" } })
+        expect(v.status).toBe(201)
+        expect(v.body.data.code).toBe(String(v.body.data.id))
+
+        // Explicit code is preserved.
+        const withCode = await request(app, "/api/inventory", { method: "POST", headers: authHeaders, body: { name: "Coded", code: "INV-XYZ" } })
+        expect(withCode.body.data.code).toBe("INV-XYZ")
+    })
+
     // ── Entry template & nested input ─────────────────────────────────────────
     test("entry-template lists all variants with zero on-hand", async () => {
         const res = await request(app, `/api/inventory/stock/entry-template?branchId=${branchA}&inventoryId=${inventoryId}`, { headers: authHeaders })
@@ -293,7 +324,7 @@ describe("Inventory API", () => {
                 name: "Kabel Fiber", unit: "Roll",
                 labels: [{ key: "Brand", value: "Belden" }, { key: "Warna", value: "Kuning" }],
                 variants: [
-                    { name: "SM 305m", initialStock: [{ branchId: branchA, new: 10, used: 2 }] },
+                    { name: "SM 305m", image: "inventory/sm.png", description: "Single-mode", initialStock: [{ branchId: branchA, new: 10, used: 2 }] },
                     { name: "MM 100m" },
                 ],
             },
@@ -309,6 +340,8 @@ describe("Inventory API", () => {
         const variants = await request(app, `/api/inventory-variant?inventoryId=${id}`, { headers: authHeaders })
         expect(variants.body.data.length).toBe(2)
         const sm = variants.body.data.find((v: any) => v.name === "SM 305m")
+        expect(sm.description).toBe("Single-mode")
+        expect(typeof sm.image).toBe("string") // resolved URL
 
         // Initial stock became a balance; unit is sourced from the item.
         const bal = await request(app, `/api/inventory/stock?inventoryId=${id}&condition=new`, { headers: authHeaders })

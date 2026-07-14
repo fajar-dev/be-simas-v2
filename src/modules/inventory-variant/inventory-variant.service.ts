@@ -27,8 +27,15 @@ export class InventoryVariantService {
             inventoryId: data.inventoryId,
             name: data.name,
             code: data.code ?? null,
+            image: data.image ?? null,
+            description: data.description ?? null,
             isActive: data.isActive ?? true,
         })
+        // Auto-fill code from the generated id when left empty (like category).
+        if (!data.code) {
+            saved.code = String(saved.id)
+            await this.repository.save(saved)
+        }
         return await this.getById(saved.id)
     }
 
@@ -37,6 +44,8 @@ export class InventoryVariantService {
         this.repository.merge(variant, {
             ...(data.name !== undefined ? { name: data.name } : {}),
             ...(data.code !== undefined ? { code: data.code ?? null } : {}),
+            ...(data.image !== undefined ? { image: data.image ?? null } : {}),
+            ...(data.description !== undefined ? { description: data.description ?? null } : {}),
             ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
         })
         await this.repository.save(variant)

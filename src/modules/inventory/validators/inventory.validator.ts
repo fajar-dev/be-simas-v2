@@ -14,6 +14,8 @@ const InitialStockSchema = z.object({
 const VariantSchema = z.object({
     name: z.string().trim().min(1, "Variant name is required"),
     code: z.string().trim().optional().nullable(),
+    image: z.string().trim().optional().nullable(),
+    description: z.string().trim().optional().nullable(),
     initialStock: z.array(InitialStockSchema).optional(),
 })
 
