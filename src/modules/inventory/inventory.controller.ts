@@ -39,8 +39,9 @@ export class InventoryController {
     }
 
     async update(c: Context) {
+        const user = c.get("user")
         const data = c.req.valid("json" as never) as any
-        const item = await this.service.update(Number(c.req.param("id")), data)
+        const item = await this.service.update(Number(c.req.param("id")), data, user?.id)
         return ApiResponse.success(c, await InventorySerializer.single(item), "Updated")
     }
 

@@ -6,6 +6,7 @@ import { NotFoundException, ConflictException } from "../../core/exceptions/base
 import { withTransaction } from "../../core/helpers/transaction"
 import { CreateInventoryValidator, UpdateInventoryValidator } from "./validators/inventory.validator"
 import { AttachmentService } from "../attachment/attachment.service"
+import { InventoryLogService } from "../inventory-log/inventory-log.service"
 import { STOCK_CONDITIONS } from "../../core/enums"
 
 const ENTITY_INVENTORY = "Inventory"
@@ -15,7 +16,8 @@ export class InventoryService {
         private readonly repository: IInventoryRepository,
         private readonly variantRepository: IInventoryVariantRepository,
         private readonly stockRepository: IInventoryStockRepository,
-        private readonly attachmentService: AttachmentService
+        private readonly attachmentService: AttachmentService,
+        private readonly inventoryLogService: InventoryLogService
     ) {}
 
     async getAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC') {
@@ -83,11 +85,6 @@ export class InventoryService {
                         await this.stockRepository.saveBalance({
                             branchId: s.branchId, variantId: variant.id, condition, quantity: qty,
                         }, manager)
-                        await this.stockRepository.saveMovement({
-                            variantId: variant.id, branchId: s.branchId, condition,
-                            type: "entry", quantity: qty, balanceAfter: qty,
-                            note: "Initial stock", createdByUserId: userId ?? null,
-                        }, manager)
                     }
                 }
             }
@@ -96,14 +93,24 @@ export class InventoryService {
                 await this.attachmentService.associate(data.attachmentIds, ENTITY_INVENTORY, item.id, manager)
             }
 
+            await this.inventoryLogService.log({
+                inventoryId: item.id,
+                module: "inventory",
+                action: "create",
+                description: `Inventory item "${item.name}" was created.`,
+                createdByUserId: userId ?? null,
+                newValue: data,
+            }, manager)
+
             return item
         })
 
         return await this.getById(created.id)
     }
 
-    async update(id: number, data: UpdateInventoryValidator): Promise<Inventory> {
+    async update(id: number, data: UpdateInventoryValidator, userId?: number): Promise<Inventory> {
         const item = await this.getById(id)
+        const oldValue = { ...item }
         this.repository.merge(item, {
             ...(data.code !== undefined ? { code: data.code ?? null } : {}),
             ...(data.name !== undefined ? { name: data.name } : {}),
@@ -126,6 +133,16 @@ export class InventoryService {
             await this.attachmentService.associate(data.attachmentIds, ENTITY_INVENTORY, id)
         }
 
+        await this.inventoryLogService.log({
+            inventoryId: id,
+            module: "inventory",
+            action: "update",
+            description: `Inventory item "${item.name}" was updated.`,
+            createdByUserId: userId ?? null,
+            oldValue,
+            newValue: data,
+        })
+
         return await this.getById(id)
     }
 
@@ -135,6 +152,8 @@ export class InventoryService {
         if (variantCount > 0) {
             throw new ConflictException("Cannot delete an item that still has variants")
         }
+        // Not logged: inventory_logs.inventory_id cascades on delete, so a log
+        // row for the delete itself would vanish with the item (see AssetService.delete).
         await this.repository.delete(id)
     }
 }
