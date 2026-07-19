@@ -899,43 +899,6 @@ components:
         new: { type: integer, example: 10 }
         used: { type: integer, example: 3 }
 
-    InventoryStockMovementResponse:
-      type: object
-      properties:
-        id: { type: integer, example: 1 }
-        type: { type: string, enum: [entry, adjustment, transfer_out, transfer_in] }
-        condition: { type: string, enum: [new, used] }
-        quantity: { type: integer, description: "Signed delta (negative for outgoing)", example: -3 }
-        balanceAfter: { type: integer, nullable: true, example: 9 }
-        referenceId: { type: string, nullable: true, description: "Groups both legs of a transfer", example: "TRF-1720000000000" }
-        note: { type: string, nullable: true }
-        createdAt: { type: string, format: date-time }
-        branch:
-          type: object
-          nullable: true
-          properties:
-            id: { type: integer }
-            name: { type: string }
-        variant:
-          type: object
-          nullable: true
-          properties:
-            id: { type: integer }
-            name: { type: string }
-            inventory:
-              type: object
-              nullable: true
-              properties:
-                id: { type: integer }
-                name: { type: string }
-        createdBy:
-          type: object
-          nullable: true
-          properties:
-            id: { type: integer }
-            name: { type: string }
-            photo: { type: string, nullable: true }
-
     InventoryStockTransferResponse:
       type: object
       description: "A stock transfer document between two branches."
@@ -986,6 +949,70 @@ components:
         attachments:
           type: array
           items: { $ref: "#/components/schemas/AttachmentResponse" }
+
+    InventoryStockInResponse:
+      type: object
+      description: "A stock-in (incoming stock) document."
+      properties:
+        id: { type: integer, example: 1 }
+        note: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        createdBy:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            photo: { type: string, nullable: true }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              condition: { type: string, enum: [new, used] }
+              quantity: { type: integer, example: 5 }
+              balanceAfter: { type: integer, nullable: true, example: 9 }
+              branch:
+                type: object
+                nullable: true
+                properties:
+                  id: { type: integer }
+                  name: { type: string }
+              variant:
+                type: object
+                nullable: true
+                properties:
+                  id: { type: integer }
+                  name: { type: string }
+                  code: { type: string, nullable: true }
+                  inventory:
+                    type: object
+                    nullable: true
+                    properties:
+                      id: { type: integer }
+                      name: { type: string }
+        attachments:
+          type: array
+          items: { $ref: "#/components/schemas/AttachmentResponse" }
+
+    InventoryLogResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        inventoryId: { type: integer, example: 1 }
+        module: { type: string, example: "stock" }
+        action: { type: string, example: "stock_in" }
+        description: { type: string, example: "Stock in recorded for \"UTP Cable\"." }
+        createdAt: { type: string, format: date-time }
+        createdBy:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer, example: 1 }
+            name: { type: string, example: "John Doe" }
+            photo: { type: string, nullable: true, example: "users/avatar.png" }
+            email: { type: string, example: "admin@example.com" }
 
     InventoryStockHoldingResponse:
       type: object
@@ -4587,139 +4614,6 @@ paths:
         "403": { description: Forbidden - missing inventory-stock:entry }
         "422": { description: Validation error }
 
-  /inventory/stock/add:
-    post:
-      tags: [Inventory]
-      summary: Add (stock-in) quantities to variants across one or more branches
-      description: ADD semantics — quantities are added to each variant's current on-hand at its branch (increment, not opname). Multi-branch × multi-variant. Optional note + attachments (linked to the created movements). A movement of type `entry` is recorded per condition.
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [inventoryId, items]
-              properties:
-                inventoryId: { type: integer, example: 1 }
-                note: { type: string, nullable: true }
-                attachmentIds: { type: array, items: { type: integer }, nullable: true }
-                items:
-                  type: array
-                  minItems: 1
-                  items:
-                    type: object
-                    required: [branchId, variantId, new, used]
-                    properties:
-                      branchId: { type: integer, example: 1 }
-                      variantId: { type: integer, example: 1 }
-                      new: { type: integer, minimum: 0, example: 5 }
-                      used: { type: integer, minimum: 0, example: 0 }
-      responses:
-        "201":
-          description: Stock added successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/BaseResponse"
-                  - type: object
-                    properties:
-                      data: { type: array, items: { $ref: "#/components/schemas/InventoryStockBalanceResponse" } }
-        "400": { description: Invalid branch/item or variant not belonging to item }
-        "401": { description: Unauthorized }
-        "403": { description: Forbidden - missing inventory-stock:entry }
-        "422": { description: Validation error }
-
-  /inventory/stock/transfer:
-    get:
-      tags: [Inventory]
-      summary: List stock transfer history for an inventory item (paginated)
-      security:
-        - bearerAuth: []
-      parameters:
-        - { name: inventoryId, in: query, required: true, schema: { type: integer } }
-        - { name: page, in: query, required: false, schema: { type: integer, default: 1 } }
-        - { name: limit, in: query, required: false, schema: { type: integer, default: 20 } }
-      responses:
-        "200":
-          description: Transfer history retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/BaseResponse"
-                  - type: object
-                    properties:
-                      data: { type: array, items: { $ref: "#/components/schemas/InventoryStockTransferResponse" } }
-                      meta: { $ref: "#/components/schemas/PaginationMeta" }
-        "400": { description: inventoryId is required }
-        "401": { description: Unauthorized }
-        "403": { description: Forbidden - missing inventory-stock:read }
-    post:
-      tags: [Inventory]
-      summary: Transfer stock between branches
-      description: Moves the given quantity per variant+condition from source to destination branch atomically. Condition is preserved; stock cannot go negative. Persists a transfer record (history + attachments).
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [fromBranchId, toBranchId, items]
-              properties:
-                fromBranchId: { type: integer, example: 1 }
-                toBranchId: { type: integer, example: 2 }
-                note: { type: string, nullable: true }
-                attachmentIds: { type: array, items: { type: integer }, nullable: true }
-                items:
-                  type: array
-                  minItems: 1
-                  items:
-                    type: object
-                    required: [variantId, condition, quantity]
-                    properties:
-                      variantId: { type: integer, example: 1 }
-                      condition: { type: string, enum: [new, used] }
-                      quantity: { type: integer, minimum: 1, example: 3 }
-      responses:
-        "200": { description: Stock transferred successfully }
-        "400": { description: Same branch, insufficient stock, or duplicate variant+condition }
-        "401": { description: Unauthorized }
-        "403": { description: Forbidden - missing inventory-stock:transfer }
-        "422": { description: Validation error }
-
-  /inventory/stock/movement:
-    get:
-      tags: [Inventory]
-      summary: List stock movement ledger (paginated)
-      security:
-        - bearerAuth: []
-      parameters:
-        - { name: page, in: query, required: false, schema: { type: integer, default: 1 } }
-        - { name: limit, in: query, required: false, schema: { type: integer, default: 20 } }
-        - { name: inventoryId, in: query, required: false, schema: { type: integer } }
-        - { name: branchId, in: query, required: false, schema: { type: integer } }
-        - { name: variantId, in: query, required: false, schema: { type: integer } }
-        - { name: condition, in: query, required: false, schema: { type: string, enum: [new, used] } }
-        - { name: type, in: query, required: false, schema: { type: string, enum: [entry, adjustment, transfer_out, transfer_in, assign_out, return_in] } }
-      responses:
-        "200":
-          description: Stock movements retrieved successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/BaseResponse"
-                  - type: object
-                    properties:
-                      data: { type: array, items: { $ref: "#/components/schemas/InventoryStockMovementResponse" } }
-                      meta: { $ref: "#/components/schemas/PaginationMeta" }
-        "401": { description: Unauthorized }
-
   /inventory/stock/holding:
     get:
       tags: [Inventory]
@@ -4825,6 +4719,201 @@ paths:
         "401": { description: Unauthorized }
         "403": { description: Forbidden - missing inventory-stock:return }
         "422": { description: Validation error }
+
+  # ── Inventory Stock Transfer (own module, mirrors Asset Holder) ────────────
+  /inventory-stock-transfer:
+    get:
+      tags: [Inventory Stock Transfer]
+      summary: List stock transfer history for an inventory item (paginated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: inventoryId, in: query, required: true, schema: { type: integer } }
+        - { name: page, in: query, required: false, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, required: false, schema: { type: integer, default: 20 } }
+      responses:
+        "200":
+          description: Transfer history retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/InventoryStockTransferResponse" } }
+                      meta: { $ref: "#/components/schemas/PaginationMeta" }
+        "400": { description: inventoryId is required }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden - missing inventory-stock:read }
+        "404": { description: Inventory item not found }
+    post:
+      tags: [Inventory Stock Transfer]
+      summary: Transfer stock between branches
+      description: Moves the given quantity per variant+condition from source to destination branch atomically. Condition is preserved; stock cannot go negative. Persists a transfer record (history + attachments).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fromBranchId, toBranchId, items]
+              properties:
+                fromBranchId: { type: integer, example: 1 }
+                toBranchId: { type: integer, example: 2 }
+                note: { type: string, nullable: true }
+                attachmentIds: { type: array, items: { type: integer }, nullable: true }
+                items:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [variantId, condition, quantity]
+                    properties:
+                      variantId: { type: integer, example: 1 }
+                      condition: { type: string, enum: [new, used] }
+                      quantity: { type: integer, minimum: 1, example: 3 }
+      responses:
+        "200":
+          description: Stock transferred successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          referenceId: { type: string, example: "TRF-1720000000000" }
+                          transferId: { type: integer, example: 1 }
+        "400": { description: Same branch, insufficient stock, or duplicate variant+condition }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden - missing inventory-stock:transfer }
+        "422": { description: Validation error }
+
+  # ── Inventory Stock In (own module, mirrors Asset Holder) ──────────────────
+  /inventory-stock-in:
+    get:
+      tags: [Inventory Stock In]
+      summary: List stock-in (incoming stock) history for an inventory item (paginated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: inventoryId, in: query, required: true, schema: { type: integer } }
+        - { name: page, in: query, required: false, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, required: false, schema: { type: integer, default: 20 } }
+      responses:
+        "200":
+          description: Stock-in history retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/InventoryStockInResponse" } }
+                      meta: { $ref: "#/components/schemas/PaginationMeta" }
+        "400": { description: inventoryId is required }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden - missing inventory-stock:read }
+        "404": { description: Inventory item not found }
+    post:
+      tags: [Inventory Stock In]
+      summary: Add (stock-in) quantities to variants across one or more branches
+      description: ADD semantics — quantities are added to each variant's current on-hand at its branch (increment, not opname). Multi-branch × multi-variant. Optional note + attachments. Persists a stock-in record (history + line items + attachments), mirroring the transfer document.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [inventoryId, items]
+              properties:
+                inventoryId: { type: integer, example: 1 }
+                note: { type: string, nullable: true }
+                attachmentIds: { type: array, items: { type: integer }, nullable: true }
+                items:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [branchId, variantId, new, used]
+                    properties:
+                      branchId: { type: integer, example: 1 }
+                      variantId: { type: integer, example: 1 }
+                      new: { type: integer, minimum: 0, example: 5 }
+                      used: { type: integer, minimum: 0, example: 0 }
+      responses:
+        "201":
+          description: Stock added successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/InventoryStockInResponse" }
+        "400": { description: Invalid branch/item or variant not belonging to item }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden - missing inventory-stock:entry }
+        "404": { description: Inventory item not found }
+        "422": { description: Validation error }
+
+  # ── Inventory Log (activity audit trail, mirrors Asset Log) ────────────────
+  /inventory-log:
+    get:
+      tags: [Inventory Log]
+      summary: Get inventory activity logs (audit trail)
+      description: One entry per action on an inventory item — create/update on the item itself, and entry/stock_in/transfer/assign/return on its stock (module `stock`).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, default: 10 }
+        - name: q
+          in: query
+          required: false
+          schema: { type: string }
+        - name: sortBy
+          in: query
+          required: false
+          schema: { type: string }
+        - name: order
+          in: query
+          required: false
+          schema: { type: string, enum: [ASC, DESC] }
+        - name: inventoryId
+          in: query
+          required: false
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Inventory activity logs retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/InventoryLogResponse" }
+        "401": { description: Unauthorized }
 
   /asset-log:
     get:
