@@ -1,12 +1,6 @@
 import { InventoryStockBalance } from "../entities/inventory-stock-balance.entity"
-import { InventoryStockMovement } from "../entities/inventory-stock-movement.entity"
 import { InventoryStockHolding } from "../entities/inventory-stock-holding.entity"
-import { InventoryStockTransfer } from "../entities/inventory-stock-transfer.entity"
 import { InventoryVariant } from "../../inventory-variant/entities/inventory-variant.entity"
-import { Attachment } from "../../attachment/entities/attachment.entity"
-import { resolveFileUrl } from "../../../core/helpers/serializer-utils"
-import { attachmentService } from "../../attachment/attachment.module"
-import { AttachmentSerializer } from "../../attachment/serializers/attachment.serialize"
 
 export class InventoryStockSerializer {
 
@@ -78,68 +72,5 @@ export class InventoryStockSerializer {
             new: byKey.get(`${v.id}:new`) ?? 0,
             used: byKey.get(`${v.id}:used`) ?? 0,
         }))
-    }
-
-    static async movement(m: InventoryStockMovement) {
-        return {
-            id: m.id,
-            type: m.type,
-            condition: m.condition,
-            quantity: m.quantity,
-            balanceAfter: m.balanceAfter ?? null,
-            referenceId: m.referenceId || null,
-            note: m.note || null,
-            createdAt: m.createdAt,
-            branch: m.branch ? { id: m.branch.id, name: m.branch.name } : null,
-            variant: m.variant ? {
-                id: m.variant.id,
-                name: m.variant.name,
-                inventory: m.variant.inventory ? { id: m.variant.inventory.id, name: m.variant.inventory.name } : null,
-            } : null,
-            createdBy: m.createdBy ? {
-                id: m.createdBy.id,
-                name: m.createdBy.name,
-                photo: await resolveFileUrl(m.createdBy.photo),
-            } : null,
-            // Stock-in movements ("IN-…") may carry uploaded attachments.
-            attachments: m.referenceId?.startsWith("IN-")
-                ? await AttachmentSerializer.collection(await attachmentService.getForEntity("InventoryStockMovement", m.id))
-                : [],
-        }
-    }
-
-    static async movements(items: InventoryStockMovement[]) {
-        return Promise.all(items.map((m) => this.movement(m)))
-    }
-
-    static async transfer(t: InventoryStockTransfer, attachments: Attachment[] = []) {
-        return {
-            id: t.id,
-            note: t.note || null,
-            createdAt: t.createdAt,
-            fromBranch: t.fromBranch ? { id: t.fromBranch.id, name: t.fromBranch.name } : null,
-            toBranch: t.toBranch ? { id: t.toBranch.id, name: t.toBranch.name } : null,
-            createdBy: t.createdBy ? {
-                id: t.createdBy.id,
-                name: t.createdBy.name,
-                photo: await resolveFileUrl(t.createdBy.photo),
-            } : null,
-            items: (t.items ?? []).map((item) => ({
-                id: item.id,
-                condition: item.condition,
-                quantity: item.quantity,
-                variant: item.variant ? {
-                    id: item.variant.id,
-                    name: item.variant.name,
-                    code: item.variant.code || null,
-                    inventory: item.variant.inventory ? { id: item.variant.inventory.id, name: item.variant.inventory.name } : null,
-                } : null,
-            })),
-            attachments: await AttachmentSerializer.collection(attachments),
-        }
-    }
-
-    static async transfers(items: { transfer: InventoryStockTransfer; attachments: Attachment[] }[]) {
-        return Promise.all(items.map((i) => this.transfer(i.transfer, i.attachments)))
     }
 }

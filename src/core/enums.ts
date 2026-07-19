@@ -40,6 +40,3 @@ export type StockCondition = (typeof STOCK_CONDITIONS)[number]
 export const INVENTORY_UNITS = ["Pcs", "Unit", "Box", "Pack", "Set", "Roll", "Meter", "Cm", "Kg", "Gram", "Liter", "Lusin", "Rim"] as const
 export type InventoryUnit = (typeof INVENTORY_UNITS)[number]
 
-/** Stock ledger movement type — column `inventory_stock_movements.type`. */
-export const STOCK_MOVEMENT_TYPES = ["entry", "adjustment", "transfer_out", "transfer_in", "assign_out", "return_in"] as const
-export type StockMovementType = (typeof STOCK_MOVEMENT_TYPES)[number]

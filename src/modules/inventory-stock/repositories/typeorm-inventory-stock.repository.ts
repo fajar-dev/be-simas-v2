@@ -1,65 +1,17 @@
 import { EntityManager, Repository, In } from "typeorm"
 import { AppDataSource } from "../../../config/database"
 import { InventoryStockBalance } from "../entities/inventory-stock-balance.entity"
-import { InventoryStockMovement } from "../entities/inventory-stock-movement.entity"
 import { InventoryStockHolding } from "../entities/inventory-stock-holding.entity"
-import { InventoryStockTransfer } from "../entities/inventory-stock-transfer.entity"
-import { InventoryStockTransferItem } from "../entities/inventory-stock-transfer-item.entity"
-import { IInventoryStockRepository, InventoryStockBalanceFilter, InventoryStockMovementFilter, InventoryStockHoldingFilter } from "../interfaces/inventory-stock.repository.interface"
+import { IInventoryStockRepository, InventoryStockBalanceFilter, InventoryStockHoldingFilter } from "../interfaces/inventory-stock.repository.interface"
 import { StockCondition } from "../../../core/enums"
 
 export class TypeOrmInventoryStockRepository implements IInventoryStockRepository {
     private readonly balanceRepo: Repository<InventoryStockBalance>
-    private readonly movementRepo: Repository<InventoryStockMovement>
     private readonly holdingRepo: Repository<InventoryStockHolding>
-    private readonly transferRepo: Repository<InventoryStockTransfer>
-    private readonly transferItemRepo: Repository<InventoryStockTransferItem>
 
     constructor() {
         this.balanceRepo = AppDataSource.getRepository(InventoryStockBalance)
-        this.movementRepo = AppDataSource.getRepository(InventoryStockMovement)
         this.holdingRepo = AppDataSource.getRepository(InventoryStockHolding)
-        this.transferRepo = AppDataSource.getRepository(InventoryStockTransfer)
-        this.transferItemRepo = AppDataSource.getRepository(InventoryStockTransferItem)
-    }
-
-    async saveTransfer(data: Partial<InventoryStockTransfer>, manager?: EntityManager): Promise<InventoryStockTransfer> {
-        const repo = manager ? manager.getRepository(InventoryStockTransfer) : this.transferRepo
-        return await repo.save(data)
-    }
-
-    async saveTransferItem(data: Partial<InventoryStockTransferItem>, manager?: EntityManager): Promise<InventoryStockTransferItem> {
-        const repo = manager ? manager.getRepository(InventoryStockTransferItem) : this.transferItemRepo
-        return await repo.save(data)
-    }
-
-    /** Paginated transfer history for an inventory item (transfers with at least one item of that item's variants). */
-    async findTransfers(inventoryId: number, page: number, limit: number): Promise<{ data: InventoryStockTransfer[]; total: number }> {
-        const idQuery = this.transferRepo.createQueryBuilder("t")
-            .select("t.id", "id")
-            .where(qb => {
-                const sub = qb.subQuery()
-                    .select("ti.transfer_id")
-                    .from(InventoryStockTransferItem, "ti")
-                    .innerJoin("ti.variant", "vv")
-                    .where("vv.inventory_id = :inventoryId")
-                    .getQuery()
-                return "t.id IN " + sub
-            })
-            .setParameter("inventoryId", inventoryId)
-            .orderBy("t.id", "DESC")
-
-        const total = await idQuery.getCount()
-        const idRows = await idQuery.limit(limit).offset((page - 1) * limit).getRawMany<{ id: number }>()
-        const ids = idRows.map(r => Number(r.id))
-        if (!ids.length) return { data: [], total }
-
-        const data = await this.transferRepo.find({
-            where: { id: In(ids) },
-            relations: ["fromBranch", "toBranch", "items", "items.variant", "items.variant.inventory", "createdBy"],
-            order: { id: "DESC" },
-        })
-        return { data, total }
     }
 
     async findBalances(page: number, limit: number, filters: InventoryStockBalanceFilter): Promise<{ data: InventoryStockBalance[]; total: number }> {
@@ -101,34 +53,6 @@ export class TypeOrmInventoryStockRepository implements IInventoryStockRepositor
     async saveBalance(data: Partial<InventoryStockBalance>, manager?: EntityManager): Promise<InventoryStockBalance> {
         const repo = manager ? manager.getRepository(InventoryStockBalance) : this.balanceRepo
         return await repo.save(data)
-    }
-
-    async saveMovement(data: Partial<InventoryStockMovement>, manager?: EntityManager): Promise<InventoryStockMovement> {
-        const repo = manager ? manager.getRepository(InventoryStockMovement) : this.movementRepo
-        return await repo.save(data)
-    }
-
-    async findMovements(page: number, limit: number, filters: InventoryStockMovementFilter): Promise<{ data: InventoryStockMovement[]; total: number }> {
-        const query = this.movementRepo.createQueryBuilder("movement")
-            .leftJoinAndSelect("movement.branch", "branch")
-            .leftJoinAndSelect("movement.variant", "variant")
-            .leftJoinAndSelect("variant.inventory", "inventory")
-            .leftJoinAndSelect("movement.createdBy", "createdBy")
-
-        if (filters.branchId) query.andWhere("movement.branchId = :branchId", { branchId: filters.branchId })
-        if (filters.variantId) query.andWhere("movement.variantId = :variantId", { variantId: filters.variantId })
-        if (filters.inventoryId) query.andWhere("variant.inventoryId = :inventoryId", { inventoryId: filters.inventoryId })
-        if (filters.condition) query.andWhere("movement.condition = :condition", { condition: filters.condition })
-        if (filters.type) query.andWhere("movement.type = :type", { type: filters.type })
-
-        const total = await query.getCount()
-        const data = await query
-            .orderBy("movement.id", "DESC")
-            .skip((page - 1) * limit)
-            .take(limit)
-            .getMany()
-
-        return { data, total }
     }
 
     async saveHolding(data: Partial<InventoryStockHolding>, manager?: EntityManager): Promise<InventoryStockHolding> {

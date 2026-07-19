@@ -23,13 +23,6 @@ export class InventoryStockController {
         return ApiResponse.success(c, InventoryStockSerializer.balances(balances), "Stock saved successfully")
     }
 
-    async add(c: Context) {
-        const user = c.get("user")
-        const data = c.req.valid("json" as never) as any
-        const balances = await this.service.add(data, user?.id)
-        return ApiResponse.success(c, InventoryStockSerializer.balances(balances), "Stock added successfully", 201)
-    }
-
     async index(c: Context) {
         const page = Number(c.req.query("page") || 1)
         const limit = Number(c.req.query("limit") || 20)
@@ -40,35 +33,6 @@ export class InventoryStockController {
             condition: (c.req.query("condition") as StockCondition) || undefined,
         })
         return ApiResponse.paginate(c, InventoryStockSerializer.balances(data), total, page, limit)
-    }
-
-    async transfer(c: Context) {
-        const user = c.get("user")
-        const data = c.req.valid("json" as never) as any
-        const result = await this.service.transfer(data, user?.id)
-        return ApiResponse.success(c, result, "Stock transferred successfully")
-    }
-
-    async transfers(c: Context) {
-        const page = Number(c.req.query("page") || 1)
-        const limit = Number(c.req.query("limit") || 20)
-        const inventoryId = Number(c.req.query("inventoryId"))
-        if (!inventoryId) throw new BadRequestException("inventoryId is required")
-        const { data, total } = await this.service.getTransfers(inventoryId, page, limit)
-        return ApiResponse.paginate(c, await InventoryStockSerializer.transfers(data), total, page, limit)
-    }
-
-    async movements(c: Context) {
-        const page = Number(c.req.query("page") || 1)
-        const limit = Number(c.req.query("limit") || 20)
-        const { data, total } = await this.service.getMovements(page, limit, {
-            inventoryId: c.req.query("inventoryId") ? Number(c.req.query("inventoryId")) : undefined,
-            branchId: c.req.query("branchId") ? Number(c.req.query("branchId")) : undefined,
-            variantId: c.req.query("variantId") ? Number(c.req.query("variantId")) : undefined,
-            condition: (c.req.query("condition") as StockCondition) || undefined,
-            type: c.req.query("type") || undefined,
-        })
-        return ApiResponse.paginate(c, await InventoryStockSerializer.movements(data), total, page, limit)
     }
 
     async holdings(c: Context) {

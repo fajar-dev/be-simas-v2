@@ -5,8 +5,8 @@ import { inventoryVariantService } from "../inventory-variant/inventory-variant.
 import { branchService } from "../branch/branch.module"
 import { employeeService } from "../employee/employee.module"
 import { inventoryService } from "../inventory/inventory.module"
-import { attachmentService } from "../attachment/attachment.module"
+import { inventoryLogService } from "../inventory-log/inventory-log.module"
 
 const stockRepository = new TypeOrmInventoryStockRepository()
-export const inventoryStockService = new InventoryStockService(stockRepository, inventoryVariantService, branchService, employeeService, inventoryService, attachmentService)
+export const inventoryStockService = new InventoryStockService(stockRepository, inventoryVariantService, branchService, employeeService, inventoryService, inventoryLogService)
 export const inventoryStockController = new InventoryStockController(inventoryStockService)

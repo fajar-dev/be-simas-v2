@@ -1,19 +1,17 @@
+import { EntityManager } from "typeorm"
 import { InventoryStockBalance } from "./entities/inventory-stock-balance.entity"
 import { InventoryStockHolding } from "./entities/inventory-stock-holding.entity"
 import { InventoryVariant } from "../inventory-variant/entities/inventory-variant.entity"
-import { IInventoryStockRepository, InventoryStockBalanceFilter, InventoryStockMovementFilter, InventoryStockHoldingFilter } from "./interfaces/inventory-stock.repository.interface"
-import { InventoryStockEntryValidator, InventoryStockAddValidator, InventoryStockTransferValidator, InventoryStockAssignValidator, InventoryStockReturnValidator } from "./validators/inventory-stock.validator"
+import { IInventoryStockRepository, InventoryStockBalanceFilter, InventoryStockHoldingFilter } from "./interfaces/inventory-stock.repository.interface"
+import { InventoryStockEntryValidator, InventoryStockAssignValidator, InventoryStockReturnValidator } from "./validators/inventory-stock.validator"
 import { BadRequestException } from "../../core/exceptions/base"
 import { withTransaction } from "../../core/helpers/transaction"
 import { InventoryVariantService } from "../inventory-variant/inventory-variant.service"
 import { InventoryService } from "../inventory/inventory.service"
 import { BranchService } from "../branch/branch.service"
 import { EmployeeService } from "../employee/employee.service"
-import { AttachmentService } from "../attachment/attachment.service"
+import { InventoryLogService } from "../inventory-log/inventory-log.service"
 import { STOCK_CONDITIONS, StockCondition } from "../../core/enums"
-
-const ENTITY_MOVEMENT = "InventoryStockMovement"
-const ENTITY_TRANSFER = "InventoryStockTransfer"
 
 /** Extra context passed when assign/return is driven by a handover approval. */
 export interface InventoryStockHandoverContext {
@@ -27,7 +25,7 @@ export class InventoryStockService {
         private readonly branchService: BranchService,
         private readonly employeeService: EmployeeService,
         private readonly inventoryService: InventoryService,
-        private readonly attachmentService: AttachmentService
+        private readonly inventoryLogService: InventoryLogService
     ) {}
 
     /** Variants of an item + current on-hand quantities for a branch (for the nested input form). Unit comes from the item. */
@@ -39,7 +37,34 @@ export class InventoryStockService {
         return { variants, balances, unit: item.unit }
     }
 
-    /** Set absolute new/used quantities per variant for a branch (opname-style). Records deltas as movements. */
+    /**
+     * Increase a branch/variant/condition balance by qty (upsert). Shared by
+     * every module that adds stock (stock-in, transfer destination, entry).
+     */
+    async increaseBalance(branchId: number, variantId: number, condition: StockCondition, qty: number, manager?: EntityManager): Promise<InventoryStockBalance> {
+        const existing = await this.repository.findBalance(branchId, variantId, condition, manager, !!manager)
+        const newQty = (existing?.quantity ?? 0) + qty
+        return await this.repository.saveBalance({
+            ...(existing ? { id: existing.id } : {}),
+            branchId, variantId, condition, quantity: newQty,
+        }, manager)
+    }
+
+    /**
+     * Decrease a branch/variant/condition balance by qty; throws if insufficient.
+     * Shared by every module that removes stock (transfer source, assign).
+     */
+    async decreaseBalance(branchId: number, variantId: number, condition: StockCondition, qty: number, manager?: EntityManager): Promise<InventoryStockBalance> {
+        const existing = await this.repository.findBalance(branchId, variantId, condition, manager, !!manager)
+        const available = existing?.quantity ?? 0
+        if (available < qty) {
+            const variant = await this.inventoryVariantService.getById(variantId).catch(() => null)
+            throw new BadRequestException(`Insufficient ${condition} stock for "${variant?.name || variantId}" at source branch (available: ${available})`)
+        }
+        return await this.repository.saveBalance({ id: existing!.id, quantity: available - qty }, manager)
+    }
+
+    /** Set absolute new/used quantities per variant for a branch (opname-style). */
     async entry(data: InventoryStockEntryValidator, userId?: number): Promise<InventoryStockBalance[]> {
         await this.branchService.getById(data.branchId)
         const variants = await this.inventoryVariantService.getByInventory(data.inventoryId)
@@ -50,15 +75,15 @@ export class InventoryStockService {
             }
         }
 
-        return await withTransaction(async (manager) => {
-            const updated: InventoryStockBalance[] = []
+        const updated = await withTransaction(async (manager) => {
+            const rows: InventoryStockBalance[] = []
             for (const item of data.items) {
                 for (const condition of STOCK_CONDITIONS) {
                     const target = condition === "new" ? item.new : item.used
                     const existing = await this.repository.findBalance(data.branchId, item.variantId, condition, manager, true)
                     const current = existing?.quantity ?? 0
                     if (target === current) {
-                        if (existing) updated.push(existing)
+                        if (existing) rows.push(existing)
                         continue
                     }
                     const bal = await this.repository.saveBalance({
@@ -68,164 +93,26 @@ export class InventoryStockService {
                         condition,
                         quantity: target,
                     }, manager)
-                    await this.repository.saveMovement({
-                        variantId: item.variantId,
-                        branchId: data.branchId,
-                        condition,
-                        type: "entry",
-                        quantity: target - current,
-                        balanceAfter: target,
-                        note: "Stock entry",
-                        createdByUserId: userId ?? null,
-                    }, manager)
-                    updated.push(bal)
+                    rows.push(bal)
                 }
             }
-            return updated
+
+            await this.inventoryLogService.log({
+                inventoryId: data.inventoryId,
+                module: "stock",
+                action: "entry",
+                description: `Stock entry saved for branch #${data.branchId}.`,
+                createdByUserId: userId ?? null,
+                newValue: data,
+            }, manager)
+
+            return rows
         })
-    }
-
-    /** Stock-in: ADD quantities to variants across one or more branches (increments). Optional note + attachments. */
-    async add(data: InventoryStockAddValidator, userId?: number): Promise<InventoryStockBalance[]> {
-        const variants = await this.inventoryVariantService.getByInventory(data.inventoryId)
-        const validIds = new Set(variants.map((v) => v.id))
-        const branchIds = new Set(data.items.map((i) => i.branchId))
-        for (const bid of branchIds) await this.branchService.getById(bid)
-        for (const item of data.items) {
-            if (!validIds.has(item.variantId)) {
-                throw new BadRequestException(`Variant ${item.variantId} does not belong to item ${data.inventoryId}`)
-            }
-        }
-
-        const referenceId = `IN-${Date.now()}`
-        const attachmentIds = data.attachmentIds ?? []
-
-        return await withTransaction(async (manager) => {
-            const updated: InventoryStockBalance[] = []
-            for (const item of data.items) {
-                for (const condition of STOCK_CONDITIONS) {
-                    const qty = condition === "new" ? item.new : item.used
-                    if (qty <= 0) continue
-                    const existing = await this.repository.findBalance(item.branchId, item.variantId, condition, manager, true)
-                    const newQty = (existing?.quantity ?? 0) + qty
-                    const bal = await this.repository.saveBalance({
-                        ...(existing ? { id: existing.id } : {}),
-                        branchId: item.branchId,
-                        variantId: item.variantId,
-                        condition,
-                        quantity: newQty,
-                    }, manager)
-                    const movement = await this.repository.saveMovement({
-                        variantId: item.variantId,
-                        branchId: item.branchId,
-                        condition,
-                        type: "entry",
-                        quantity: qty,
-                        balanceAfter: newQty,
-                        referenceId,
-                        note: data.note ?? "Stock in",
-                        createdByUserId: userId ?? null,
-                    }, manager)
-                    if (attachmentIds.length) {
-                        await this.attachmentService.associate(attachmentIds, ENTITY_MOVEMENT, movement.id, manager)
-                    }
-                    updated.push(bal)
-                }
-            }
-            return updated
-        })
+        return updated
     }
 
     async getBalances(page: number, limit: number, filters: InventoryStockBalanceFilter) {
         return await this.repository.findBalances(page, limit, filters)
-    }
-
-    /** Move stock between branches, preserving condition, atomic and non-negative. Persists a transfer record (history + attachments). */
-    async transfer(data: InventoryStockTransferValidator, userId?: number): Promise<{ referenceId: string; transferId: number }> {
-        if (data.fromBranchId === data.toBranchId) {
-            throw new BadRequestException("Source and destination branch must be different")
-        }
-        await this.branchService.getById(data.fromBranchId)
-        await this.branchService.getById(data.toBranchId)
-
-        // No duplicate (variant, condition) within one transfer
-        const seen = new Set<string>()
-        for (const item of data.items) {
-            const key = `${item.variantId}:${item.condition}`
-            if (seen.has(key)) throw new BadRequestException("Duplicate variant/condition in transfer")
-            seen.add(key)
-        }
-
-        const referenceId = `TRF-${Date.now()}`
-        const attachmentIds = data.attachmentIds ?? []
-        const transferId = await withTransaction(async (manager) => {
-            const transfer = await this.repository.saveTransfer({
-                fromBranchId: data.fromBranchId,
-                toBranchId: data.toBranchId,
-                note: data.note ?? null,
-                createdByUserId: userId ?? null,
-            }, manager)
-
-            for (const item of data.items) {
-                // Source: lock, check sufficiency, decrement (condition preserved)
-                const from = await this.repository.findBalance(data.fromBranchId, item.variantId, item.condition, manager, true)
-                const available = from?.quantity ?? 0
-                if (available < item.quantity) {
-                    const variant = await this.inventoryVariantService.getById(item.variantId).catch(() => null)
-                    throw new BadRequestException(`Insufficient ${item.condition} stock for "${variant?.name || item.variantId}" at source branch (available: ${available})`)
-                }
-                const newFrom = available - item.quantity
-                await this.repository.saveBalance({ id: from!.id, quantity: newFrom }, manager)
-                await this.repository.saveMovement({
-                    variantId: item.variantId, branchId: data.fromBranchId, condition: item.condition,
-                    type: "transfer_out", quantity: -item.quantity, balanceAfter: newFrom,
-                    referenceId, note: data.note ?? null, createdByUserId: userId ?? null,
-                }, manager)
-
-                // Destination: upsert, increment (same condition)
-                const to = await this.repository.findBalance(data.toBranchId, item.variantId, item.condition, manager, true)
-                const newTo = (to?.quantity ?? 0) + item.quantity
-                await this.repository.saveBalance({
-                    ...(to ? { id: to.id } : {}),
-                    branchId: data.toBranchId, variantId: item.variantId, condition: item.condition, quantity: newTo,
-                }, manager)
-                await this.repository.saveMovement({
-                    variantId: item.variantId, branchId: data.toBranchId, condition: item.condition,
-                    type: "transfer_in", quantity: item.quantity, balanceAfter: newTo,
-                    referenceId, note: data.note ?? null, createdByUserId: userId ?? null,
-                }, manager)
-
-                await this.repository.saveTransferItem({
-                    transferId: transfer.id,
-                    variantId: item.variantId,
-                    condition: item.condition,
-                    quantity: item.quantity,
-                }, manager)
-            }
-
-            if (attachmentIds.length) {
-                await this.attachmentService.associate(attachmentIds, ENTITY_TRANSFER, transfer.id, manager)
-            }
-            return transfer.id
-        })
-        return { referenceId, transferId }
-    }
-
-    /** Paginated transfer history for an inventory item, with attachments resolved. */
-    async getTransfers(inventoryId: number, page: number, limit: number) {
-        await this.inventoryService.getById(inventoryId)
-        const { data, total } = await this.repository.findTransfers(inventoryId, page, limit)
-        const withAttachments = await Promise.all(
-            data.map(async (t) => ({
-                transfer: t,
-                attachments: await this.attachmentService.getForEntity(ENTITY_TRANSFER, t.id),
-            }))
-        )
-        return { data: withAttachments, total }
-    }
-
-    async getMovements(page: number, limit: number, filters: InventoryStockMovementFilter) {
-        return await this.repository.findMovements(page, limit, filters)
     }
 
     async getHoldings(page: number, limit: number, filters: InventoryStockHoldingFilter) {
@@ -281,27 +168,17 @@ export class InventoryStockService {
         if (!employee.isActive) {
             throw new BadRequestException(`Cannot assign stock to inactive employee "${employee.name}"`)
         }
+        const variants = new Map<number, InventoryVariant>()
         for (const item of data.items) {
-            await this.inventoryVariantService.getById(item.variantId)
+            variants.set(item.variantId, await this.inventoryVariantService.getById(item.variantId))
             await this.branchService.getById(item.branchId)
         }
 
         return await withTransaction(async (manager) => {
             const holdings: InventoryStockHolding[] = []
+            const inventoryIds = new Set<number>()
             for (const item of data.items) {
-                const balance = await this.repository.findBalance(item.branchId, item.variantId, item.condition, manager, true)
-                const available = balance?.quantity ?? 0
-                if (available < item.quantity) {
-                    const variant = await this.inventoryVariantService.getById(item.variantId).catch(() => null)
-                    throw new BadRequestException(`Insufficient ${item.condition} stock for "${variant?.name || item.variantId}" at source branch (available: ${available})`)
-                }
-                const newQty = available - item.quantity
-                await this.repository.saveBalance({ id: balance!.id, quantity: newQty }, manager)
-                await this.repository.saveMovement({
-                    variantId: item.variantId, branchId: item.branchId, condition: item.condition,
-                    type: "assign_out", quantity: -item.quantity, balanceAfter: newQty,
-                    note: data.note ?? null, createdByUserId: userId ?? null,
-                }, manager)
+                await this.decreaseBalance(item.branchId, item.variantId, item.condition, item.quantity, manager)
 
                 const holding = await this.repository.saveHolding({
                     variantId: item.variantId,
@@ -316,7 +193,21 @@ export class InventoryStockService {
                     createdByUserId: userId ?? null,
                 }, manager)
                 holdings.push(holding)
+                const variant = variants.get(item.variantId)
+                if (variant?.inventoryId) inventoryIds.add(variant.inventoryId)
             }
+
+            for (const inventoryId of inventoryIds) {
+                await this.inventoryLogService.log({
+                    inventoryId,
+                    module: "stock",
+                    action: "assign",
+                    description: `Stock assigned to employee "${employee.name}".`,
+                    createdByUserId: userId ?? null,
+                    newValue: data,
+                }, manager)
+            }
+
             return holdings
         })
     }
@@ -327,13 +218,15 @@ export class InventoryStockService {
      * holds; holdings are consumed oldest-first (FIFO).
      */
     async returnStock(data: InventoryStockReturnValidator, userId?: number, ctx: InventoryStockHandoverContext = {}): Promise<void> {
-        await this.employeeService.getById(data.employeeId)
+        const employee = await this.employeeService.getById(data.employeeId)
+        const variants = new Map<number, InventoryVariant>()
         for (const item of data.items) {
-            await this.inventoryVariantService.getById(item.variantId)
+            variants.set(item.variantId, await this.inventoryVariantService.getById(item.variantId))
             await this.branchService.getById(item.branchId)
         }
 
         await withTransaction(async (manager) => {
+            const inventoryIds = new Set<number>()
             for (const item of data.items) {
                 const holdings = await this.repository.findActiveHoldings(data.employeeId, item.variantId, manager, true)
                 const remaining = holdings.reduce((sum, h) => sum + (h.quantity - h.quantityReturned), 0)
@@ -343,17 +236,7 @@ export class InventoryStockService {
                 }
 
                 // Returned stock lands in `used` at the destination branch.
-                const toBal = await this.repository.findBalance(item.branchId, item.variantId, "used", manager, true)
-                const newTo = (toBal?.quantity ?? 0) + item.quantity
-                await this.repository.saveBalance({
-                    ...(toBal ? { id: toBal.id } : {}),
-                    branchId: item.branchId, variantId: item.variantId, condition: "used", quantity: newTo,
-                }, manager)
-                await this.repository.saveMovement({
-                    variantId: item.variantId, branchId: item.branchId, condition: "used",
-                    type: "return_in", quantity: item.quantity, balanceAfter: newTo,
-                    note: data.note ?? null, createdByUserId: userId ?? null,
-                }, manager)
+                await this.increaseBalance(item.branchId, item.variantId, "used", item.quantity, manager)
 
                 // Consume the employee's holdings oldest-first.
                 let toReturn = item.quantity
@@ -372,6 +255,20 @@ export class InventoryStockService {
                     }
                     await this.repository.saveHolding(holding, manager)
                 }
+
+                const variant = variants.get(item.variantId)
+                if (variant?.inventoryId) inventoryIds.add(variant.inventoryId)
+            }
+
+            for (const inventoryId of inventoryIds) {
+                await this.inventoryLogService.log({
+                    inventoryId,
+                    module: "stock",
+                    action: "return",
+                    description: `Stock returned from employee "${employee.name}".`,
+                    createdByUserId: userId ?? null,
+                    newValue: data,
+                }, manager)
             }
         })
     }
