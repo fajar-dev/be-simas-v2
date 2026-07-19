@@ -23,7 +23,9 @@ import { CreateHandoverValidator } from "../modules/handover/validators/handover
 import { ReplaceHandoverFieldsValidator } from "../modules/handover-field/validators/handover-field.validator"
 import { CreateInventoryValidator, UpdateInventoryValidator } from "../modules/inventory/validators/inventory.validator"
 import { CreateInventoryVariantValidator, UpdateInventoryVariantValidator } from "../modules/inventory-variant/validators/inventory-variant.validator"
-import { InventoryStockEntryValidator, InventoryStockAddValidator, InventoryStockTransferValidator, InventoryStockAssignValidator, InventoryStockReturnValidator } from "../modules/inventory-stock/validators/inventory-stock.validator"
+import { InventoryStockEntryValidator, InventoryStockAssignValidator, InventoryStockReturnValidator } from "../modules/inventory-stock/validators/inventory-stock.validator"
+import { InventoryStockTransferValidator } from "../modules/inventory-stock-transfer/validators/inventory-stock-transfer.validator"
+import { InventoryStockInValidator } from "../modules/inventory-stock-in/validators/inventory-stock-in.validator"
 
 // ── Middlewares ──────────────────────────────────────────────────────────────
 import { authMiddleware } from "../core/middlewares/auth.middleware"
@@ -59,6 +61,9 @@ import { handoverFieldController } from "../modules/handover-field/handover-fiel
 import { inventoryController } from "../modules/inventory/inventory.module"
 import { inventoryVariantController } from "../modules/inventory-variant/inventory-variant.module"
 import { inventoryStockController } from "../modules/inventory-stock/inventory-stock.module"
+import { inventoryStockTransferController } from "../modules/inventory-stock-transfer/inventory-stock-transfer.module"
+import { inventoryStockInController } from "../modules/inventory-stock-in/inventory-stock-in.module"
+import { inventoryLogController } from "../modules/inventory-log/inventory-log.module"
 import { apiKeyMiddleware } from "../core/middlewares/api-key.middleware"
 
 // ── Routes ───────────────────────────────────────────────────────────────────
@@ -195,18 +200,25 @@ routes.post("/handover/:id/cancel", authMiddleware, requirePermission("handover:
 routes.get("/handover-field", authMiddleware, requirePermission("handover-field:read"), (c) => handoverFieldController.index(c))
 routes.put("/handover-field/:transactionType", authMiddleware, requirePermission("handover-field:manage"), zValidator("json", ReplaceHandoverFieldsValidator, validationHook), (c) => handoverFieldController.replace(c))
 
-// Inventory Stock (balance / entry / transfer / movement / holding)
+// Inventory Stock (balance / entry / assign / return / holding)
 // NOTE: registered before "/inventory/:id" so the static "/inventory/stock*" paths win.
 routes.get("/inventory/stock/entry-template", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockController.entryTemplate(c))
-routes.get("/inventory/stock/movement", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockController.movements(c))
 routes.get("/inventory/stock/holding", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockController.holdings(c))
-routes.get("/inventory/stock/transfer", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockController.transfers(c))
 routes.get("/inventory/stock", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockController.index(c))
 routes.post("/inventory/stock/entry", authMiddleware, requirePermission("inventory-stock:entry"), zValidator("json", InventoryStockEntryValidator, validationHook), (c) => inventoryStockController.entry(c))
-routes.post("/inventory/stock/add", authMiddleware, requirePermission("inventory-stock:entry"), zValidator("json", InventoryStockAddValidator, validationHook), (c) => inventoryStockController.add(c))
-routes.post("/inventory/stock/transfer", authMiddleware, requirePermission("inventory-stock:transfer"), zValidator("json", InventoryStockTransferValidator, validationHook), (c) => inventoryStockController.transfer(c))
 routes.post("/inventory/stock/assign", authMiddleware, requirePermission("inventory-stock:assign"), zValidator("json", InventoryStockAssignValidator, validationHook), (c) => inventoryStockController.assign(c))
 routes.post("/inventory/stock/return", authMiddleware, requirePermission("inventory-stock:return"), zValidator("json", InventoryStockReturnValidator, validationHook), (c) => inventoryStockController.returnStock(c))
+
+// Inventory Stock Transfer (own module, mirrors asset-holder/asset-status)
+routes.get("/inventory-stock-transfer", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockTransferController.index(c))
+routes.post("/inventory-stock-transfer", authMiddleware, requirePermission("inventory-stock:transfer"), zValidator("json", InventoryStockTransferValidator, validationHook), (c) => inventoryStockTransferController.store(c))
+
+// Inventory Stock In (own module, mirrors asset-holder/asset-status)
+routes.get("/inventory-stock-in", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockInController.index(c))
+routes.post("/inventory-stock-in", authMiddleware, requirePermission("inventory-stock:entry"), zValidator("json", InventoryStockInValidator, validationHook), (c) => inventoryStockInController.store(c))
+
+// Inventory Log (activity audit trail, mirrors asset-log)
+routes.get("/inventory-log", authMiddleware, requirePermission("inventory:read"), (c) => inventoryLogController.index(c))
 
 // Inventory (master item)
 routes.get("/inventory", authMiddleware, requirePermission("inventory:read"), (c) => inventoryController.index(c))
