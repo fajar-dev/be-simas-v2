@@ -9,4 +9,5 @@ export interface BookLoanFilters {
 
 export interface IBookRepository {
     findLoans(filters: BookLoanFilters): Promise<AssetHolder[]>
+    findActiveLoans(employeeId: number): Promise<AssetHolder[]>
 }

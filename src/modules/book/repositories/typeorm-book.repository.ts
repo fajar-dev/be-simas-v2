@@ -47,4 +47,21 @@ export class TypeOrmBookRepository implements IBookRepository {
 
         return await query.orderBy("ah.assignedDate", "DESC").getMany()
     }
+
+    async findActiveLoans(employeeId: number): Promise<AssetHolder[]> {
+        return await this.repository.createQueryBuilder("ah")
+            .leftJoinAndSelect("ah.asset", "asset")
+            .leftJoinAndSelect("ah.employee", "employee")
+            .leftJoinAndSelect("ah.createdBy", "createdBy")
+            .leftJoinAndSelect("ah.returnedBy", "returnedBy")
+            .leftJoinAndSelect("ah.assignHandover", "assignHandover")
+            .leftJoinAndSelect("ah.returnHandover", "returnHandover")
+            .leftJoin("asset.subCategory", "subCategory")
+            .leftJoin("subCategory.category", "category")
+            .where("category.name = :categoryName", { categoryName: BOOK_CATEGORY })
+            .andWhere("ah.employeeId = :employeeId", { employeeId })
+            .andWhere("ah.returnedDate IS NULL")
+            .orderBy("ah.assignedDate", "DESC")
+            .getMany()
+    }
 }

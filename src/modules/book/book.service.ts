@@ -127,9 +127,11 @@ export class BookService {
     }
 
     async getMyBorrowedBooks(employeeId: number) {
-        const { data } = await this.assetHolderService.getAll(1, 100, '', undefined, undefined, undefined, employeeId)
-        // Filter only active (not returned)
-        const active = data.filter(d => !d.log.returnedDate)
-        return await AssetHolderSerializer.collection(active)
+        const activeLoans = await this.bookRepository.findActiveLoans(employeeId)
+        const mapped = await Promise.all(activeLoans.map(async (log) => {
+            const attachments = await this.attachmentService.getForEntity("AssetHolder", log.id)
+            return { log, attachments }
+        }))
+        return await AssetHolderSerializer.collection(mapped)
     }
 }
