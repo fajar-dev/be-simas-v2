@@ -20,11 +20,34 @@ async function sync() {
         console.log(`[Sync] Fetched ${employees.length} employees from Nusawork`)
 
         const repo = AppDataSource.getRepository(Employee)
+        
+        // Fetch all existing employees to map by email
+        const dbEmployees = await repo.find()
+        const existingEmailsMap = new Map<string, Employee>()
+        for (const emp of dbEmployees) {
+            existingEmailsMap.set(emp.email.toLowerCase(), emp)
+        }
+
         const batchSize = 500
         let synced = 0
 
         for (let i = 0; i < employees.length; i += batchSize) {
             const batch = employees.slice(i, i + batchSize)
+            
+            // Resolve email duplicates for ID changes
+            for (const emp of batch) {
+                if (!emp.email) continue
+                const emailLower = emp.email.toLowerCase()
+                const existingWithEmail = existingEmailsMap.get(emailLower)
+                if (existingWithEmail && existingWithEmail.id !== emp.user_id) {
+                    console.log(`[Sync] Found ID change for employee email ${emp.email} (Old ID: ${existingWithEmail.id}, New ID: ${emp.user_id}). Suffixing old record.`)
+                    existingWithEmail.email = `${existingWithEmail.email}_old_${existingWithEmail.id}`
+                    existingWithEmail.isActive = false
+                    await repo.save(existingWithEmail)
+                    existingEmailsMap.delete(emailLower)
+                }
+            }
+
             const entities = batch.map(emp => {
                 return repo.create({
                     id: emp.user_id,
@@ -38,9 +61,21 @@ async function sync() {
                 })
             })
 
-            await repo.upsert(entities, ["id"])
+            await repo.save(entities)
             synced += entities.length
-            console.log(`[Sync] Batch ${Math.floor(i / batchSize) + 1}: upserted ${entities.length} employees`)
+            console.log(`[Sync] Batch ${Math.floor(i / batchSize) + 1}: saved ${entities.length} employees`)
+        }
+
+        // Deactivate employees not in Nusawork response
+        const nusaworkIds = new Set(employees.map(emp => emp.user_id))
+        const latestDbEmployees = await repo.find()
+        const missingEmployees = latestDbEmployees.filter(emp => !nusaworkIds.has(emp.id) && emp.isActive)
+        if (missingEmployees.length > 0) {
+            for (const emp of missingEmployees) {
+                emp.isActive = false
+            }
+            await repo.save(missingEmployees)
+            console.log(`[Sync] Marked ${missingEmployees.length} missing/resigned employees as inactive.`)
         }
 
         const duration = ((Date.now() - startTime) / 1000).toFixed(2)

@@ -6,7 +6,7 @@
     "start": "bun dist/index.js",
     "test": "bun test --timeout 30000",
     "seed:permissions": "bun run src/seeds/seed-permissions.ts",
-    "sync:employee": "bun run src/jobs/sync-employees.job.ts",
+    "sync:employee": "bun run src/jobs/sync-employee.job.ts",
     "sync:user": "bun run src/jobs/sync-user.job.ts",
     "sync:branch": "bun run src/jobs/sync-branch.job.ts"
   },
@@ -18,7 +18,7 @@
     "axios": "^1.18.1",
     "bcryptjs": "^3.0.3",
     "exceljs": "^4.4.0",
-    "google-auth-library": "^10.7.0",
+    "google-auth-library": "^10.7.0", 
     "hono": "^4.12.8",
     "minio": "^8.0.7",
     "mysql2": "^3.20.0",
