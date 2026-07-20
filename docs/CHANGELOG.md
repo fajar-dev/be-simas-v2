@@ -31,6 +31,9 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Guard perubahan status aset**: menolak ubah status (single & bulk) bila aset masih **dipegang via handover** atau sedang dalam **pending handover** — menjaga konsistensi lifecycle handover. Bulk menolak seluruh batch bila ada satu yang terkunci.
 - Test E2E return handover + guard status (`test/handover.test.ts`).
 
+### Fixed
+- **`getMyBorrowedBooks` filter buku aktif di level query, bukan in-memory**: sebelumnya mengambil 100 baris via `assetHolderService.getAll` lalu memfilter `!returnedDate` di JS (bisa salah/kepotong bila peminjaman aktif > 100). Kini `BookRepository.findActiveLoans(employeeId)` query langsung `category = Buku AND employeeId AND returnedDate IS NULL`.
+
 ### Changed
 - **Refactor relasi/key `product` → `inventory`** (mengikuti entity `Inventory`): `inventory_variants.product_id` → **`inventory_id`**, property `productId` → `inventoryId`, relasi `product` → `inventory`; method `getByProduct`/`findByProduct` → `getByInventory`/`findByInventory`; query param & payload `productId` → `inventoryId` (variant, stock entry, filter monitoring); serializer/PDF/handover membaca `variant.inventory`. Swagger + test ikut disesuaikan.
 - **Rename modul `AssetHandover` → `Handover`** (generik, untuk reuse modul stok — stok & serah terima berbagi satu dokumen): folder `src/modules/handover`, tabel `handovers` & `handover_items`, endpoint `/handover*`, permission `handover:*`, entity-type attachment `"Handover"`.
