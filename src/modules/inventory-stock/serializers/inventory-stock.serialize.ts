@@ -1,12 +1,13 @@
 import { InventoryStockBalance } from "../entities/inventory-stock-balance.entity"
-import { InventoryStockHolding } from "../entities/inventory-stock-holding.entity"
+import { InventoryStockOut } from "../entities/inventory-stock-out.entity"
 import { InventoryVariant } from "../../inventory-variant/entities/inventory-variant.entity"
 
 export class InventoryStockSerializer {
 
-    static holding(h: InventoryStockHolding) {
+    static stockOut(h: InventoryStockOut) {
         return {
             id: h.id,
+            type: h.type,
             conditionAssigned: h.conditionAssigned,
             quantity: h.quantity,
             quantityReturned: h.quantityReturned,
@@ -29,8 +30,8 @@ export class InventoryStockSerializer {
         }
     }
 
-    static holdings(items: InventoryStockHolding[]) {
-        return items.map((h) => this.holding(h))
+    static stockOuts(items: InventoryStockOut[]) {
+        return items.map((h) => this.stockOut(h))
     }
     static balance(balance: InventoryStockBalance) {
         return {

@@ -23,7 +23,7 @@ import { Inventory } from "../modules/inventory/entities/inventory.entity"
 import { InventoryLabel } from "../modules/inventory/entities/inventory-label.entity"
 import { InventoryVariant } from "../modules/inventory-variant/entities/inventory-variant.entity"
 import { InventoryStockBalance } from "../modules/inventory-stock/entities/inventory-stock-balance.entity"
-import { InventoryStockHolding } from "../modules/inventory-stock/entities/inventory-stock-holding.entity"
+import { InventoryStockOut } from "../modules/inventory-stock/entities/inventory-stock-out.entity"
 import { InventoryStockTransfer } from "../modules/inventory-stock-transfer/entities/inventory-stock-transfer.entity"
 import { InventoryStockTransferItem } from "../modules/inventory-stock-transfer/entities/inventory-stock-transfer-item.entity"
 import { InventoryStockIn } from "../modules/inventory-stock-in/entities/inventory-stock-in.entity"
@@ -49,7 +49,7 @@ const defaultDataSource = new DataSource({
     password: config.database.pass,
     database: config.database.name,
     synchronize: config.database.sync,
-    entities: [User, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetNote, AssetLocation, AssetHolder, AssetLog, AssetStatus, Handover, HandoverItem, HandoverStockItem, HandoverField, Inventory, InventoryLabel, InventoryVariant, InventoryStockBalance, InventoryStockHolding, InventoryStockTransfer, InventoryStockTransferItem, InventoryStockIn, InventoryStockInItem, InventoryLog, Role, Permission, PasswordResetToken],
+    entities: [User, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetNote, AssetLocation, AssetHolder, AssetLog, AssetStatus, Handover, HandoverItem, HandoverStockItem, HandoverField, Inventory, InventoryLabel, InventoryVariant, InventoryStockBalance, InventoryStockOut, InventoryStockTransfer, InventoryStockTransferItem, InventoryStockIn, InventoryStockInItem, InventoryLog, Role, Permission, PasswordResetToken],
     migrations: [],
     subscribers: [],
 })

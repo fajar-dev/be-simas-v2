@@ -203,7 +203,7 @@ routes.put("/handover-field/:transactionType", authMiddleware, requirePermission
 // Inventory Stock (balance / entry / assign / return / holding)
 // NOTE: registered before "/inventory/:id" so the static "/inventory/stock*" paths win.
 routes.get("/inventory/stock/entry-template", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockController.entryTemplate(c))
-routes.get("/inventory/stock/holding", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockController.holdings(c))
+routes.get("/inventory/stock/out", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockController.stockOuts(c))
 routes.get("/inventory/stock", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockController.index(c))
 routes.post("/inventory/stock/entry", authMiddleware, requirePermission("inventory-stock:entry"), zValidator("json", InventoryStockEntryValidator, validationHook), (c) => inventoryStockController.entry(c))
 routes.post("/inventory/stock/assign", authMiddleware, requirePermission("inventory-stock:assign"), zValidator("json", InventoryStockAssignValidator, validationHook), (c) => inventoryStockController.assign(c))
