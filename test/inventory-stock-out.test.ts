@@ -76,7 +76,7 @@ describe("Inventory Stock Out API", () => {
         expect((await request(app, "/api/inventory-stock-out", { method: "POST", body: {} })).status).toBe(401)
     })
 
-    test("assign to employee reduces branch stock and creates a returnable stock-out", async () => {
+    test("assign to employee reduces branch stock and creates one document with a returnable line item", async () => {
         await setStock(branchA, [{ variantId: variant1, new: 10, used: 0 }])
         const employeeId = await createEmployee()
 
@@ -85,12 +85,15 @@ describe("Inventory Stock Out API", () => {
             body: { type: "employee", employeeId, items: [{ variantId: variant1, branchId: branchA, condition: "new", quantity: 4 }] },
         })
         expect(res.status).toBe(201)
+        expect(res.body.data).toMatchObject({ type: "employee", employee: { id: employeeId } })
+        expect(res.body.data.items.length).toBe(1)
+        expect(res.body.data.items[0]).toMatchObject({ quantity: 4, quantityReturned: 0, quantityRemaining: 4, conditionAssigned: "new" })
 
         expect(await qtyAt(branchA, variant1, "new")).toBe(6) // 10 - 4
 
         const stockOuts = await request(app, `/api/inventory-stock-out?employeeId=${employeeId}&active=true`, { headers: authHeaders })
         expect(stockOuts.body.data.length).toBe(1)
-        expect(stockOuts.body.data[0]).toMatchObject({ type: "employee", quantity: 4, quantityReturned: 0, quantityRemaining: 4, conditionAssigned: "new" })
+        expect(stockOuts.body.data[0].items[0]).toMatchObject({ quantity: 4, quantityReturned: 0, quantityRemaining: 4 })
     })
 
     test("assign rejects when branch stock is insufficient (no negative)", async () => {
@@ -121,7 +124,7 @@ describe("Inventory Stock Out API", () => {
         expect(extra.status).toBe(422)
     })
 
-    test("assign with type other reduces branch stock and creates a one-way, already-resolved stock-out", async () => {
+    test("assign with type other reduces branch stock and creates a one-way, already-resolved line item", async () => {
         await setStock(branchA, [{ variantId: variant1, new: 10, used: 0 }])
 
         const res = await request(app, "/api/inventory-stock-out", {
@@ -129,15 +132,38 @@ describe("Inventory Stock Out API", () => {
             body: { type: "other", note: "Consumed for cabling job", items: [{ variantId: variant1, branchId: branchA, condition: "new", quantity: 4 }] },
         })
         expect(res.status).toBe(201)
-        expect(res.body.data[0]).toMatchObject({ type: "other", quantity: 4, quantityReturned: 4, quantityRemaining: 0 })
-        expect(res.body.data[0].employee).toBeNull()
-        expect(res.body.data[0].returnedDate).toBeTruthy()
+        expect(res.body.data.type).toBe("other")
+        expect(res.body.data.employee).toBeNull()
+        expect(res.body.data.items[0]).toMatchObject({ quantity: 4, quantityReturned: 4, quantityRemaining: 0 })
+        expect(res.body.data.items[0].returnedDate).toBeTruthy()
 
         expect(await qtyAt(branchA, variant1, "new")).toBe(6) // 10 - 4
 
-        // "Other"-type rows always surface under active=true (never stale) despite quantityRemaining being 0.
+        // "Other"-type documents always surface under active=true (never stale) despite quantityRemaining being 0.
         const stockOuts = await request(app, `/api/inventory-stock-out?branchId=${branchA}&active=true`, { headers: authHeaders })
-        expect(stockOuts.body.data.some((s: any) => s.type === "other" && s.quantity === 4)).toBe(true)
+        expect(stockOuts.body.data.some((s: any) => s.type === "other" && s.items[0].quantity === 4)).toBe(true)
+    })
+
+    test("multi-item assign groups everything into one document, like a stock-in document", async () => {
+        await setStock(branchA, [{ variantId: variant1, new: 10, used: 0 }, { variantId: variant2, new: 10, used: 0 }])
+        const employeeId = await createEmployee()
+
+        const res = await request(app, "/api/inventory-stock-out", {
+            method: "POST", headers: authHeaders,
+            body: {
+                type: "employee", employeeId,
+                items: [
+                    { variantId: variant1, branchId: branchA, condition: "new", quantity: 2 },
+                    { variantId: variant2, branchId: branchA, condition: "new", quantity: 3 },
+                ],
+            },
+        })
+        expect(res.status).toBe(201)
+        expect(res.body.data.items.length).toBe(2)
+
+        const stockOuts = await request(app, `/api/inventory-stock-out?employeeId=${employeeId}`, { headers: authHeaders })
+        expect(stockOuts.body.data.length).toBe(1) // one document, not two
+        expect(stockOuts.body.data[0].items.length).toBe(2)
     })
 
     test("return lands in USED even when assigned from NEW; branch used increases", async () => {
@@ -158,10 +184,10 @@ describe("Inventory Stock Out API", () => {
         expect(await qtyAt(branchA, variant1, "new")).toBe(6) // new not credited back
 
         const stockOuts = await request(app, `/api/inventory-stock-out?employeeId=${employeeId}`, { headers: authHeaders })
-        expect(stockOuts.body.data[0]).toMatchObject({ quantity: 4, quantityReturned: 3, quantityRemaining: 1 })
+        expect(stockOuts.body.data[0].items[0]).toMatchObject({ quantity: 4, quantityReturned: 3, quantityRemaining: 1 })
     })
 
-    test("assign with attachmentIds and multiple items: every resulting row shows the attachment", async () => {
+    test("assign with attachmentIds: the document shows the attachment", async () => {
         await setStock(branchA, [{ variantId: variant1, new: 10, used: 0 }, { variantId: variant2, new: 10, used: 0 }])
         const employeeId = await createEmployee()
 
@@ -185,11 +211,9 @@ describe("Inventory Stock Out API", () => {
             },
         })
         expect(res.status).toBe(201)
-        expect(res.body.data.length).toBe(2)
-        for (const row of res.body.data) {
-            expect(row.attachments.length).toBe(1)
-            expect(row.attachments[0].originalName).toBe("evidence.txt")
-        }
+        expect(res.body.data.items.length).toBe(2)
+        expect(res.body.data.attachments.length).toBe(1)
+        expect(res.body.data.attachments[0].originalName).toBe("evidence.txt")
     })
 
     test("return cannot exceed what the employee holds", async () => {
