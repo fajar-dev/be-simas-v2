@@ -147,21 +147,21 @@ describe("Inventory API", () => {
     })
 
     // ── Assign / Return ─────────────────────────────────────────────────────────
-    test("assign reduces branch stock and creates a holding", async () => {
+    test("assign to employee reduces branch stock and creates a returnable stock-out", async () => {
         await setStock(branchA, [{ variantId: variant1, new: 10, used: 0 }])
         const employeeId = await createEmployee()
 
         const res = await request(app, "/api/inventory/stock/assign", {
             method: "POST", headers: authHeaders,
-            body: { employeeId, items: [{ variantId: variant1, branchId: branchA, condition: "new", quantity: 4 }] },
+            body: { type: "employee", employeeId, items: [{ variantId: variant1, branchId: branchA, condition: "new", quantity: 4 }] },
         })
         expect(res.status).toBe(201)
 
         expect(await qtyAt(branchA, variant1, "new")).toBe(6) // 10 - 4
 
-        const holdings = await request(app, `/api/inventory/stock/holding?employeeId=${employeeId}&active=true`, { headers: authHeaders })
-        expect(holdings.body.data.length).toBe(1)
-        expect(holdings.body.data[0]).toMatchObject({ quantity: 4, quantityReturned: 0, quantityRemaining: 4, conditionAssigned: "new" })
+        const stockOuts = await request(app, `/api/inventory/stock/out?employeeId=${employeeId}&active=true`, { headers: authHeaders })
+        expect(stockOuts.body.data.length).toBe(1)
+        expect(stockOuts.body.data[0]).toMatchObject({ type: "employee", quantity: 4, quantityReturned: 0, quantityRemaining: 4, conditionAssigned: "new" })
     })
 
     test("assign rejects when branch stock is insufficient (no negative)", async () => {
@@ -169,10 +169,46 @@ describe("Inventory API", () => {
         const employeeId = await createEmployee()
         const res = await request(app, "/api/inventory/stock/assign", {
             method: "POST", headers: authHeaders,
-            body: { employeeId, items: [{ variantId: variant1, branchId: branchA, condition: "new", quantity: 5 }] },
+            body: { type: "employee", employeeId, items: [{ variantId: variant1, branchId: branchA, condition: "new", quantity: 5 }] },
         })
         expect(res.status).toBe(400)
         expect(await qtyAt(branchA, variant1, "new")).toBe(2) // unchanged
+    })
+
+    test("assign rejects employeeId when type is employee but missing, or when type is other but provided", async () => {
+        await setStock(branchA, [{ variantId: variant1, new: 10, used: 0 }])
+        const employeeId = await createEmployee()
+
+        const missing = await request(app, "/api/inventory/stock/assign", {
+            method: "POST", headers: authHeaders,
+            body: { type: "employee", items: [{ variantId: variant1, branchId: branchA, condition: "new", quantity: 1 }] },
+        })
+        expect(missing.status).toBe(422)
+
+        const extra = await request(app, "/api/inventory/stock/assign", {
+            method: "POST", headers: authHeaders,
+            body: { type: "other", employeeId, items: [{ variantId: variant1, branchId: branchA, condition: "new", quantity: 1 }] },
+        })
+        expect(extra.status).toBe(422)
+    })
+
+    test("assign with type other reduces branch stock and creates a one-way, already-resolved stock-out", async () => {
+        await setStock(branchA, [{ variantId: variant1, new: 10, used: 0 }])
+
+        const res = await request(app, "/api/inventory/stock/assign", {
+            method: "POST", headers: authHeaders,
+            body: { type: "other", note: "Consumed for cabling job", items: [{ variantId: variant1, branchId: branchA, condition: "new", quantity: 4 }] },
+        })
+        expect(res.status).toBe(201)
+        expect(res.body.data[0]).toMatchObject({ type: "other", quantity: 4, quantityReturned: 4, quantityRemaining: 0 })
+        expect(res.body.data[0].employee).toBeNull()
+        expect(res.body.data[0].returnedDate).toBeTruthy()
+
+        expect(await qtyAt(branchA, variant1, "new")).toBe(6) // 10 - 4
+
+        // "Other"-type rows always surface under active=true (never stale) despite quantityRemaining being 0.
+        const stockOuts = await request(app, `/api/inventory/stock/out?branchId=${branchA}&active=true`, { headers: authHeaders })
+        expect(stockOuts.body.data.some((s: any) => s.type === "other" && s.quantity === 4)).toBe(true)
     })
 
     test("return lands in USED even when assigned from NEW; branch used increases", async () => {
@@ -180,7 +216,7 @@ describe("Inventory API", () => {
         const employeeId = await createEmployee()
         await request(app, "/api/inventory/stock/assign", {
             method: "POST", headers: authHeaders,
-            body: { employeeId, items: [{ variantId: variant1, branchId: branchA, condition: "new", quantity: 4 }] },
+            body: { type: "employee", employeeId, items: [{ variantId: variant1, branchId: branchA, condition: "new", quantity: 4 }] },
         })
 
         const res = await request(app, "/api/inventory/stock/return", {
@@ -192,8 +228,8 @@ describe("Inventory API", () => {
         expect(await qtyAt(branchA, variant1, "used")).toBe(3) // returned into used
         expect(await qtyAt(branchA, variant1, "new")).toBe(6) // new not credited back
 
-        const holdings = await request(app, `/api/inventory/stock/holding?employeeId=${employeeId}`, { headers: authHeaders })
-        expect(holdings.body.data[0]).toMatchObject({ quantity: 4, quantityReturned: 3, quantityRemaining: 1 })
+        const stockOuts = await request(app, `/api/inventory/stock/out?employeeId=${employeeId}`, { headers: authHeaders })
+        expect(stockOuts.body.data[0]).toMatchObject({ quantity: 4, quantityReturned: 3, quantityRemaining: 1 })
     })
 
     test("return cannot exceed what the employee holds", async () => {
@@ -201,7 +237,7 @@ describe("Inventory API", () => {
         const employeeId = await createEmployee()
         await request(app, "/api/inventory/stock/assign", {
             method: "POST", headers: authHeaders,
-            body: { employeeId, items: [{ variantId: variant1, branchId: branchA, condition: "new", quantity: 2 }] },
+            body: { type: "employee", employeeId, items: [{ variantId: variant1, branchId: branchA, condition: "new", quantity: 2 }] },
         })
         const res = await request(app, "/api/inventory/stock/return", {
             method: "POST", headers: authHeaders,

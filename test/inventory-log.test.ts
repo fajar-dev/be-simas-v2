@@ -115,7 +115,7 @@ describe("Inventory Log API", () => {
         const employeeId = emp.body.data.id
         await request(app, "/api/inventory/stock/assign", {
             method: "POST", headers: authHeaders,
-            body: { employeeId, items: [{ variantId: variant1, branchId: branchA, condition: "new", quantity: 3 }] },
+            body: { type: "employee", employeeId, items: [{ variantId: variant1, branchId: branchA, condition: "new", quantity: 3 }] },
         })
         await request(app, "/api/inventory/stock/return", {
             method: "POST", headers: authHeaders,

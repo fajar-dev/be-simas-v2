@@ -1014,15 +1014,16 @@ components:
             photo: { type: string, nullable: true, example: "users/avatar.png" }
             email: { type: string, example: "admin@example.com" }
 
-    InventoryStockHoldingResponse:
+    InventoryStockOutResponse:
       type: object
-      description: "Quantity of a stock variant currently held by an employee."
+      description: "Stock that has left a branch — either to an employee (type: employee, returnable) or a one-way destination (type: other, e.g. consumed/disposed/sold)."
       properties:
         id: { type: integer, example: 1 }
+        type: { type: string, enum: [employee, other] }
         conditionAssigned: { type: string, enum: [new, used] }
         quantity: { type: integer, example: 4, description: "Total assigned." }
         quantityReturned: { type: integer, example: 1 }
-        quantityRemaining: { type: integer, example: 3, description: "Still held (quantity - quantityReturned)." }
+        quantityRemaining: { type: integer, example: 3, description: "Still held (quantity - quantityReturned). Always 0 for type: other." }
         assignedDate: { type: string }
         returnedDate: { type: string, nullable: true }
         assignNote: { type: string, nullable: true }
@@ -4614,10 +4615,10 @@ paths:
         "403": { description: Forbidden - missing inventory-stock:entry }
         "422": { description: Validation error }
 
-  /inventory/stock/holding:
+  /inventory/stock/out:
     get:
       tags: [Inventory]
-      summary: List stock holdings (who holds how much, paginated)
+      summary: List stock-outs (who/where stock has gone, paginated)
       security:
         - bearerAuth: []
       parameters:
@@ -4627,10 +4628,10 @@ paths:
         - { name: variantId, in: query, required: false, schema: { type: integer } }
         - { name: employeeId, in: query, required: false, schema: { type: integer } }
         - { name: branchId, in: query, required: false, schema: { type: integer } }
-        - { name: active, in: query, required: false, schema: { type: boolean }, description: "Only holdings with a remaining quantity." }
+        - { name: active, in: query, required: false, schema: { type: boolean }, description: "Only rows still in play: employee-type with a remaining quantity, or any other-type row (always shown)." }
       responses:
         "200":
-          description: Stock holdings retrieved successfully
+          description: Stock-outs retrieved successfully
           content:
             application/json:
               schema:
@@ -4638,15 +4639,15 @@ paths:
                   - $ref: "#/components/schemas/BaseResponse"
                   - type: object
                     properties:
-                      data: { type: array, items: { $ref: "#/components/schemas/InventoryStockHoldingResponse" } }
+                      data: { type: array, items: { $ref: "#/components/schemas/InventoryStockOutResponse" } }
                       meta: { $ref: "#/components/schemas/PaginationMeta" }
         "401": { description: Unauthorized }
 
   /inventory/stock/assign:
     post:
       tags: [Inventory]
-      summary: Assign stock from a branch to an employee (manual)
-      description: Reduces the branch's on-hand quantity for the chosen condition (never negative) and records a holding. Also reused by handover approval.
+      summary: Take stock out of a branch, to an employee or elsewhere (manual)
+      description: Reduces the branch's on-hand quantity for the chosen condition (never negative) and records a stock-out. `type: employee` requires `employeeId` and is returnable; `type: other` (consumed/disposed/sold/etc.) must omit `employeeId` and is a one-way exit. Also reused by handover approval (always `type: employee`).
       security:
         - bearerAuth: []
       requestBody:
@@ -4655,9 +4656,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [employeeId, items]
+              required: [type, items]
               properties:
-                employeeId: { type: integer, example: 1 }
+                type: { type: string, enum: [employee, other] }
+                employeeId: { type: integer, nullable: true, example: 1, description: "Required when type is employee; must be omitted when type is other." }
                 note: { type: string, nullable: true }
                 items:
                   type: array
@@ -4680,7 +4682,7 @@ paths:
                   - $ref: "#/components/schemas/BaseResponse"
                   - type: object
                     properties:
-                      data: { type: array, items: { $ref: "#/components/schemas/InventoryStockHoldingResponse" } }
+                      data: { type: array, items: { $ref: "#/components/schemas/InventoryStockOutResponse" } }
         "400": { description: Inactive employee, invalid branch/variant, or insufficient stock }
         "401": { description: Unauthorized }
         "403": { description: Forbidden - missing inventory-stock:assign }
