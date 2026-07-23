@@ -1016,10 +1016,10 @@ components:
 
     InventoryStockOutResponse:
       type: object
-      description: "A stock-out document — the header for one 'take stock out' action, grouping its line items (mirrors InventoryStockInResponse). Either goes to an employee (type: employee, its items are individually returnable) or a one-way destination (type: other, e.g. consumed/disposed/sold — its items are marked fully resolved at creation)."
+      description: "A stock-out document — the header for one 'take stock out' action, grouping its line items (mirrors InventoryStockInResponse). Either goes to an employee (isEmployee: true, its items are individually returnable) or a one-way destination (isEmployee: false, e.g. consumed/disposed/sold — its items are marked fully resolved at creation)."
       properties:
         id: { type: integer, example: 1 }
-        type: { type: string, enum: [employee, other] }
+        isEmployee: { type: boolean }
         assignedDate: { type: string }
         assignNote: { type: string, nullable: true }
         assignHandoverId: { type: integer, nullable: true }
@@ -4646,7 +4646,7 @@ paths:
         - { name: variantId, in: query, required: false, schema: { type: integer } }
         - { name: employeeId, in: query, required: false, schema: { type: integer } }
         - { name: branchId, in: query, required: false, schema: { type: integer } }
-        - { name: active, in: query, required: false, schema: { type: boolean }, description: "Only documents still in play: type employee with at least one item having a remaining quantity, or any type other document (always shown)." }
+        - { name: active, in: query, required: false, schema: { type: boolean }, description: "Only documents still in play: isEmployee true with at least one item having a remaining quantity, or any isEmployee false document (always shown)." }
       responses:
         "200":
           description: Stock-outs retrieved successfully
@@ -4663,7 +4663,7 @@ paths:
     post:
       tags: [Inventory Stock Out]
       summary: Take stock out of a branch, to an employee or elsewhere (manual)
-      description: Reduces the branch's on-hand quantity for each item's chosen condition (never negative) and records one stock-out document with a line item per input item — mirrors POST /inventory-stock-in. `type: employee` requires `employeeId` and its items are individually returnable; `type: other` (consumed/disposed/sold/etc.) must omit `employeeId` and its items are one-way exits. Also reused by handover approval (always `type: employee`).
+      description: Reduces the branch's on-hand quantity for each item's chosen condition (never negative) and records one stock-out document with a line item per input item — mirrors POST /inventory-stock-in. `isEmployee: true` requires `employeeId` and its items are individually returnable; `isEmployee: false` (consumed/disposed/sold/etc.) must omit `employeeId` and its items are one-way exits. Also reused by handover approval (always `isEmployee: true`).
       security:
         - bearerAuth: []
       requestBody:
@@ -4672,10 +4672,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [type, items]
+              required: [isEmployee, items]
               properties:
-                type: { type: string, enum: [employee, other] }
-                employeeId: { type: integer, nullable: true, example: 1, description: "Required when type is employee; must be omitted when type is other." }
+                isEmployee: { type: boolean }
+                employeeId: { type: integer, nullable: true, example: 1, description: "Required when isEmployee is true; must be omitted when isEmployee is false." }
                 note: { type: string, nullable: true }
                 attachmentIds:
                   type: array
