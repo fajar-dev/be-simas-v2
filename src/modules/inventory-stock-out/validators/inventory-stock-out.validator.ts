@@ -10,6 +10,7 @@ export const InventoryStockAssignValidator = z.object({
     type: z.enum(STOCK_OUT_TYPES),
     employeeId: z.number().optional().nullable(),
     note: z.string().trim().optional().nullable(),
+    attachmentIds: z.array(z.number()).optional(),
     items: z.array(z.object({
         variantId: z.number("Variant ID is required"),
         branchId: z.number("Branch ID is required"),

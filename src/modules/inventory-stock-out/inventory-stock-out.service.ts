@@ -9,6 +9,10 @@ import { InventoryVariantService } from "../inventory-variant/inventory-variant.
 import { BranchService } from "../branch/branch.service"
 import { EmployeeService } from "../employee/employee.service"
 import { InventoryLogService } from "../inventory-log/inventory-log.service"
+import { AttachmentService } from "../attachment/attachment.service"
+import { Attachment } from "../attachment/entities/attachment.entity"
+
+const ENTITY_STOCK_OUT = "InventoryStockOut"
 
 /** Extra context passed when assign/return is driven by a handover approval. */
 export interface InventoryStockOutHandoverContext {
@@ -22,11 +26,17 @@ export class InventoryStockOutService {
         private readonly inventoryVariantService: InventoryVariantService,
         private readonly branchService: BranchService,
         private readonly employeeService: EmployeeService,
-        private readonly inventoryLogService: InventoryLogService
+        private readonly inventoryLogService: InventoryLogService,
+        private readonly attachmentService: AttachmentService
     ) {}
 
-    async getStockOuts(page: number, limit: number, filters: InventoryStockOutFilter) {
-        return await this.repository.findStockOuts(page, limit, filters)
+    async getStockOuts(page: number, limit: number, filters: InventoryStockOutFilter): Promise<{ data: { stockOut: InventoryStockOut; attachments: Attachment[] }[]; total: number }> {
+        const { data, total } = await this.repository.findStockOuts(page, limit, filters)
+        const mapped = await Promise.all(data.map(async (stockOut) => ({
+            stockOut,
+            attachments: await this.attachmentService.getForEntity(ENTITY_STOCK_OUT, stockOut.id),
+        })))
+        return { data: mapped, total }
     }
 
     /** Total quantity an employee still holds (not yet returned) for a variant. */
@@ -70,7 +80,7 @@ export class InventoryStockOutService {
      * sold, etc.) with no employee, marked fully resolved at creation.
      * Reused by the manual endpoint and by handover approval (always "employee").
      */
-    async assign(data: InventoryStockAssignValidator, userId?: number, ctx: InventoryStockOutHandoverContext = {}): Promise<InventoryStockOut[]> {
+    async assign(data: InventoryStockAssignValidator, userId?: number, ctx: InventoryStockOutHandoverContext = {}): Promise<{ stockOut: InventoryStockOut; attachments: Attachment[] }[]> {
         const employee = data.type === "employee" ? await this.employeeService.getById(data.employeeId!) : null
         if (employee && !employee.isActive) {
             throw new BadRequestException(`Cannot assign stock to inactive employee "${employee.name}"`)
@@ -81,7 +91,9 @@ export class InventoryStockOutService {
             await this.branchService.getById(item.branchId)
         }
 
-        return await withTransaction(async (manager) => {
+        const attachmentIds = data.attachmentIds ?? []
+
+        const stockOuts = await withTransaction(async (manager) => {
             const stockOuts: InventoryStockOut[] = []
             const inventoryIds = new Set<number>()
             const now = new Date().toISOString()
@@ -105,6 +117,17 @@ export class InventoryStockOutService {
                 stockOuts.push(stockOut)
                 const variant = variants.get(item.variantId)
                 if (variant?.inventoryId) inventoryIds.add(variant.inventoryId)
+
+                // One assign can produce several independent rows; the first takes
+                // ownership of the uploaded attachment, the rest get their own copy
+                // of the metadata (same underlying file) so every row shows it.
+                if (attachmentIds.length > 0) {
+                    if (stockOuts.length === 1) {
+                        await this.attachmentService.associate(attachmentIds, ENTITY_STOCK_OUT, stockOut.id, manager)
+                    } else {
+                        await this.attachmentService.duplicate(attachmentIds, ENTITY_STOCK_OUT, stockOut.id, manager)
+                    }
+                }
             }
 
             const description = employee
@@ -123,6 +146,11 @@ export class InventoryStockOutService {
 
             return stockOuts
         })
+
+        return await Promise.all(stockOuts.map(async (stockOut) => ({
+            stockOut,
+            attachments: await this.attachmentService.getForEntity(ENTITY_STOCK_OUT, stockOut.id),
+        })))
     }
 
     /**

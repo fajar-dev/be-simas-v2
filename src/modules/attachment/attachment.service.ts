@@ -98,6 +98,28 @@ export class AttachmentService {
         }
     }
 
+    /**
+     * Clone attachment metadata rows (same file in storage, new DB row) onto another
+     * entity. Unlike `associate`, which reassigns the same row (single owner), this
+     * lets one uploaded file be shown against several entities created from one
+     * action (e.g. a multi-item stock-out producing several independent records).
+     */
+    async duplicate(ids: number[], entityType: string, entityId: number, manager?: EntityManager): Promise<void> {
+        if (!ids || ids.length === 0) return
+
+        const attachments = await this.repository.findManyByIds(ids)
+        for (const attachment of attachments) {
+            await this.repository.save({
+                originalName: attachment.originalName,
+                filename: attachment.filename,
+                mimeType: attachment.mimeType,
+                size: attachment.size,
+                entityType,
+                entityId,
+            }, manager)
+        }
+    }
+
     async getForEntity(entityType: string, entityId: number): Promise<Attachment[]> {
         return await this.repository.findByEntity(entityType, entityId)
     }

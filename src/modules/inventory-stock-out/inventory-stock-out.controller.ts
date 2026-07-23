@@ -16,14 +16,14 @@ export class InventoryStockOutController {
             branchId: c.req.query("branchId") ? Number(c.req.query("branchId")) : undefined,
             active: c.req.query("active") === "true" ? true : undefined,
         })
-        return ApiResponse.paginate(c, InventoryStockOutSerializer.collection(data), total, page, limit)
+        return ApiResponse.paginate(c, await InventoryStockOutSerializer.collection(data), total, page, limit)
     }
 
     async assign(c: Context) {
         const user = c.get("user")
         const data = c.req.valid("json" as never) as any
         const stockOuts = await this.service.assign(data, user?.id)
-        return ApiResponse.success(c, InventoryStockOutSerializer.collection(stockOuts), "Stock assigned successfully", 201)
+        return ApiResponse.success(c, await InventoryStockOutSerializer.collection(stockOuts), "Stock assigned successfully", 201)
     }
 
     async returnStock(c: Context) {
