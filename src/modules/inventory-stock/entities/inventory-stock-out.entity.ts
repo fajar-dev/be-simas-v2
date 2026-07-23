@@ -14,16 +14,18 @@ import { Branch } from "../../branch/entities/branch.entity"
 import { Employee } from "../../employee/entities/employee.entity"
 import { User } from "../../user/entities/user.entity"
 import { Handover } from "../../handover/entities/handover.entity"
-import type { StockCondition } from "../../../core/enums"
+import type { StockCondition, StockOutType } from "../../../core/enums"
 
 /**
- * Quantity a given employee currently holds of a stock variant — the stock
- * analogue of `AssetHolder`. A holding is partially returnable: the remaining
- * held amount is `quantity - quantityReturned`, and it is fully returned once
- * `returnedDate` is set.
+ * Stock that has left a branch — either to an employee (`type: "employee"`,
+ * partially returnable: remaining = `quantity - quantityReturned`, fully
+ * returned once `returnedDate` is set — the stock analogue of `AssetHolder`)
+ * or to some other one-way destination (`type: "other"`, e.g. consumed,
+ * disposed, sold — `employeeId` is null and it's marked fully resolved at
+ * creation since there is no holder to return it).
  */
-@Entity("inventory_stock_holdings")
-export class InventoryStockHolding {
+@Entity("inventory_stock_out")
+export class InventoryStockOut {
     @PrimaryGeneratedColumn()
     id!: number
 
@@ -35,13 +37,17 @@ export class InventoryStockHolding {
     @JoinColumn({ name: "variant_id" })
     variant!: Relation<InventoryVariant>
 
-    @Index()
-    @Column({ name: "employee_id" })
-    employeeId!: number
+    /** Whether this stock went to an employee (returnable) or elsewhere (one-way). */
+    @Column({ type: "varchar" })
+    type!: StockOutType
 
-    @ManyToOne(() => Employee, { onDelete: "RESTRICT" })
+    @Index()
+    @Column({ name: "employee_id", nullable: true })
+    employeeId?: number | null
+
+    @ManyToOne(() => Employee, { onDelete: "SET NULL", nullable: true })
     @JoinColumn({ name: "employee_id" })
-    employee!: Relation<Employee>
+    employee?: Relation<Employee> | null
 
     @Index()
     @Column({ name: "branch_id" })
