@@ -1,8 +1,8 @@
 import { EntityManager } from "typeorm"
 import { InventoryStockBalance } from "./entities/inventory-stock-balance.entity"
-import { InventoryStockHolding } from "./entities/inventory-stock-holding.entity"
+import { InventoryStockOut } from "./entities/inventory-stock-out.entity"
 import { InventoryVariant } from "../inventory-variant/entities/inventory-variant.entity"
-import { IInventoryStockRepository, InventoryStockBalanceFilter, InventoryStockHoldingFilter } from "./interfaces/inventory-stock.repository.interface"
+import { IInventoryStockRepository, InventoryStockBalanceFilter, InventoryStockOutFilter } from "./interfaces/inventory-stock.repository.interface"
 import { InventoryStockEntryValidator, InventoryStockAssignValidator, InventoryStockReturnValidator } from "./validators/inventory-stock.validator"
 import { BadRequestException } from "../../core/exceptions/base"
 import { withTransaction } from "../../core/helpers/transaction"
@@ -115,8 +115,8 @@ export class InventoryStockService {
         return await this.repository.findBalances(page, limit, filters)
     }
 
-    async getHoldings(page: number, limit: number, filters: InventoryStockHoldingFilter) {
-        return await this.repository.findHoldings(page, limit, filters)
+    async getStockOuts(page: number, limit: number, filters: InventoryStockOutFilter) {
+        return await this.repository.findStockOuts(page, limit, filters)
     }
 
     /** On-hand quantity of a condition at a branch (unlocked read). */
@@ -127,8 +127,8 @@ export class InventoryStockService {
 
     /** Total quantity an employee still holds (not yet returned) for a variant. */
     async getRemainingHeld(employeeId: number, variantId: number): Promise<number> {
-        const holdings = await this.repository.findActiveHoldings(employeeId, variantId)
-        return holdings.reduce((sum, h) => sum + (h.quantity - h.quantityReturned), 0)
+        const stockOuts = await this.repository.findActiveStockOuts(employeeId, variantId)
+        return stockOuts.reduce((sum, h) => sum + (h.quantity - h.quantityReturned), 0)
     }
 
     /** Best-effort pre-check that an assign can be fulfilled (validated again, with locks, on approval). */
@@ -159,13 +159,16 @@ export class InventoryStockService {
     }
 
     /**
-     * Assign stock from a branch to an employee: reduce the branch's on-hand
-     * quantity for the chosen condition (never negative) and record a holding.
-     * Reused by the manual endpoint and by handover approval.
+     * Take stock out of a branch: reduce the branch's on-hand quantity for the
+     * chosen condition (never negative) and record a stock-out. When
+     * `type: "employee"`, the stock-out is returnable and tracked against the
+     * employee; when `type: "other"`, it's a one-way exit (consumed, disposed,
+     * sold, etc.) with no employee, marked fully resolved at creation.
+     * Reused by the manual endpoint and by handover approval (always "employee").
      */
-    async assign(data: InventoryStockAssignValidator, userId?: number, ctx: InventoryStockHandoverContext = {}): Promise<InventoryStockHolding[]> {
-        const employee = await this.employeeService.getById(data.employeeId)
-        if (!employee.isActive) {
+    async assign(data: InventoryStockAssignValidator, userId?: number, ctx: InventoryStockHandoverContext = {}): Promise<InventoryStockOut[]> {
+        const employee = data.type === "employee" ? await this.employeeService.getById(data.employeeId!) : null
+        if (employee && !employee.isActive) {
             throw new BadRequestException(`Cannot assign stock to inactive employee "${employee.name}"`)
         }
         const variants = new Map<number, InventoryVariant>()
@@ -175,40 +178,46 @@ export class InventoryStockService {
         }
 
         return await withTransaction(async (manager) => {
-            const holdings: InventoryStockHolding[] = []
+            const stockOuts: InventoryStockOut[] = []
             const inventoryIds = new Set<number>()
+            const now = new Date().toISOString()
             for (const item of data.items) {
                 await this.decreaseBalance(item.branchId, item.variantId, item.condition, item.quantity, manager)
 
-                const holding = await this.repository.saveHolding({
+                const stockOut = await this.repository.saveStockOut({
                     variantId: item.variantId,
-                    employeeId: data.employeeId,
+                    type: data.type,
+                    employeeId: employee?.id ?? null,
                     branchId: item.branchId,
                     conditionAssigned: item.condition,
                     quantity: item.quantity,
-                    quantityReturned: 0,
-                    assignedDate: new Date().toISOString(),
+                    quantityReturned: data.type === "other" ? item.quantity : 0,
+                    assignedDate: now,
+                    returnedDate: data.type === "other" ? now : null,
                     assignNote: data.note ?? null,
                     assignHandoverId: ctx.handoverId ?? null,
                     createdByUserId: userId ?? null,
                 }, manager)
-                holdings.push(holding)
+                stockOuts.push(stockOut)
                 const variant = variants.get(item.variantId)
                 if (variant?.inventoryId) inventoryIds.add(variant.inventoryId)
             }
 
+            const description = employee
+                ? `Stock assigned to employee "${employee.name}".`
+                : "Stock taken out (non-employee)."
             for (const inventoryId of inventoryIds) {
                 await this.inventoryLogService.log({
                     inventoryId,
                     module: "stock",
                     action: "assign",
-                    description: `Stock assigned to employee "${employee.name}".`,
+                    description,
                     createdByUserId: userId ?? null,
                     newValue: data,
                 }, manager)
             }
 
-            return holdings
+            return stockOuts
         })
     }
 
@@ -228,8 +237,8 @@ export class InventoryStockService {
         await withTransaction(async (manager) => {
             const inventoryIds = new Set<number>()
             for (const item of data.items) {
-                const holdings = await this.repository.findActiveHoldings(data.employeeId, item.variantId, manager, true)
-                const remaining = holdings.reduce((sum, h) => sum + (h.quantity - h.quantityReturned), 0)
+                const stockOuts = await this.repository.findActiveStockOuts(data.employeeId, item.variantId, manager, true)
+                const remaining = stockOuts.reduce((sum, h) => sum + (h.quantity - h.quantityReturned), 0)
                 if (remaining < item.quantity) {
                     const variant = await this.inventoryVariantService.getById(item.variantId).catch(() => null)
                     throw new BadRequestException(`Cannot return ${item.quantity} of "${variant?.name || item.variantId}" — employee only holds ${remaining}`)
@@ -238,22 +247,22 @@ export class InventoryStockService {
                 // Returned stock lands in `used` at the destination branch.
                 await this.increaseBalance(item.branchId, item.variantId, "used", item.quantity, manager)
 
-                // Consume the employee's holdings oldest-first.
+                // Consume the employee's stock-outs oldest-first.
                 let toReturn = item.quantity
-                for (const holding of holdings) {
+                for (const stockOut of stockOuts) {
                     if (toReturn <= 0) break
-                    const avail = holding.quantity - holding.quantityReturned
+                    const avail = stockOut.quantity - stockOut.quantityReturned
                     if (avail <= 0) continue
                     const take = Math.min(avail, toReturn)
-                    holding.quantityReturned += take
+                    stockOut.quantityReturned += take
                     toReturn -= take
-                    if (holding.quantityReturned >= holding.quantity) {
-                        holding.returnedDate = new Date().toISOString()
-                        holding.returnNote = data.note ?? holding.returnNote ?? null
-                        holding.returnedByUserId = userId ?? null
-                        holding.returnHandoverId = ctx.handoverId ?? holding.returnHandoverId ?? null
+                    if (stockOut.quantityReturned >= stockOut.quantity) {
+                        stockOut.returnedDate = new Date().toISOString()
+                        stockOut.returnNote = data.note ?? stockOut.returnNote ?? null
+                        stockOut.returnedByUserId = userId ?? null
+                        stockOut.returnHandoverId = ctx.handoverId ?? stockOut.returnHandoverId ?? null
                     }
-                    await this.repository.saveHolding(holding, manager)
+                    await this.repository.saveStockOut(stockOut, manager)
                 }
 
                 const variant = variants.get(item.variantId)
