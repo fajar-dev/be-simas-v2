@@ -4615,9 +4615,10 @@ paths:
         "403": { description: Forbidden - missing inventory-stock:entry }
         "422": { description: Validation error }
 
-  /inventory/stock/out:
+  # ── Inventory Stock Out (own module, mirrors Asset Holder) ─────────────────
+  /inventory-stock-out:
     get:
-      tags: [Inventory]
+      tags: [Inventory Stock Out]
       summary: List stock-outs (who/where stock has gone, paginated)
       security:
         - bearerAuth: []
@@ -4642,10 +4643,8 @@ paths:
                       data: { type: array, items: { $ref: "#/components/schemas/InventoryStockOutResponse" } }
                       meta: { $ref: "#/components/schemas/PaginationMeta" }
         "401": { description: Unauthorized }
-
-  /inventory/stock/assign:
     post:
-      tags: [Inventory]
+      tags: [Inventory Stock Out]
       summary: Take stock out of a branch, to an employee or elsewhere (manual)
       description: Reduces the branch's on-hand quantity for the chosen condition (never negative) and records a stock-out. `type: employee` requires `employeeId` and is returnable; `type: other` (consumed/disposed/sold/etc.) must omit `employeeId` and is a one-way exit. Also reused by handover approval (always `type: employee`).
       security:
@@ -4688,9 +4687,9 @@ paths:
         "403": { description: Forbidden - missing inventory-stock:assign }
         "422": { description: Validation error }
 
-  /inventory/stock/return:
+  /inventory-stock-out/return:
     post:
-      tags: [Inventory]
+      tags: [Inventory Stock Out]
       summary: Return stock an employee holds (manual)
       description: Returned stock always comes back as `used` at the given branch. Cannot exceed what the employee still holds; holdings are consumed oldest-first.
       security:
