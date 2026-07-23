@@ -40,7 +40,3 @@ export type StockCondition = (typeof STOCK_CONDITIONS)[number]
 export const INVENTORY_UNITS = ["Pcs", "Unit", "Box", "Pack", "Set", "Roll", "Meter", "Cm", "Kg", "Gram", "Liter", "Lusin", "Rim"] as const
 export type InventoryUnit = (typeof INVENTORY_UNITS)[number]
 
-/** Who/what stock leaving a branch goes to — column `inventory_stock_out.type`. */
-export const STOCK_OUT_TYPES = ["employee", "other"] as const
-export type StockOutType = (typeof STOCK_OUT_TYPES)[number]
-

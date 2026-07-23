@@ -7,7 +7,7 @@ export class InventoryStockOutSerializer {
     static async single(s: InventoryStockOut, attachments: Attachment[] = []) {
         return {
             id: s.id,
-            type: s.type,
+            isEmployee: s.isEmployee,
             assignedDate: s.assignedDate,
             assignNote: s.assignNote || null,
             assignHandoverId: s.assignHandoverId || null,

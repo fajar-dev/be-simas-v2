@@ -13,13 +13,12 @@ import { Employee } from "../../employee/entities/employee.entity"
 import { User } from "../../user/entities/user.entity"
 import { Handover } from "../../handover/entities/handover.entity"
 import { InventoryStockOutItem } from "./inventory-stock-out-item.entity"
-import type { StockOutType } from "../../../core/enums"
 
 /**
  * A stock-out document — the header that groups the line items of one
  * "take stock out" action, mirroring the stock-in/transfer document. Either
- * goes to an employee (`type: "employee"`, its items are individually
- * returnable) or to some other one-way destination (`type: "other"`, e.g.
+ * goes to an employee (`isEmployee: true`, its items are individually
+ * returnable) or to some other one-way destination (`isEmployee: false`, e.g.
  * consumed, disposed, sold — `employeeId` is null and its items are marked
  * fully resolved at creation since there's no holder to return them from).
  */
@@ -29,8 +28,8 @@ export class InventoryStockOut {
     id!: number
 
     /** Whether this stock went to an employee (returnable) or elsewhere (one-way). */
-    @Column({ type: "varchar" })
-    type!: StockOutType
+    @Column({ name: "is_employee", type: "boolean" })
+    isEmployee!: boolean
 
     @Index()
     @Column({ name: "employee_id", nullable: true })

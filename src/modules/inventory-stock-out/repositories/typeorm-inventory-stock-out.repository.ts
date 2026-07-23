@@ -61,15 +61,15 @@ export class TypeOrmInventoryStockOutRepository implements IInventoryStockOutRep
         }
 
         if (filters.active) {
-            // "Other"-type documents are one-way and never stale, so they're always shown;
-            // "employee"-type documents are only shown while at least one item still has a remaining quantity.
+            // isEmployee: false documents are one-way and never stale, so they're always shown;
+            // isEmployee: true documents are only shown while at least one item still has a remaining quantity.
             idQuery.andWhere((qb) => {
                 const sub = qb.subQuery()
                     .select("1")
                     .from(InventoryStockOutItem, "ai")
                     .where("ai.stock_out_id = s.id AND ai.quantity > ai.quantity_returned")
                     .getQuery()
-                return `(s.type = 'other' OR EXISTS ${sub})`
+                return `(s.is_employee = false OR EXISTS ${sub})`
             })
         }
 

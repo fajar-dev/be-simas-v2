@@ -17,7 +17,7 @@ import type { StockCondition } from "../../../core/enums"
 /**
  * One line of a stock-out document (a single variant/branch/condition taken
  * out) — partially returnable: remaining = `quantity - quantityReturned`,
- * fully returned once `returnedDate` is set. Lines under a `type: "other"`
+ * fully returned once `returnedDate` is set. Lines under an `isEmployee: false`
  * document are marked fully resolved at creation (no holder to return them).
  */
 @Entity("inventory_stock_out_items")

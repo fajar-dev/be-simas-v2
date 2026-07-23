@@ -83,14 +83,14 @@ export class InventoryStockOutService {
     /**
      * Take stock out of a branch: reduce the branch's on-hand quantity for each
      * item's chosen condition (never negative) and record one stock-out document
-     * with a line per item. When `type: "employee"`, the document's lines are
-     * individually returnable and tracked against the employee; when `type:
-     * "other"`, they're one-way exits (consumed, disposed, sold, etc.) with no
-     * employee, marked fully resolved at creation. Reused by the manual endpoint
-     * and by handover approval (always "employee").
+     * with a line per item. When `isEmployee: true`, the document's lines are
+     * individually returnable and tracked against the employee; when
+     * `isEmployee: false`, they're one-way exits (consumed, disposed, sold,
+     * etc.) with no employee, marked fully resolved at creation. Reused by the
+     * manual endpoint and by handover approval (always `isEmployee: true`).
      */
     async assign(data: InventoryStockAssignValidator, userId?: number, ctx: InventoryStockOutHandoverContext = {}): Promise<{ stockOut: InventoryStockOut; attachments: Attachment[] }> {
-        const employee = data.type === "employee" ? await this.employeeService.getById(data.employeeId!) : null
+        const employee = data.isEmployee ? await this.employeeService.getById(data.employeeId!) : null
         if (employee && !employee.isActive) {
             throw new BadRequestException(`Cannot assign stock to inactive employee "${employee.name}"`)
         }
@@ -105,7 +105,7 @@ export class InventoryStockOutService {
         const stockOutId = await withTransaction(async (manager) => {
             const now = new Date().toISOString()
             const stockOut = await this.repository.save({
-                type: data.type,
+                isEmployee: data.isEmployee,
                 employeeId: employee?.id ?? null,
                 assignedDate: now,
                 assignNote: data.note ?? null,
@@ -123,8 +123,8 @@ export class InventoryStockOutService {
                     branchId: item.branchId,
                     conditionAssigned: item.condition,
                     quantity: item.quantity,
-                    quantityReturned: data.type === "other" ? item.quantity : 0,
-                    returnedDate: data.type === "other" ? now : null,
+                    quantityReturned: data.isEmployee ? 0 : item.quantity,
+                    returnedDate: data.isEmployee ? null : now,
                 }, manager)
 
                 const variant = variants.get(item.variantId)

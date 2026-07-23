@@ -324,7 +324,7 @@ export class HandoverService {
             quantity: si.quantity,
         }))
         await this.inventoryStockOutService.assign(
-            { type: "employee", employeeId: handover.receivedById, note: handover.note ?? null, items },
+            { isEmployee: true, employeeId: handover.receivedById, note: handover.note ?? null, items },
             handover.createdByUserId ?? undefined,
             { handoverId: handover.id }
         )

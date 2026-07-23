@@ -7,7 +7,7 @@ export interface InventoryStockOutFilter {
     variantId?: number
     employeeId?: number
     branchId?: number
-    /** When true, only documents still "in play": type employee with at least one item having a remaining quantity, or any type "other" document (always relevant, never stale). */
+    /** When true, only documents still "in play": isEmployee=true with at least one item having a remaining quantity, or any isEmployee=false document (always relevant, never stale). */
     active?: boolean
 }
 
