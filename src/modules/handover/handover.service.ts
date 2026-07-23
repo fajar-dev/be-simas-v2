@@ -13,7 +13,7 @@ import { AssetHolder } from "../asset-holder/entities/asset-holder.entity"
 import { generateHandoverPdf } from "../../core/helpers/handover-pdf"
 import { esignHelper, EsignSigner } from "../../core/helpers/esign"
 import { HandoverFieldService } from "../handover-field/handover-field.service"
-import { InventoryStockService } from "../inventory-stock/inventory-stock.service"
+import { InventoryStockOutService } from "../inventory-stock-out/inventory-stock-out.service"
 import type { HandoverTransactionType } from "../../core/enums"
 
 const ENTITY_HANDOVER = "Handover"
@@ -30,7 +30,7 @@ export class HandoverService {
         private readonly assetLogService: AssetLogService,
         private readonly attachmentService: AttachmentService,
         private readonly handoverFieldService: HandoverFieldService,
-        private readonly inventoryStockService: InventoryStockService
+        private readonly inventoryStockOutService: InventoryStockOutService
     ) {}
 
 
@@ -214,12 +214,12 @@ export class HandoverService {
 
         if (isReturn) {
             // The handing-over employee returns stock they currently hold.
-            await this.inventoryStockService.assertCanReturn(
+            await this.inventoryStockOutService.assertCanReturn(
                 data.handedOverById,
                 stockItems.map((si) => ({ variantId: si.variantId, branchId: si.branchId, quantity: si.quantity }))
             )
         } else {
-            await this.inventoryStockService.assertCanAssign(
+            await this.inventoryStockOutService.assertCanAssign(
                 stockItems.map((si) => ({ variantId: si.variantId, branchId: si.branchId, condition: si.condition, quantity: si.quantity }))
             )
         }
@@ -323,7 +323,7 @@ export class HandoverService {
             condition: si.condition,
             quantity: si.quantity,
         }))
-        await this.inventoryStockService.assign(
+        await this.inventoryStockOutService.assign(
             { type: "employee", employeeId: handover.receivedById, note: handover.note ?? null, items },
             handover.createdByUserId ?? undefined,
             { handoverId: handover.id }
@@ -339,7 +339,7 @@ export class HandoverService {
             branchId: si.branchId,
             quantity: si.quantity,
         }))
-        await this.inventoryStockService.returnStock(
+        await this.inventoryStockOutService.returnStock(
             { employeeId: handover.handedOverById!, note: handover.note ?? null, items },
             handover.createdByUserId ?? undefined,
             { handoverId: handover.id }

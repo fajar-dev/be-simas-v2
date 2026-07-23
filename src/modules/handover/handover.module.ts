@@ -7,7 +7,7 @@ import { assetHolderService } from "../asset-holder/asset-holder.module"
 import { assetLogService } from "../asset-log/asset-log.module"
 import { attachmentService } from "../attachment/attachment.module"
 import { handoverFieldService } from "../handover-field/handover-field.module"
-import { inventoryStockService } from "../inventory-stock/inventory-stock.module"
+import { inventoryStockOutService } from "../inventory-stock-out/inventory-stock-out.module"
 
 const handoverRepository = new TypeOrmHandoverRepository()
 export const handoverService = new HandoverService(
@@ -18,6 +18,6 @@ export const handoverService = new HandoverService(
     assetLogService,
     attachmentService,
     handoverFieldService,
-    inventoryStockService
+    inventoryStockOutService
 )
 export const handoverController = new HandoverController(handoverService)
