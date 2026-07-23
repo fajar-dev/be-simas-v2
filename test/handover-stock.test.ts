@@ -47,7 +47,7 @@ const qtyAt = async (variantId: number, condition: string) => {
 }
 
 const remainingHeld = async (employeeId: number) => {
-    const res = await request(app, `/api/inventory/stock/out?employeeId=${employeeId}&active=true`, { headers: authHeaders })
+    const res = await request(app, `/api/inventory-stock-out?employeeId=${employeeId}&active=true`, { headers: authHeaders })
     return res.body.data.reduce((s: number, h: any) => s + h.quantityRemaining, 0)
 }
 
