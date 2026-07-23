@@ -1058,6 +1058,9 @@ components:
                 id: { type: integer }
                 name: { type: string }
                 code: { type: string, nullable: true }
+        attachments:
+          type: array
+          items: { $ref: "#/components/schemas/AttachmentResponse" }
 
     CreateHandoverRequest:
       type: object
@@ -4660,6 +4663,10 @@ paths:
                 type: { type: string, enum: [employee, other] }
                 employeeId: { type: integer, nullable: true, example: 1, description: "Required when type is employee; must be omitted when type is other." }
                 note: { type: string, nullable: true }
+                attachmentIds:
+                  type: array
+                  items: { type: integer }
+                  description: "Uploaded attachment IDs (via POST /attachment) to attach as supporting evidence. When items produce more than one stock-out row, each row gets its own copy of the same file."
                 items:
                   type: array
                   minItems: 1

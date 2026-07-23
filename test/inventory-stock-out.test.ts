@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeAll, afterAll, beforeEach } from "bun:test"
+import { describe, test, expect, beforeAll, afterAll, beforeEach, mock } from "bun:test"
 import { Hono } from "hono"
 import {
     initTestDatabase,
@@ -9,11 +9,24 @@ import {
     registerAndLogin,
 } from "./setup"
 
+// ── Mock MinIO to prevent real connections ──────────────────────────────────
+mock.module("../src/core/helpers/minio", () => {
+    const helper = {
+        upload: async () => "attachments/test-file.txt",
+        getProxyUrl: (name: string) => `http://cdn.test.com/stock/${name}`,
+        getPresignedUrl: async (name: string) => `http://cdn.test.com/stock/${name}`,
+        delete: async () => {},
+        ensureBucket: async () => {},
+    }
+    return { minio: helper, default: helper }
+})
+
 let app: Hono
 let authHeaders: Record<string, string>
 let branchA: number
 let inventoryId: number
 let variant1: number
+let variant2: number
 
 beforeAll(async () => {
     await initTestDatabase()
@@ -35,6 +48,8 @@ beforeEach(async () => {
     inventoryId = p.body.data.id
     const v1 = await request(app, "/api/inventory-variant", { method: "POST", headers: authHeaders, body: { inventoryId, name: "Cat6 305m", unit: "box" } })
     variant1 = v1.body.data.id
+    const v2 = await request(app, "/api/inventory-variant", { method: "POST", headers: authHeaders, body: { inventoryId, name: "Cat5e 100m" } })
+    variant2 = v2.body.data.id
 })
 
 const setStock = (branchId: number, items: { variantId: number; new: number; used: number }[]) =>
@@ -144,6 +159,37 @@ describe("Inventory Stock Out API", () => {
 
         const stockOuts = await request(app, `/api/inventory-stock-out?employeeId=${employeeId}`, { headers: authHeaders })
         expect(stockOuts.body.data[0]).toMatchObject({ quantity: 4, quantityReturned: 3, quantityRemaining: 1 })
+    })
+
+    test("assign with attachmentIds and multiple items: every resulting row shows the attachment", async () => {
+        await setStock(branchA, [{ variantId: variant1, new: 10, used: 0 }, { variantId: variant2, new: 10, used: 0 }])
+        const employeeId = await createEmployee()
+
+        const fd = new FormData()
+        fd.append("file", new File(["doc"], "evidence.txt", { type: "text/plain" }))
+        const up = await app.request("/api/attachment", {
+            method: "POST",
+            headers: { Authorization: authHeaders.Authorization },
+            body: fd,
+        })
+        const attId = (await up.json() as any).data.id
+
+        const res = await request(app, "/api/inventory-stock-out", {
+            method: "POST", headers: authHeaders,
+            body: {
+                type: "employee", employeeId, attachmentIds: [attId],
+                items: [
+                    { variantId: variant1, branchId: branchA, condition: "new", quantity: 2 },
+                    { variantId: variant2, branchId: branchA, condition: "new", quantity: 3 },
+                ],
+            },
+        })
+        expect(res.status).toBe(201)
+        expect(res.body.data.length).toBe(2)
+        for (const row of res.body.data) {
+            expect(row.attachments.length).toBe(1)
+            expect(row.attachments[0].originalName).toBe("evidence.txt")
+        }
     })
 
     test("return cannot exceed what the employee holds", async () => {
