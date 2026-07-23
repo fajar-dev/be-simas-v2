@@ -3,39 +3,30 @@ import {
     PrimaryGeneratedColumn,
     Column,
     CreateDateColumn,
-    UpdateDateColumn,
     ManyToOne,
     JoinColumn,
+    OneToMany,
     Index,
 } from "typeorm"
 import type { Relation } from "typeorm"
-import { InventoryVariant } from "../../inventory-variant/entities/inventory-variant.entity"
-import { Branch } from "../../branch/entities/branch.entity"
 import { Employee } from "../../employee/entities/employee.entity"
 import { User } from "../../user/entities/user.entity"
 import { Handover } from "../../handover/entities/handover.entity"
-import type { StockCondition, StockOutType } from "../../../core/enums"
+import { InventoryStockOutItem } from "./inventory-stock-out-item.entity"
+import type { StockOutType } from "../../../core/enums"
 
 /**
- * Stock that has left a branch — either to an employee (`type: "employee"`,
- * partially returnable: remaining = `quantity - quantityReturned`, fully
- * returned once `returnedDate` is set — the stock analogue of `AssetHolder`)
- * or to some other one-way destination (`type: "other"`, e.g. consumed,
- * disposed, sold — `employeeId` is null and it's marked fully resolved at
- * creation since there is no holder to return it).
+ * A stock-out document — the header that groups the line items of one
+ * "take stock out" action, mirroring the stock-in/transfer document. Either
+ * goes to an employee (`type: "employee"`, its items are individually
+ * returnable) or to some other one-way destination (`type: "other"`, e.g.
+ * consumed, disposed, sold — `employeeId` is null and its items are marked
+ * fully resolved at creation since there's no holder to return them from).
  */
 @Entity("inventory_stock_out")
 export class InventoryStockOut {
     @PrimaryGeneratedColumn()
     id!: number
-
-    @Index()
-    @Column({ name: "variant_id" })
-    variantId!: number
-
-    @ManyToOne(() => InventoryVariant, { onDelete: "RESTRICT" })
-    @JoinColumn({ name: "variant_id" })
-    variant!: Relation<InventoryVariant>
 
     /** Whether this stock went to an employee (returnable) or elsewhere (one-way). */
     @Column({ type: "varchar" })
@@ -49,36 +40,11 @@ export class InventoryStockOut {
     @JoinColumn({ name: "employee_id" })
     employee?: Relation<Employee> | null
 
-    @Index()
-    @Column({ name: "branch_id" })
-    branchId!: number
-
-    @ManyToOne(() => Branch, { onDelete: "RESTRICT" })
-    @JoinColumn({ name: "branch_id" })
-    branch!: Relation<Branch>
-
-    /** Condition the stock was taken from at assign time. */
-    @Column({ name: "condition_assigned", type: "varchar" })
-    conditionAssigned!: StockCondition
-
-    @Column({ type: "integer" })
-    quantity!: number
-
-    @Column({ name: "quantity_returned", type: "integer", default: 0 })
-    quantityReturned!: number
-
     @Column({ name: "assigned_date", type: "varchar" })
     assignedDate!: string
 
-    @Index()
-    @Column({ name: "returned_date", type: "varchar", nullable: true })
-    returnedDate?: string | null
-
     @Column({ name: "assign_note", type: "text", nullable: true })
     assignNote?: string | null
-
-    @Column({ name: "return_note", type: "text", nullable: true })
-    returnNote?: string | null
 
     @Index()
     @Column({ name: "assign_handover_id", nullable: true })
@@ -88,14 +54,6 @@ export class InventoryStockOut {
     @JoinColumn({ name: "assign_handover_id" })
     assignHandover?: Relation<Handover> | null
 
-    @Index()
-    @Column({ name: "return_handover_id", nullable: true })
-    returnHandoverId?: number | null
-
-    @ManyToOne(() => Handover, { onDelete: "SET NULL", nullable: true })
-    @JoinColumn({ name: "return_handover_id" })
-    returnHandover?: Relation<Handover> | null
-
     @Column({ name: "created_by", nullable: true })
     createdByUserId?: number | null
 
@@ -103,16 +61,9 @@ export class InventoryStockOut {
     @JoinColumn({ name: "created_by" })
     createdBy?: Relation<User> | null
 
-    @Column({ name: "returned_by", nullable: true })
-    returnedByUserId?: number | null
-
-    @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
-    @JoinColumn({ name: "returned_by" })
-    returnedBy?: Relation<User> | null
+    @OneToMany(() => InventoryStockOutItem, (item) => item.stockOut)
+    items?: Relation<InventoryStockOutItem[]>
 
     @CreateDateColumn({ name: "created_at" })
     createdAt!: Date
-
-    @UpdateDateColumn({ name: "updated_at" })
-    updatedAt!: Date
 }

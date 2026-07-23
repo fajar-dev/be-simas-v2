@@ -1,31 +1,41 @@
 import { InventoryStockOut } from "../entities/inventory-stock-out.entity"
 import { Attachment } from "../../attachment/entities/attachment.entity"
 import { AttachmentSerializer } from "../../attachment/serializers/attachment.serialize"
+import { resolveFileUrl } from "../../../core/helpers/serializer-utils"
 
 export class InventoryStockOutSerializer {
-    static async single(h: InventoryStockOut, attachments: Attachment[] = []) {
+    static async single(s: InventoryStockOut, attachments: Attachment[] = []) {
         return {
-            id: h.id,
-            type: h.type,
-            conditionAssigned: h.conditionAssigned,
-            quantity: h.quantity,
-            quantityReturned: h.quantityReturned,
-            quantityRemaining: h.quantity - h.quantityReturned,
-            assignedDate: h.assignedDate,
-            returnedDate: h.returnedDate || null,
-            assignNote: h.assignNote || null,
-            returnNote: h.returnNote || null,
-            assignHandoverId: h.assignHandoverId || null,
-            returnHandoverId: h.returnHandoverId || null,
-            employee: h.employee ? { id: h.employee.id, name: h.employee.name, employeeId: h.employee.employeeId } : null,
-            branch: h.branch ? { id: h.branch.id, name: h.branch.name } : null,
-            variant: h.variant ? {
-                id: h.variant.id,
-                name: h.variant.name,
-                code: h.variant.code || null,
-                unit: h.variant.inventory?.unit ?? "",
-                inventory: h.variant.inventory ? { id: h.variant.inventory.id, name: h.variant.inventory.name, code: h.variant.inventory.code || null } : null,
+            id: s.id,
+            type: s.type,
+            assignedDate: s.assignedDate,
+            assignNote: s.assignNote || null,
+            assignHandoverId: s.assignHandoverId || null,
+            employee: s.employee ? { id: s.employee.id, name: s.employee.name, employeeId: s.employee.employeeId } : null,
+            createdAt: s.createdAt,
+            createdBy: s.createdBy ? {
+                id: s.createdBy.id,
+                name: s.createdBy.name,
+                photo: await resolveFileUrl(s.createdBy.photo),
             } : null,
+            items: (s.items ?? []).map((item) => ({
+                id: item.id,
+                conditionAssigned: item.conditionAssigned,
+                quantity: item.quantity,
+                quantityReturned: item.quantityReturned,
+                quantityRemaining: item.quantity - item.quantityReturned,
+                returnedDate: item.returnedDate || null,
+                returnNote: item.returnNote || null,
+                returnHandoverId: item.returnHandoverId || null,
+                branch: item.branch ? { id: item.branch.id, name: item.branch.name } : null,
+                variant: item.variant ? {
+                    id: item.variant.id,
+                    name: item.variant.name,
+                    code: item.variant.code || null,
+                    unit: item.variant.inventory?.unit ?? "",
+                    inventory: item.variant.inventory ? { id: item.variant.inventory.id, name: item.variant.inventory.name, code: item.variant.inventory.code || null } : null,
+                } : null,
+            })),
             attachments: await AttachmentSerializer.collection(attachments),
         }
     }

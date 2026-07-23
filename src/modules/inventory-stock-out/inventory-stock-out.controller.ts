@@ -22,8 +22,8 @@ export class InventoryStockOutController {
     async assign(c: Context) {
         const user = c.get("user")
         const data = c.req.valid("json" as never) as any
-        const stockOuts = await this.service.assign(data, user?.id)
-        return ApiResponse.success(c, await InventoryStockOutSerializer.collection(stockOuts), "Stock assigned successfully", 201)
+        const { stockOut, attachments } = await this.service.assign(data, user?.id)
+        return ApiResponse.success(c, await InventoryStockOutSerializer.single(stockOut, attachments), "Stock assigned successfully", 201)
     }
 
     async returnStock(c: Context) {

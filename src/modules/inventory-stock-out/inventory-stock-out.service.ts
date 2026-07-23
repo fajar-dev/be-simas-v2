@@ -1,7 +1,8 @@
 import { InventoryStockOut } from "./entities/inventory-stock-out.entity"
+import { InventoryStockOutItem } from "./entities/inventory-stock-out-item.entity"
 import { IInventoryStockOutRepository, InventoryStockOutFilter } from "./interfaces/inventory-stock-out.repository.interface"
 import { InventoryStockAssignValidator, InventoryStockReturnValidator } from "./validators/inventory-stock-out.validator"
-import { BadRequestException } from "../../core/exceptions/base"
+import { BadRequestException, NotFoundException } from "../../core/exceptions/base"
 import { withTransaction } from "../../core/helpers/transaction"
 import { InventoryStockService } from "../inventory-stock/inventory-stock.service"
 import { InventoryVariant } from "../inventory-variant/entities/inventory-variant.entity"
@@ -30,6 +31,13 @@ export class InventoryStockOutService {
         private readonly attachmentService: AttachmentService
     ) {}
 
+    async getById(id: number): Promise<{ stockOut: InventoryStockOut; attachments: Attachment[] }> {
+        const stockOut = await this.repository.findById(id)
+        if (!stockOut) throw new NotFoundException("Stock-out record not found")
+        const attachments = await this.attachmentService.getForEntity(ENTITY_STOCK_OUT, id)
+        return { stockOut, attachments }
+    }
+
     async getStockOuts(page: number, limit: number, filters: InventoryStockOutFilter): Promise<{ data: { stockOut: InventoryStockOut; attachments: Attachment[] }[]; total: number }> {
         const { data, total } = await this.repository.findStockOuts(page, limit, filters)
         const mapped = await Promise.all(data.map(async (stockOut) => ({
@@ -41,8 +49,8 @@ export class InventoryStockOutService {
 
     /** Total quantity an employee still holds (not yet returned) for a variant. */
     async getRemainingHeld(employeeId: number, variantId: number): Promise<number> {
-        const stockOuts = await this.repository.findActiveStockOuts(employeeId, variantId)
-        return stockOuts.reduce((sum, h) => sum + (h.quantity - h.quantityReturned), 0)
+        const items = await this.repository.findActiveItems(employeeId, variantId)
+        return items.reduce((sum, item) => sum + (item.quantity - item.quantityReturned), 0)
     }
 
     /** Best-effort pre-check that an assign can be fulfilled (validated again, with locks, on approval). */
@@ -73,14 +81,15 @@ export class InventoryStockOutService {
     }
 
     /**
-     * Take stock out of a branch: reduce the branch's on-hand quantity for the
-     * chosen condition (never negative) and record a stock-out. When
-     * `type: "employee"`, the stock-out is returnable and tracked against the
-     * employee; when `type: "other"`, it's a one-way exit (consumed, disposed,
-     * sold, etc.) with no employee, marked fully resolved at creation.
-     * Reused by the manual endpoint and by handover approval (always "employee").
+     * Take stock out of a branch: reduce the branch's on-hand quantity for each
+     * item's chosen condition (never negative) and record one stock-out document
+     * with a line per item. When `type: "employee"`, the document's lines are
+     * individually returnable and tracked against the employee; when `type:
+     * "other"`, they're one-way exits (consumed, disposed, sold, etc.) with no
+     * employee, marked fully resolved at creation. Reused by the manual endpoint
+     * and by handover approval (always "employee").
      */
-    async assign(data: InventoryStockAssignValidator, userId?: number, ctx: InventoryStockOutHandoverContext = {}): Promise<{ stockOut: InventoryStockOut; attachments: Attachment[] }[]> {
+    async assign(data: InventoryStockAssignValidator, userId?: number, ctx: InventoryStockOutHandoverContext = {}): Promise<{ stockOut: InventoryStockOut; attachments: Attachment[] }> {
         const employee = data.type === "employee" ? await this.employeeService.getById(data.employeeId!) : null
         if (employee && !employee.isActive) {
             throw new BadRequestException(`Cannot assign stock to inactive employee "${employee.name}"`)
@@ -93,41 +102,37 @@ export class InventoryStockOutService {
 
         const attachmentIds = data.attachmentIds ?? []
 
-        const stockOuts = await withTransaction(async (manager) => {
-            const stockOuts: InventoryStockOut[] = []
-            const inventoryIds = new Set<number>()
+        const stockOutId = await withTransaction(async (manager) => {
             const now = new Date().toISOString()
+            const stockOut = await this.repository.save({
+                type: data.type,
+                employeeId: employee?.id ?? null,
+                assignedDate: now,
+                assignNote: data.note ?? null,
+                assignHandoverId: ctx.handoverId ?? null,
+                createdByUserId: userId ?? null,
+            }, manager)
+
+            const inventoryIds = new Set<number>()
             for (const item of data.items) {
                 await this.inventoryStockService.decreaseBalance(item.branchId, item.variantId, item.condition, item.quantity, manager)
 
-                const stockOut = await this.repository.saveStockOut({
+                await this.repository.saveItem({
+                    stockOutId: stockOut.id,
                     variantId: item.variantId,
-                    type: data.type,
-                    employeeId: employee?.id ?? null,
                     branchId: item.branchId,
                     conditionAssigned: item.condition,
                     quantity: item.quantity,
                     quantityReturned: data.type === "other" ? item.quantity : 0,
-                    assignedDate: now,
                     returnedDate: data.type === "other" ? now : null,
-                    assignNote: data.note ?? null,
-                    assignHandoverId: ctx.handoverId ?? null,
-                    createdByUserId: userId ?? null,
                 }, manager)
-                stockOuts.push(stockOut)
+
                 const variant = variants.get(item.variantId)
                 if (variant?.inventoryId) inventoryIds.add(variant.inventoryId)
+            }
 
-                // One assign can produce several independent rows; the first takes
-                // ownership of the uploaded attachment, the rest get their own copy
-                // of the metadata (same underlying file) so every row shows it.
-                if (attachmentIds.length > 0) {
-                    if (stockOuts.length === 1) {
-                        await this.attachmentService.associate(attachmentIds, ENTITY_STOCK_OUT, stockOut.id, manager)
-                    } else {
-                        await this.attachmentService.duplicate(attachmentIds, ENTITY_STOCK_OUT, stockOut.id, manager)
-                    }
-                }
+            if (attachmentIds.length > 0) {
+                await this.attachmentService.associate(attachmentIds, ENTITY_STOCK_OUT, stockOut.id, manager)
             }
 
             const description = employee
@@ -144,19 +149,17 @@ export class InventoryStockOutService {
                 }, manager)
             }
 
-            return stockOuts
+            return stockOut.id
         })
 
-        return await Promise.all(stockOuts.map(async (stockOut) => ({
-            stockOut,
-            attachments: await this.attachmentService.getForEntity(ENTITY_STOCK_OUT, stockOut.id),
-        })))
+        return await this.getById(stockOutId)
     }
 
     /**
      * Return stock an employee holds. Returned stock always comes back as `used`
      * (per policy) at the given branch. Cannot exceed what the employee still
-     * holds; holdings are consumed oldest-first (FIFO).
+     * holds; lines are consumed oldest-first (FIFO), regardless of which
+     * stock-out document they originally came from.
      */
     async returnStock(data: InventoryStockReturnValidator, userId?: number, ctx: InventoryStockOutHandoverContext = {}): Promise<void> {
         const employee = await this.employeeService.getById(data.employeeId)
@@ -169,8 +172,8 @@ export class InventoryStockOutService {
         await withTransaction(async (manager) => {
             const inventoryIds = new Set<number>()
             for (const item of data.items) {
-                const stockOuts = await this.repository.findActiveStockOuts(data.employeeId, item.variantId, manager, true)
-                const remaining = stockOuts.reduce((sum, h) => sum + (h.quantity - h.quantityReturned), 0)
+                const activeItems = await this.repository.findActiveItems(data.employeeId, item.variantId, manager, true)
+                const remaining = activeItems.reduce((sum, i) => sum + (i.quantity - i.quantityReturned), 0)
                 if (remaining < item.quantity) {
                     const variant = await this.inventoryVariantService.getById(item.variantId).catch(() => null)
                     throw new BadRequestException(`Cannot return ${item.quantity} of "${variant?.name || item.variantId}" — employee only holds ${remaining}`)
@@ -179,22 +182,22 @@ export class InventoryStockOutService {
                 // Returned stock lands in `used` at the destination branch.
                 await this.inventoryStockService.increaseBalance(item.branchId, item.variantId, "used", item.quantity, manager)
 
-                // Consume the employee's stock-outs oldest-first.
+                // Consume the employee's lines oldest-first.
                 let toReturn = item.quantity
-                for (const stockOut of stockOuts) {
+                for (const activeItem of activeItems) {
                     if (toReturn <= 0) break
-                    const avail = stockOut.quantity - stockOut.quantityReturned
+                    const avail = activeItem.quantity - activeItem.quantityReturned
                     if (avail <= 0) continue
                     const take = Math.min(avail, toReturn)
-                    stockOut.quantityReturned += take
+                    activeItem.quantityReturned += take
                     toReturn -= take
-                    if (stockOut.quantityReturned >= stockOut.quantity) {
-                        stockOut.returnedDate = new Date().toISOString()
-                        stockOut.returnNote = data.note ?? stockOut.returnNote ?? null
-                        stockOut.returnedByUserId = userId ?? null
-                        stockOut.returnHandoverId = ctx.handoverId ?? stockOut.returnHandoverId ?? null
+                    if (activeItem.quantityReturned >= activeItem.quantity) {
+                        activeItem.returnedDate = new Date().toISOString()
+                        activeItem.returnNote = data.note ?? activeItem.returnNote ?? null
+                        activeItem.returnedByUserId = userId ?? null
+                        activeItem.returnHandoverId = ctx.handoverId ?? activeItem.returnHandoverId ?? null
                     }
-                    await this.repository.saveStockOut(stockOut, manager)
+                    await this.repository.saveItem(activeItem, manager)
                 }
 
                 const variant = variants.get(item.variantId)
