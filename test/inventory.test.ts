@@ -1,5 +1,6 @@
 import { describe, test, expect, beforeAll, afterAll, beforeEach } from "bun:test"
 import { Hono } from "hono"
+import ExcelJS from "exceljs"
 import {
     initTestDatabase,
     destroyTestDatabase,
@@ -51,6 +52,7 @@ describe("Inventory API", () => {
     test("auth required", async () => {
         expect((await request(app, "/api/inventory/stock")).status).toBe(401)
         expect((await request(app, "/api/inventory")).status).toBe(401)
+        expect((await request(app, "/api/inventory/export")).status).toBe(401)
     })
 
     // ── Inventory item & Variant ─────────────────────────────────────────────────────
@@ -268,5 +270,81 @@ describe("Inventory API", () => {
 
         const noMatch = await request(app, "/api/inventory?label.Brand=Other", { headers: authHeaders })
         expect(noMatch.body.data.some((i: any) => i.name === "Labeled Item")).toBe(false)
+    })
+})
+
+// ── Export ────────────────────────────────────────────────────────────────────
+describe("Inventory Export", () => {
+    test("export returns xlsx buffer", async () => {
+        const res = await app.request("/api/inventory/export", { method: "GET", headers: authHeaders })
+        expect(res.status).toBe(200)
+        expect(res.headers.get("content-type")).toContain("spreadsheetml")
+    })
+
+    test("export flattens item -> variant -> branch -> condition into one row per leaf", async () => {
+        await setStock(branchA, [{ variantId: variant1, new: 5, used: 2 }])
+
+        const res = await app.request("/api/inventory/export", { method: "GET", headers: authHeaders })
+        expect(res.status).toBe(200)
+        const buffer = Buffer.from(await res.arrayBuffer())
+
+        const workbook = new ExcelJS.Workbook()
+        await workbook.xlsx.load(buffer as any)
+        const sheet = workbook.getWorksheet("Inventory")
+        expect(sheet).toBeTruthy()
+
+        const rows: any[][] = []
+        sheet!.eachRow((row, rowNumber) => {
+            if (rowNumber >= 3) rows.push(row.values as any[])
+        })
+
+        // Cat6 305m has "new" & "used" balances in Branch A; Cat5e 100m has no stock at all
+        // (its own row, with branch/condition/quantity left blank).
+        const hasNewRow = rows.some((r) => r.includes("Cat6 305m") && r.includes("Branch A") && r.includes("New") && r.includes(5))
+        const hasUsedRow = rows.some((r) => r.includes("Cat6 305m") && r.includes("Branch A") && r.includes("Used") && r.includes(2))
+        const hasNoStockVariantRow = rows.some((r) => r.includes("Cat5e 100m") && !r.includes("Branch A"))
+
+        expect(hasNewRow).toBe(true)
+        expect(hasUsedRow).toBe(true)
+        expect(hasNoStockVariantRow).toBe(true)
+    })
+
+    test("export includes an item with no variants as a single blank-leaf row", async () => {
+        await request(app, "/api/inventory", { method: "POST", headers: authHeaders, body: { name: "No Variant Export Item" } })
+
+        const res = await app.request("/api/inventory/export", { method: "GET", headers: authHeaders })
+        expect(res.status).toBe(200)
+        const buffer = Buffer.from(await res.arrayBuffer())
+
+        const workbook = new ExcelJS.Workbook()
+        await workbook.xlsx.load(buffer as any)
+        const sheet = workbook.getWorksheet("Inventory")!
+
+        const rows: any[][] = []
+        sheet.eachRow((row, rowNumber) => {
+            if (rowNumber >= 3) rows.push(row.values as any[])
+        })
+
+        expect(rows.some((r) => r.includes("No Variant Export Item"))).toBe(true)
+    })
+
+    test("export respects filters, e.g. isActive", async () => {
+        const inactiveRes = await request(app, "/api/inventory", { method: "POST", headers: authHeaders, body: { name: "Inactive Export Item" } })
+        await request(app, `/api/inventory/${inactiveRes.body.data.id}`, { method: "PUT", headers: authHeaders, body: { isActive: false } })
+
+        const res = await app.request("/api/inventory/export?isActive=true", { method: "GET", headers: authHeaders })
+        expect(res.status).toBe(200)
+        const buffer = Buffer.from(await res.arrayBuffer())
+
+        const workbook = new ExcelJS.Workbook()
+        await workbook.xlsx.load(buffer as any)
+        const sheet = workbook.getWorksheet("Inventory")!
+
+        const rows: any[][] = []
+        sheet.eachRow((row, rowNumber) => {
+            if (rowNumber >= 3) rows.push(row.values as any[])
+        })
+
+        expect(rows.some((r) => r.includes("Inactive Export Item"))).toBe(false)
     })
 })

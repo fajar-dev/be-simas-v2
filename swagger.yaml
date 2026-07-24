@@ -4322,6 +4322,42 @@ paths:
         "403": { description: Forbidden - missing inventory:create }
         "422": { description: Validation error }
 
+  /inventory/export:
+    get:
+      tags: [Inventory]
+      summary: Export inventory to Excel
+      description: |
+        Exports inventory items as .xlsx file. Supports all the same filters as GET /inventory.
+        One row per (item, variant, branch × condition) leaf — items with no variants, or variants with no stock, still get one row with the deeper columns left blank.
+        The exported file includes columns: No, Image, Code, Name, Description, Category, Sub Category, Unit, Status, Variant Name, Variant Code, Variant Description, Branch, Condition, Quantity, and dynamic label columns.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: q, in: query, required: false, schema: { type: string } }
+        - { name: sortBy, in: query, required: false, schema: { type: string, enum: [name, code, category, subCategory, unit, variantCount, newCount, usedCount, createdAt] } }
+        - { name: order, in: query, required: false, schema: { type: string, enum: [ASC, DESC] } }
+        - { name: categoryIds, in: query, required: false, description: "Filter by category IDs (comma-separated)", schema: { type: string, example: "1,2,3" } }
+        - { name: subCategoryIds, in: query, required: false, description: "Filter by sub-category IDs (comma-separated)", schema: { type: string, example: "1,2" } }
+        - { name: units, in: query, required: false, description: "Filter by unit (comma-separated)", schema: { type: string, example: "Pcs,Box" } }
+        - { name: isActive, in: query, required: false, description: "Filter by active status", schema: { type: boolean } }
+        - { name: variantStatus, in: query, required: false, description: "Filter by whether the item has any variants", schema: { type: string, enum: [has_variants, no_variants] } }
+        - { name: newStockMin, in: query, required: false, description: "Minimum total on-hand \"new\" condition stock", schema: { type: integer } }
+        - { name: newStockMax, in: query, required: false, description: "Maximum total on-hand \"new\" condition stock", schema: { type: integer } }
+        - { name: usedStockMin, in: query, required: false, description: "Minimum total on-hand \"used\" condition stock", schema: { type: integer } }
+        - { name: usedStockMax, in: query, required: false, description: "Maximum total on-hand \"used\" condition stock", schema: { type: integer } }
+        - { name: missingFields, in: query, required: false, description: "Filter items missing these fields (comma-separated)", schema: { type: string, enum: [image, description, subCategory] } }
+        - { name: "label.{key}", in: query, required: false, description: "Filter by a custom label's value, e.g. label.Brand=Belden (repeatable per key)", schema: { type: string } }
+        - { name: labelColumns, in: query, required: false, description: "Label keys to include as columns (comma-separated)", schema: { type: string, example: "Brand,Color" } }
+      responses:
+        "200":
+          description: Excel file download
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden - missing inventory:export }
+
   /inventory/label-keys:
     get:
       tags: [Inventory]
