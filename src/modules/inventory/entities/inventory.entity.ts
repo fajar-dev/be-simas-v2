@@ -70,6 +70,9 @@ export class Inventory {
     /** Not persisted — populated by the list query (number of variants). */
     variantCount?: number
 
-    /** Not persisted — populated by the list query (total on-hand stock quantity). */
-    balanceCount?: number
+    /** Not persisted — populated by the list query (on-hand "new" condition stock quantity). */
+    newCount?: number
+
+    /** Not persisted — populated by the list query (on-hand "used" condition stock quantity). */
+    usedCount?: number
 }

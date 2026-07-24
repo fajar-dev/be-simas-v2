@@ -7,9 +7,10 @@ import { IInventoryRepository } from "../interfaces/inventory.repository.interfa
 
 const RELATIONS = ["createdBy", "subCategory", "subCategory.category", "labels"]
 
-// Correlated subqueries: number of variants, and total on-hand stock, per item.
+// Correlated subqueries: number of variants, and on-hand stock per condition, per item.
 const VARIANT_COUNT_SQL = "(SELECT COUNT(*) FROM inventory_variants iv WHERE iv.inventory_id = item.id)"
-const BALANCE_COUNT_SQL = "(SELECT COALESCE(SUM(bal.quantity), 0) FROM inventory_stock_balances bal INNER JOIN inventory_variants ivb ON bal.variant_id = ivb.id WHERE ivb.inventory_id = item.id)"
+const NEW_COUNT_SQL = "(SELECT COALESCE(SUM(bal.quantity), 0) FROM inventory_stock_balances bal INNER JOIN inventory_variants ivb ON bal.variant_id = ivb.id WHERE ivb.inventory_id = item.id AND bal.condition = 'new')"
+const USED_COUNT_SQL = "(SELECT COALESCE(SUM(bal.quantity), 0) FROM inventory_stock_balances bal INNER JOIN inventory_variants ivb ON bal.variant_id = ivb.id WHERE ivb.inventory_id = item.id AND bal.condition = 'used')"
 
 export class TypeOrmInventoryRepository implements IInventoryRepository {
     private readonly repository: Repository<Inventory>
@@ -30,7 +31,8 @@ export class TypeOrmInventoryRepository implements IInventoryRepository {
             category: "category.name",
             subCategory: "subCategory.name",
             variantCount: "variantCount",
-            balanceCount: "balanceCount",
+            newCount: "newCount",
+            usedCount: "usedCount",
         }
         const sortColumn = sortColumnMap[sortBy || ''] || "item.id"
 
@@ -41,7 +43,8 @@ export class TypeOrmInventoryRepository implements IInventoryRepository {
             .leftJoin("subCategory.category", "category")
             .select("item.id", "id")
             .addSelect(VARIANT_COUNT_SQL, "variantCount")
-            .addSelect(BALANCE_COUNT_SQL, "balanceCount")
+            .addSelect(NEW_COUNT_SQL, "newCount")
+            .addSelect(USED_COUNT_SQL, "usedCount")
 
         if (q) {
             idQuery.where("(item.code LIKE :q OR item.name LIKE :q OR item.description LIKE :q)", { q: `%${q}%` })
@@ -53,7 +56,7 @@ export class TypeOrmInventoryRepository implements IInventoryRepository {
             .orderBy(sortColumn, sortOrder)
             .offset((page - 1) * limit)
             .limit(limit)
-            .getRawMany<{ id: number; variantCount: string | number; balanceCount: string | number }>()
+            .getRawMany<{ id: number; variantCount: string | number; newCount: string | number; usedCount: string | number }>()
 
         const ids = rawRows.map((r) => Number(r.id))
         if (ids.length === 0) return { data: [], total }
@@ -61,7 +64,7 @@ export class TypeOrmInventoryRepository implements IInventoryRepository {
         // 2) Load the full entities (with relations) and re-apply the page order.
         const items = await this.repository.find({ where: { id: In(ids) }, relations: RELATIONS })
         const byId = new Map(items.map((i) => [i.id, i]))
-        const countById = new Map(rawRows.map((r) => [Number(r.id), { variantCount: Number(r.variantCount), balanceCount: Number(r.balanceCount) }]))
+        const countById = new Map(rawRows.map((r) => [Number(r.id), { variantCount: Number(r.variantCount), newCount: Number(r.newCount), usedCount: Number(r.usedCount) }]))
 
         const data = ids
             .map((id) => byId.get(id))
@@ -69,7 +72,8 @@ export class TypeOrmInventoryRepository implements IInventoryRepository {
             .map((item) => {
                 const c = countById.get(item.id)
                 item.variantCount = c?.variantCount ?? 0
-                item.balanceCount = c?.balanceCount ?? 0
+                item.newCount = c?.newCount ?? 0
+                item.usedCount = c?.usedCount ?? 0
                 return item
             })
 

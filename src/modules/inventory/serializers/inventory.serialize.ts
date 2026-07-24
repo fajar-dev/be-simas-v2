@@ -21,7 +21,8 @@ export class InventorySerializer {
                 : null,
             labels: (item.labels || []).map((l) => ({ id: l.id, key: l.key, value: l.value })),
             variantCount: item.variantCount ?? 0,
-            balanceCount: item.balanceCount ?? 0,
+            newCount: item.newCount ?? 0,
+            usedCount: item.usedCount ?? 0,
             createdAt: item.createdAt,
             updatedAt: item.updatedAt,
             createdBy: item.createdBy ? {
