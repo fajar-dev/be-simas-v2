@@ -1,11 +1,15 @@
 import { Context } from "hono"
 import { InventoryService } from "./inventory.service"
+import { InventoryUtilService } from "./inventory-util.service"
 import { InventorySerializer } from "./serializers/inventory.serialize"
 import { ApiResponse } from "../../core/helpers/response"
 import { InventoryFilter } from "./interfaces/inventory.repository.interface"
 
 export class InventoryController {
-    constructor(private readonly service: InventoryService) {}
+    constructor(
+        private readonly service: InventoryService,
+        private readonly utilService: InventoryUtilService
+    ) {}
 
     private parseFilters(c: Context): InventoryFilter {
         const parseIds = (val: string | undefined) => val ? val.split(',').map(Number).filter(n => !isNaN(n)) : undefined
@@ -55,6 +59,29 @@ export class InventoryController {
         const filters = this.parseFilters(c)
         const { data, total } = await this.service.getAll(page, limit, q, sortBy, order, filters)
         return ApiResponse.paginate(c, await InventorySerializer.collection(data), total, page, limit)
+    }
+
+    async export(c: Context) {
+        const q = c.req.query("q") || ""
+        const sortBy = c.req.query("sortBy") || undefined
+        const order = (c.req.query("order") || "DESC").toUpperCase() as "ASC" | "DESC"
+
+        const filters = this.parseFilters(c)
+
+        const labelColumnsParam = c.req.query("labelColumns")
+        const labelKeys = labelColumnsParam ? labelColumnsParam.split(',').filter(Boolean) : []
+
+        const data = await this.service.getAllForExport(q, sortBy, order, filters)
+
+        const buffer = await this.utilService.export(data, labelKeys)
+        const filename = `inventory_export_${new Date().toISOString().slice(0, 10)}.xlsx`
+
+        return new Response(new Uint8Array(buffer), {
+            headers: {
+                'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition': `attachment; filename="${filename}"`,
+            },
+        })
     }
 
     async list(c: Context) {

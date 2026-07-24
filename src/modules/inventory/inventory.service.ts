@@ -24,6 +24,10 @@ export class InventoryService {
         return await this.repository.findAll(page, limit, q, sortBy, order, filters)
     }
 
+    async getAllForExport(q: string, sortBy?: string, order?: 'ASC' | 'DESC', filters?: InventoryFilter): Promise<Inventory[]> {
+        return await this.repository.findAllWithoutPagination(q, sortBy, order, filters)
+    }
+
     async getList() {
         return await this.repository.findList()
     }

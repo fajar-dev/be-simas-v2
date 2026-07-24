@@ -226,6 +226,7 @@ routes.get("/inventory-log", authMiddleware, requirePermission("inventory:read")
 
 // Inventory (master item)
 routes.get("/inventory", authMiddleware, requirePermission("inventory:read"), (c) => inventoryController.index(c))
+routes.get("/inventory/export", authMiddleware, requirePermission("inventory:export"), (c) => inventoryController.export(c))
 routes.get("/inventory/list", authMiddleware, requirePermission("inventory:read"), (c) => inventoryController.list(c))
 routes.get("/inventory/label-keys", authMiddleware, requirePermission("inventory:read"), (c) => inventoryController.labelKeys(c))
 routes.get("/inventory/:id", authMiddleware, requirePermission("inventory:read"), (c) => inventoryController.show(c))

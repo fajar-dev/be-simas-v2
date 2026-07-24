@@ -18,6 +18,7 @@ export interface InventoryFilter {
 
 export interface IInventoryRepository {
     findAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC', filters?: InventoryFilter): Promise<{ data: Inventory[]; total: number }>
+    findAllWithoutPagination(q: string, sortBy?: string, order?: 'ASC' | 'DESC', filters?: InventoryFilter): Promise<Inventory[]>
     findList(): Promise<Inventory[]>
     findById(id: number): Promise<Inventory | null>
     countVariants(inventoryId: number): Promise<number>

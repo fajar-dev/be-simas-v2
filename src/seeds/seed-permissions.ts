@@ -61,6 +61,7 @@ const PERMISSIONS = [
     { module: 'inventory', action: 'create' },
     { module: 'inventory', action: 'update' },
     { module: 'inventory', action: 'delete' },
+    { module: 'inventory', action: 'export' },
     { module: 'inventory-variant', action: 'read' },
     { module: 'inventory-variant', action: 'create' },
     { module: 'inventory-variant', action: 'update' },

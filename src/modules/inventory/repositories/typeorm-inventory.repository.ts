@@ -21,23 +21,8 @@ export class TypeOrmInventoryRepository implements IInventoryRepository {
         this.labelRepository = AppDataSource.getRepository(InventoryLabel)
     }
 
-    async findAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC', filters?: InventoryFilter): Promise<{ data: Inventory[]; total: number }> {
-        const sortOrder = order === 'ASC' ? 'ASC' : 'DESC'
-        const sortColumnMap: Record<string, string> = {
-            code: "item.code",
-            name: "item.name",
-            createdAt: "item.createdAt",
-            unit: "item.unit",
-            category: "category.name",
-            subCategory: "subCategory.name",
-            variantCount: "variantCount",
-            newCount: "newCount",
-            usedCount: "usedCount",
-        }
-        const sortColumn = sortColumnMap[sortBy || ''] || "item.id"
-
-        // 1) Resolve the page's item ids (+ counts) with one row per item, so
-        //    pagination/sorting are correct even with the one-to-many labels relation.
+    /** Base id + count query (search + all filters), shared by paginated and export listing. */
+    private buildIdQuery(q: string, filters?: InventoryFilter) {
         const idQuery = this.repository.createQueryBuilder("item")
             .leftJoin("item.subCategory", "subCategory")
             .leftJoin("subCategory.category", "category")
@@ -100,23 +85,32 @@ export class TypeOrmInventoryRepository implements IInventoryRepository {
             })
         }
 
-        const total = await idQuery.getCount()
+        return idQuery
+    }
 
-        const rawRows = await idQuery
-            .orderBy(sortColumn, sortOrder)
-            .offset((page - 1) * limit)
-            .limit(limit)
-            .getRawMany<{ id: number; variantCount: string | number; newCount: string | number; usedCount: string | number }>()
+    private sortColumn(sortBy?: string): string {
+        const sortColumnMap: Record<string, string> = {
+            code: "item.code",
+            name: "item.name",
+            createdAt: "item.createdAt",
+            unit: "item.unit",
+            category: "category.name",
+            subCategory: "subCategory.name",
+            variantCount: "variantCount",
+            newCount: "newCount",
+            usedCount: "usedCount",
+        }
+        return sortColumnMap[sortBy || ''] || "item.id"
+    }
 
-        const ids = rawRows.map((r) => Number(r.id))
-        if (ids.length === 0) return { data: [], total }
-
-        // 2) Load the full entities (with relations) and re-apply the page order.
+    /** Hydrate full entities (with relations) for the given ids, re-applying counts and the given order. */
+    private async hydrate(ids: number[], rawRows: { id: number; variantCount: string | number; newCount: string | number; usedCount: string | number }[]): Promise<Inventory[]> {
+        if (ids.length === 0) return []
         const items = await this.repository.find({ where: { id: In(ids) }, relations: RELATIONS })
         const byId = new Map(items.map((i) => [i.id, i]))
         const countById = new Map(rawRows.map((r) => [Number(r.id), { variantCount: Number(r.variantCount), newCount: Number(r.newCount), usedCount: Number(r.usedCount) }]))
 
-        const data = ids
+        return ids
             .map((id) => byId.get(id))
             .filter((i): i is Inventory => !!i)
             .map((item) => {
@@ -126,8 +120,36 @@ export class TypeOrmInventoryRepository implements IInventoryRepository {
                 item.usedCount = c?.usedCount ?? 0
                 return item
             })
+    }
+
+    async findAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC', filters?: InventoryFilter): Promise<{ data: Inventory[]; total: number }> {
+        const sortOrder = order === 'ASC' ? 'ASC' : 'DESC'
+        const idQuery = this.buildIdQuery(q, filters)
+
+        const total = await idQuery.getCount()
+
+        const rawRows = await idQuery
+            .orderBy(this.sortColumn(sortBy), sortOrder)
+            .offset((page - 1) * limit)
+            .limit(limit)
+            .getRawMany<{ id: number; variantCount: string | number; newCount: string | number; usedCount: string | number }>()
+
+        const ids = rawRows.map((r) => Number(r.id))
+        const data = await this.hydrate(ids, rawRows)
 
         return { data, total }
+    }
+
+    async findAllWithoutPagination(q: string, sortBy?: string, order?: 'ASC' | 'DESC', filters?: InventoryFilter): Promise<Inventory[]> {
+        const sortOrder = order === 'ASC' ? 'ASC' : 'DESC'
+        const idQuery = this.buildIdQuery(q, filters)
+
+        const rawRows = await idQuery
+            .orderBy(this.sortColumn(sortBy), sortOrder)
+            .getRawMany<{ id: number; variantCount: string | number; newCount: string | number; usedCount: string | number }>()
+
+        const ids = rawRows.map((r) => Number(r.id))
+        return await this.hydrate(ids, rawRows)
     }
 
     async findList(): Promise<Inventory[]> {
