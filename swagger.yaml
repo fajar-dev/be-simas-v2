@@ -4664,7 +4664,7 @@ paths:
     post:
       tags: [Inventory Stock Out]
       summary: Take stock out of a branch, to an employee or elsewhere (manual)
-      description: Reduces the branch's on-hand quantity for each item's chosen condition (never negative) and records one stock-out document with a line item per input item — mirrors POST /inventory-stock-in. `isEmployee: true` requires `employeeId` and its items are individually returnable; `isEmployee: false` (consumed/disposed/sold/etc.) must omit `employeeId` and its items are one-way exits. Also reused by handover approval (always `isEmployee: true`).
+      description: "Reduces the branch's on-hand quantity for each item's chosen condition (never negative) and records one stock-out document with a line item per input item — mirrors POST /inventory-stock-in. `isEmployee: true` requires `employeeId` and its items are individually returnable; `isEmployee: false` (consumed/disposed/sold/etc.) must omit `employeeId` and its items are one-way exits. Also reused by handover approval (always `isEmployee: true`)."
       security:
         - bearerAuth: []
       requestBody:
