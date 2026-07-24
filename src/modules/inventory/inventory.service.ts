@@ -1,5 +1,5 @@
 import { Inventory } from "./entities/inventory.entity"
-import { IInventoryRepository } from "./interfaces/inventory.repository.interface"
+import { IInventoryRepository, InventoryFilter } from "./interfaces/inventory.repository.interface"
 import { IInventoryVariantRepository } from "../inventory-variant/interfaces/inventory-variant.repository.interface"
 import { IInventoryStockRepository } from "../inventory-stock/interfaces/inventory-stock.repository.interface"
 import { NotFoundException, ConflictException } from "../../core/exceptions/base"
@@ -20,8 +20,8 @@ export class InventoryService {
         private readonly inventoryLogService: InventoryLogService
     ) {}
 
-    async getAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC') {
-        return await this.repository.findAll(page, limit, q, sortBy, order)
+    async getAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC', filters?: InventoryFilter) {
+        return await this.repository.findAll(page, limit, q, sortBy, order, filters)
     }
 
     async getList() {

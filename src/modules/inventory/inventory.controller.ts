@@ -2,9 +2,49 @@ import { Context } from "hono"
 import { InventoryService } from "./inventory.service"
 import { InventorySerializer } from "./serializers/inventory.serialize"
 import { ApiResponse } from "../../core/helpers/response"
+import { InventoryFilter } from "./interfaces/inventory.repository.interface"
 
 export class InventoryController {
     constructor(private readonly service: InventoryService) {}
+
+    private parseFilters(c: Context): InventoryFilter {
+        const parseIds = (val: string | undefined) => val ? val.split(',').map(Number).filter(n => !isNaN(n)) : undefined
+
+        const filters: InventoryFilter = {}
+        const categoryIds = parseIds(c.req.query("categoryIds"))
+        if (categoryIds?.length) filters.categoryIds = categoryIds
+        const subCategoryIds = parseIds(c.req.query("subCategoryIds"))
+        if (subCategoryIds?.length) filters.subCategoryIds = subCategoryIds
+
+        const unitsParam = c.req.query("units")
+        if (unitsParam) filters.units = unitsParam.split(',')
+
+        const isActiveParam = c.req.query("isActive")
+        if (isActiveParam === 'true' || isActiveParam === 'false') filters.isActive = isActiveParam === 'true'
+
+        const variantStatus = c.req.query("variantStatus")
+        if (variantStatus === 'has_variants' || variantStatus === 'no_variants') filters.variantStatus = variantStatus
+
+        if (c.req.query("newStockMin")) filters.newStockMin = Number(c.req.query("newStockMin"))
+        if (c.req.query("newStockMax")) filters.newStockMax = Number(c.req.query("newStockMax"))
+        if (c.req.query("usedStockMin")) filters.usedStockMin = Number(c.req.query("usedStockMin"))
+        if (c.req.query("usedStockMax")) filters.usedStockMax = Number(c.req.query("usedStockMax"))
+
+        const missingFields = c.req.query("missingFields")
+        if (missingFields) filters.missingFields = missingFields.split(',')
+
+        // Parse label filters: label.{key}=value
+        const allQueries = c.req.queries()
+        const labelFilters: { key: string; value: string }[] = []
+        for (const [qKey, values] of Object.entries(allQueries)) {
+            if (qKey.startsWith('label.') && values?.[0]) {
+                labelFilters.push({ key: qKey.substring(6), value: values[0] })
+            }
+        }
+        if (labelFilters.length) filters.labels = labelFilters
+
+        return filters
+    }
 
     async index(c: Context) {
         const page = Number(c.req.query("page") || 1)
@@ -12,7 +52,8 @@ export class InventoryController {
         const q = c.req.query("q") || ""
         const sortBy = c.req.query("sortBy") || undefined
         const order = c.req.query("order") as "ASC" | "DESC" | undefined
-        const { data, total } = await this.service.getAll(page, limit, q, sortBy, order)
+        const filters = this.parseFilters(c)
+        const { data, total } = await this.service.getAll(page, limit, q, sortBy, order, filters)
         return ApiResponse.paginate(c, await InventorySerializer.collection(data), total, page, limit)
     }
 

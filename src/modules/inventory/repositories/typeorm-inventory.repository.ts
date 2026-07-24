@@ -3,7 +3,7 @@ import { AppDataSource } from "../../../config/database"
 import { Inventory } from "../entities/inventory.entity"
 import { InventoryLabel } from "../entities/inventory-label.entity"
 import { InventoryVariant } from "../../inventory-variant/entities/inventory-variant.entity"
-import { IInventoryRepository } from "../interfaces/inventory.repository.interface"
+import { IInventoryRepository, InventoryFilter } from "../interfaces/inventory.repository.interface"
 
 const RELATIONS = ["createdBy", "subCategory", "subCategory.category", "labels"]
 
@@ -21,7 +21,7 @@ export class TypeOrmInventoryRepository implements IInventoryRepository {
         this.labelRepository = AppDataSource.getRepository(InventoryLabel)
     }
 
-    async findAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC'): Promise<{ data: Inventory[]; total: number }> {
+    async findAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC', filters?: InventoryFilter): Promise<{ data: Inventory[]; total: number }> {
         const sortOrder = order === 'ASC' ? 'ASC' : 'DESC'
         const sortColumnMap: Record<string, string> = {
             code: "item.code",
@@ -48,6 +48,56 @@ export class TypeOrmInventoryRepository implements IInventoryRepository {
 
         if (q) {
             idQuery.where("(item.code LIKE :q OR item.name LIKE :q OR item.description LIKE :q)", { q: `%${q}%` })
+        }
+
+        if (filters?.categoryIds?.length) {
+            idQuery.andWhere("subCategory.categoryId IN (:...categoryIds)", { categoryIds: filters.categoryIds })
+        }
+        if (filters?.subCategoryIds?.length) {
+            idQuery.andWhere("item.subCategoryId IN (:...subCategoryIds)", { subCategoryIds: filters.subCategoryIds })
+        }
+        if (filters?.units?.length) {
+            idQuery.andWhere("item.unit IN (:...units)", { units: filters.units })
+        }
+        if (filters?.isActive !== undefined) {
+            idQuery.andWhere("item.isActive = :isActive", { isActive: filters.isActive })
+        }
+        if (filters?.variantStatus === 'has_variants') {
+            idQuery.andWhere(`${VARIANT_COUNT_SQL} > 0`)
+        }
+        if (filters?.variantStatus === 'no_variants') {
+            idQuery.andWhere(`${VARIANT_COUNT_SQL} = 0`)
+        }
+        if (filters?.newStockMin !== undefined) {
+            idQuery.andWhere(`${NEW_COUNT_SQL} >= :newStockMin`, { newStockMin: filters.newStockMin })
+        }
+        if (filters?.newStockMax !== undefined) {
+            idQuery.andWhere(`${NEW_COUNT_SQL} <= :newStockMax`, { newStockMax: filters.newStockMax })
+        }
+        if (filters?.usedStockMin !== undefined) {
+            idQuery.andWhere(`${USED_COUNT_SQL} >= :usedStockMin`, { usedStockMin: filters.usedStockMin })
+        }
+        if (filters?.usedStockMax !== undefined) {
+            idQuery.andWhere(`${USED_COUNT_SQL} <= :usedStockMax`, { usedStockMax: filters.usedStockMax })
+        }
+        if (filters?.missingFields?.length) {
+            const fieldMap: Record<string, string> = {
+                image: "item.image IS NULL OR item.image = ''",
+                description: "item.description IS NULL OR item.description = ''",
+                subCategory: "item.subCategoryId IS NULL",
+            }
+            for (const field of filters.missingFields) {
+                const condition = fieldMap[field]
+                if (condition) idQuery.andWhere(`(${condition})`)
+            }
+        }
+        if (filters?.labels?.length) {
+            filters.labels.forEach((label, i) => {
+                idQuery.andWhere(
+                    `EXISTS (SELECT 1 FROM inventory_labels il${i} WHERE il${i}.inventory_id = item.id AND il${i}.key = :lk${i} AND il${i}.value LIKE :lv${i})`,
+                    { [`lk${i}`]: label.key, [`lv${i}`]: `%${label.value}%` }
+                )
+            })
         }
 
         const total = await idQuery.getCount()
