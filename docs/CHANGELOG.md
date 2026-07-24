@@ -17,6 +17,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Refactor sisa penamaan `product` → `inventory`/`item`**: variabel lokal & parameter di modul inventory (`inventory.service.ts`, `inventory.controller.ts`, `inventory.serialize.ts`, `countVariants(productId)` → `countVariants(inventoryId)` di interface), `productName` → `inventoryName` pada PDF handover, serta redaksi `swagger.yaml` ("stock product" → "inventory item", "Product not found" → "Inventory item not found", dll.) dan komentar/variabel test. Tidak ada perubahan endpoint/kolom.
 
 ### Added
+- **Advance filter pada `GET /inventory`**: menyertakan `categoryIds`, `subCategoryIds`, `units`, `isActive`, `variantStatus` (`has_variants`/`no_variants`), `newStockMin`/`newStockMax`, `usedStockMin`/`usedStockMax` (memakai subquery `newCount`/`usedCount` yang sama seperti kolom list), `missingFields` (`image`/`description`/`subCategory`), dan `label.{key}=value` — pola query param & builder-nya sama seperti `GET /asset`. Swagger & `test/inventory.test.ts` (7 test baru) diperbarui.
 - **Gambar & deskripsi pada varian**: kolom baru `image` + `description` pada `inventory_variants`. Endpoint `POST/PUT /inventory-variant` menerimanya; serializer varian kini async mengembalikan `image` (URL ter-resolve) + `description`. Inline-variant pada `POST /inventory` juga menerima `image`/`description`. Swagger (`InventoryVariantResponse` + request create/update, serta variants pada `CreateInventoryRequest`) & `test/inventory.test.ts` diperbarui.
 - **Auto-isi `code` dari id bila kosong (seperti category)**: saat create item Inventory & varian (termasuk inline-variant), bila `code` kosong maka diisi `String(id)` setelah tersimpan. Kode eksplisit tetap dipertahankan. Test disertakan.
 - **Hitungan pada daftar item Inventory**: `GET /inventory` kini menyertakan `variantCount` (jumlah varian) & `balanceCount` (total stok on-hand semua varian/cabang) per item, dan mendukung `sortBy` untuk `category`, `subCategory`, `unit`, `variantCount`, `balanceCount` (selain `name`, `code`, `createdAt`). Query di-refactor 2-langkah agar pagination/sort tetap benar dengan relasi label (one-to-many). Swagger (`InventoryResponse` + enum `sortBy`) & `test/inventory.test.ts` diperbarui.
@@ -37,6 +38,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Test E2E return handover + guard status (`test/handover.test.ts`).
 
 ### Fixed
+- **`swagger.yaml` gagal di-parse (`bad indentation of a mapping entry` di baris 4667)**: deskripsi `POST /inventory-stock-out` berupa plain scalar (tanpa quote) yang berisi `` `isEmployee: true` `` — kombinasi titik dua + spasi di dalam scalar YAML tanpa quote ambigu dengan awal mapping baru. Deskripsinya dibungkus tanda kutip ganda.
 - **`getMyBorrowedBooks` filter buku aktif di level query, bukan in-memory**: sebelumnya mengambil 100 baris via `assetHolderService.getAll` lalu memfilter `!returnedDate` di JS (bisa salah/kepotong bila peminjaman aktif > 100). Kini `BookRepository.findActiveLoans(employeeId)` query langsung `category = Buku AND employeeId AND returnedDate IS NULL`.
 
 ### Changed
