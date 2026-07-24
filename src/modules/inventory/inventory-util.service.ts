@@ -65,11 +65,20 @@ export class InventoryUtilService {
         // Column indices (1-indexed)
         const imageCol = columns.findIndex((c) => c.key === "image") + 1
         const variantNameCol = columns.findIndex((c) => c.key === "variantName") + 1
+        const variantCodeCol = columns.findIndex((c) => c.key === "variantCode") + 1
         const variantDescriptionCol = columns.findIndex((c) => c.key === "variantDescription") + 1
         const branchCol = columns.findIndex((c) => c.key === "branch") + 1
         const quantityCol = columns.findIndex((c) => c.key === "quantity") + 1
         const firstLabelCol = labelKeys.length > 0 ? columns.findIndex((c) => c.key === `label_${labelKeys[0]}`) + 1 : 0
         const lastLabelCol = labelKeys.length > 0 ? firstLabelCol + labelKeys.length - 1 : 0
+
+        // Single-column headers, and the item-level data columns (one value per item, spanning all
+        // its leaf rows) — same set, plus label columns for the data-row merge.
+        const singleCols = ["no", "image", "code", "name", "description", "category", "subCategory", "unit", "status"]
+        const itemColIndices = singleCols.map((key) => columns.findIndex((c) => c.key === key) + 1)
+        labelKeys.forEach((key) => itemColIndices.push(columns.findIndex((c) => c.key === `label_${key}`) + 1))
+        // Variant-level columns — one value per variant, spans its own branch × condition rows.
+        const variantColIndices = [variantNameCol, variantCodeCol, variantDescriptionCol]
 
         // Insert group header row (row 1), sub-header becomes row 2
         sheet.insertRow(1, [])
@@ -77,7 +86,6 @@ export class InventoryUtilService {
         const subHeaderRow = sheet.getRow(2)
 
         // Single-column headers: merge vertically (row 1 + row 2)
-        const singleCols = ["no", "image", "code", "name", "description", "category", "subCategory", "unit", "status"]
         singleCols.forEach((key) => {
             const colIdx = columns.findIndex((c) => c.key === key) + 1
             const header = columns[colIdx - 1].header
@@ -117,76 +125,102 @@ export class InventoryUtilService {
             })
         }
 
-        // Add data rows (starting from row 3) — one row per (item, variant, branch × condition) leaf,
-        // repeating the item's own values so the sheet stays flat/pivot-friendly.
-        let rowIndex = 0
-        data.forEach((item) => {
-            const baseRow = {
-                image: "",
-                code: item.code,
-                name: item.name,
-                description: item.description || "",
-                category: item.subCategory?.category?.name || "",
-                subCategory: item.subCategory?.name || "",
-                unit: item.unit || "",
-                status: item.isActive ? "Active" : "Inactive",
-            }
+        // Add data rows (starting from row 3) — one physical row per (item, variant, branch ×
+        // condition) leaf, but the item- and variant-level columns are merged (rowspan) across
+        // their own leaf rows instead of repeating the value, so the hierarchy reads visually.
+        const mergeVertical = (colIdx: number, fromRow: number, toRow: number) => {
+            if (toRow > fromRow) sheet.mergeCells(fromRow, colIdx, toRow, colIdx)
+        }
+
+        let currentRow = 3
+        data.forEach((item, itemIdx) => {
+            const itemStartRow = currentRow
+            const itemFill = itemIdx % 2 === 1
+                ? { type: "pattern" as const, pattern: "solid" as const, fgColor: { argb: "FFF5F5F5" } }
+                : undefined
+
             const labelValues: Record<string, string> = {}
             labelKeys.forEach((key) => {
                 const label = (item.labels || []).find((l) => l.key === key)
                 labelValues[`label_${key}`] = label?.value || ""
             })
 
+            const writeLeafRow = (variant: InventoryVariant | null, branch: string, condition: string, quantity: number | string) => {
+                const dataRow = sheet.addRow({
+                    no: itemIdx + 1,
+                    image: "",
+                    code: item.code,
+                    name: item.name,
+                    description: item.description || "",
+                    category: item.subCategory?.category?.name || "",
+                    subCategory: item.subCategory?.name || "",
+                    unit: item.unit || "",
+                    status: item.isActive ? "Active" : "Inactive",
+                    variantName: variant?.name || "",
+                    variantCode: variant?.code || "",
+                    variantDescription: variant?.description || "",
+                    branch,
+                    condition,
+                    quantity,
+                    ...labelValues,
+                })
+                if (itemFill) dataRow.fill = itemFill
+                currentRow++
+            }
+
             const itemVariants = variantsByInventory.get(item.id) || []
-            const leafRows: Record<string, any>[] = []
 
             if (itemVariants.length === 0) {
-                leafRows.push({ ...baseRow, variantName: "", variantCode: "", variantDescription: "", branch: "", condition: "", quantity: "", ...labelValues })
+                writeLeafRow(null, "", "", "")
             } else {
                 for (const variant of itemVariants) {
-                    const variantBase = { variantName: variant.name, variantCode: variant.code || "", variantDescription: variant.description || "" }
+                    const variantStartRow = currentRow
                     const variantBalances = balancesByVariant.get(variant.id) || []
                     if (variantBalances.length === 0) {
-                        leafRows.push({ ...baseRow, ...variantBase, branch: "", condition: "", quantity: "", ...labelValues })
+                        writeLeafRow(variant, "", "", "")
                     } else {
                         for (const balance of variantBalances) {
-                            leafRows.push({
-                                ...baseRow,
-                                ...variantBase,
-                                branch: balance.branch?.name || "",
-                                condition: balance.condition === "new" ? "New" : "Used",
-                                quantity: balance.quantity,
-                                ...labelValues,
-                            })
+                            writeLeafRow(variant, balance.branch?.name || "", balance.condition === "new" ? "New" : "Used", balance.quantity)
                         }
                     }
+                    const variantEndRow = currentRow - 1
+                    variantColIndices.forEach((colIdx) => {
+                        mergeVertical(colIdx, variantStartRow, variantEndRow)
+                        sheet.getCell(variantStartRow, colIdx).alignment = { vertical: "middle" }
+                    })
                 }
             }
 
-            leafRows.forEach((leaf) => {
-                rowIndex++
-                const dataRow = sheet.addRow({ no: rowIndex, ...leaf })
+            const itemEndRow = currentRow - 1
 
-                if (item.image) {
-                    const imageCell = dataRow.getCell(imageCol)
-                    const proxyUrl = `${config.app.appUrl}/api/proxy?path=${encodeURI(item.image)}`
-                    imageCell.value = { text: "View Image", hyperlink: proxyUrl }
-                    imageCell.font = { color: { argb: "FF0066CC" }, underline: true }
-                }
+            // Set the item's image hyperlink once, on the block's top (master) cell.
+            if (item.image) {
+                const imageCell = sheet.getCell(itemStartRow, imageCol)
+                const proxyUrl = `${config.app.appUrl}/api/proxy?path=${encodeURI(item.image)}`
+                imageCell.value = { text: "View Image", hyperlink: proxyUrl }
+                imageCell.font = { color: { argb: "FF0066CC" }, underline: true }
+            }
 
-                if (rowIndex % 2 === 0) {
-                    dataRow.fill = {
-                        type: "pattern",
-                        pattern: "solid",
-                        fgColor: { argb: "FFF5F5F5" },
-                    }
-                }
+            itemColIndices.forEach((colIdx) => {
+                mergeVertical(colIdx, itemStartRow, itemEndRow)
+                sheet.getCell(itemStartRow, colIdx).alignment = { vertical: "middle" }
             })
         })
 
-        // Add borders to all cells
-        sheet.eachRow((row) => {
-            row.eachCell((cell) => {
+        // Add borders to all cells, including cells hidden behind a merge (default eachCell skips them).
+        for (let r = 3; r < currentRow; r++) {
+            const row = sheet.getRow(r)
+            for (let c = 1; c <= columns.length; c++) {
+                row.getCell(c).border = {
+                    top: { style: "thin", color: { argb: "FFD0D0D0" } },
+                    left: { style: "thin", color: { argb: "FFD0D0D0" } },
+                    bottom: { style: "thin", color: { argb: "FFD0D0D0" } },
+                    right: { style: "thin", color: { argb: "FFD0D0D0" } },
+                }
+            }
+        }
+        for (const row of [groupRow, subHeaderRow]) {
+            row.eachCell({ includeEmpty: true }, (cell) => {
                 cell.border = {
                     top: { style: "thin", color: { argb: "FFD0D0D0" } },
                     left: { style: "thin", color: { argb: "FFD0D0D0" } },
@@ -194,7 +228,7 @@ export class InventoryUtilService {
                     right: { style: "thin", color: { argb: "FFD0D0D0" } },
                 }
             })
-        })
+        }
 
         // Auto-filter on sub-header row
         sheet.autoFilter = {
