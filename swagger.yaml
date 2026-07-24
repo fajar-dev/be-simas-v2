@@ -4237,6 +4237,17 @@ paths:
         - { name: q, in: query, required: false, schema: { type: string } }
         - { name: sortBy, in: query, required: false, schema: { type: string, enum: [name, code, category, subCategory, unit, variantCount, newCount, usedCount, createdAt] } }
         - { name: order, in: query, required: false, schema: { type: string, enum: [ASC, DESC] } }
+        - { name: categoryIds, in: query, required: false, description: "Filter by category IDs (comma-separated)", schema: { type: string, example: "1,2,3" } }
+        - { name: subCategoryIds, in: query, required: false, description: "Filter by sub-category IDs (comma-separated)", schema: { type: string, example: "1,2" } }
+        - { name: units, in: query, required: false, description: "Filter by unit (comma-separated)", schema: { type: string, example: "Pcs,Box" } }
+        - { name: isActive, in: query, required: false, description: "Filter by active status", schema: { type: boolean } }
+        - { name: variantStatus, in: query, required: false, description: "Filter by whether the item has any variants", schema: { type: string, enum: [has_variants, no_variants] } }
+        - { name: newStockMin, in: query, required: false, description: "Minimum total on-hand \"new\" condition stock", schema: { type: integer } }
+        - { name: newStockMax, in: query, required: false, description: "Maximum total on-hand \"new\" condition stock", schema: { type: integer } }
+        - { name: usedStockMin, in: query, required: false, description: "Minimum total on-hand \"used\" condition stock", schema: { type: integer } }
+        - { name: usedStockMax, in: query, required: false, description: "Maximum total on-hand \"used\" condition stock", schema: { type: integer } }
+        - { name: missingFields, in: query, required: false, description: "Filter items missing these fields (comma-separated)", schema: { type: string, enum: [image, description, subCategory] } }
+        - { name: "label.{key}", in: query, required: false, description: "Filter by a custom label's value, e.g. label.Brand=Belden (repeatable per key)", schema: { type: string } }
       responses:
         "200":
           description: Inventory items retrieved successfully

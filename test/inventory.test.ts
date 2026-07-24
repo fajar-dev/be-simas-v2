@@ -189,4 +189,84 @@ describe("Inventory API", () => {
         expect((await request(app, "/api/inventory?sortBy=usedCount&order=ASC", { headers: authHeaders })).status).toBe(200)
         expect((await request(app, "/api/inventory?sortBy=category&order=ASC", { headers: authHeaders })).status).toBe(200)
     })
+
+    // ── Advanced filters ─────────────────────────────────────────────────────
+    test("list filters by categoryIds and subCategoryIds", async () => {
+        const catRes = await request(app, "/api/category", { method: "POST", headers: authHeaders, body: { name: "Office Supplies" } })
+        const subRes = await request(app, "/api/sub-category", { method: "POST", headers: authHeaders, body: { name: "Paper", categoryId: catRes.body.data.id } })
+        const sub = subRes.body.data
+        await request(app, "/api/inventory", { method: "POST", headers: authHeaders, body: { name: "Categorized Item", subCategoryId: sub.id } })
+
+        const byCategory = await request(app, `/api/inventory?categoryIds=${sub.category.id}`, { headers: authHeaders })
+        expect(byCategory.status).toBe(200)
+        expect(byCategory.body.data.length).toBe(1)
+        expect(byCategory.body.data[0].name).toBe("Categorized Item")
+
+        const bySubCategory = await request(app, `/api/inventory?subCategoryIds=${sub.id}`, { headers: authHeaders })
+        expect(bySubCategory.body.data.length).toBe(1)
+        expect(bySubCategory.body.data[0].name).toBe("Categorized Item")
+    })
+
+    test("list filters by units", async () => {
+        await request(app, "/api/inventory", { method: "POST", headers: authHeaders, body: { name: "Roll Item", unit: "Roll" } })
+        const res = await request(app, "/api/inventory?units=Roll", { headers: authHeaders })
+        expect(res.status).toBe(200)
+        expect(res.body.data.every((i: any) => i.unit === "Roll")).toBe(true)
+        expect(res.body.data.some((i: any) => i.name === "Roll Item")).toBe(true)
+    })
+
+    test("list filters by isActive", async () => {
+        const inactiveRes = await request(app, "/api/inventory", { method: "POST", headers: authHeaders, body: { name: "Inactive Item" } })
+        await request(app, `/api/inventory/${inactiveRes.body.data.id}`, { method: "PUT", headers: authHeaders, body: { isActive: false } })
+
+        const activeOnly = await request(app, "/api/inventory?isActive=true", { headers: authHeaders })
+        expect(activeOnly.body.data.some((i: any) => i.name === "Inactive Item")).toBe(false)
+
+        const inactiveOnly = await request(app, "/api/inventory?isActive=false", { headers: authHeaders })
+        expect(inactiveOnly.body.data.some((i: any) => i.name === "Inactive Item")).toBe(true)
+    })
+
+    test("list filters by variantStatus", async () => {
+        await request(app, "/api/inventory", { method: "POST", headers: authHeaders, body: { name: "No Variant Item" } })
+
+        const hasVariants = await request(app, "/api/inventory?variantStatus=has_variants", { headers: authHeaders })
+        expect(hasVariants.body.data.some((i: any) => i.id === inventoryId)).toBe(true)
+        expect(hasVariants.body.data.some((i: any) => i.name === "No Variant Item")).toBe(false)
+
+        const noVariants = await request(app, "/api/inventory?variantStatus=no_variants", { headers: authHeaders })
+        expect(noVariants.body.data.some((i: any) => i.id === inventoryId)).toBe(false)
+        expect(noVariants.body.data.some((i: any) => i.name === "No Variant Item")).toBe(true)
+    })
+
+    test("list filters by newStock/usedStock range", async () => {
+        await setStock(branchA, [{ variantId: variant1, new: 7, used: 3 }])
+
+        const inRange = await request(app, "/api/inventory?newStockMin=5&newStockMax=10", { headers: authHeaders })
+        expect(inRange.body.data.some((i: any) => i.id === inventoryId)).toBe(true)
+
+        const outOfRange = await request(app, "/api/inventory?newStockMin=100", { headers: authHeaders })
+        expect(outOfRange.body.data.some((i: any) => i.id === inventoryId)).toBe(false)
+
+        const usedInRange = await request(app, "/api/inventory?usedStockMin=1&usedStockMax=5", { headers: authHeaders })
+        expect(usedInRange.body.data.some((i: any) => i.id === inventoryId)).toBe(true)
+    })
+
+    test("list filters by missingFields", async () => {
+        await request(app, "/api/inventory", { method: "POST", headers: authHeaders, body: { name: "Full Item", description: "Has a description" } })
+
+        const res = await request(app, "/api/inventory?missingFields=description", { headers: authHeaders })
+        expect(res.body.data.some((i: any) => i.id === inventoryId)).toBe(true)  // "UTP Cable" has no description
+        expect(res.body.data.some((i: any) => i.name === "Full Item")).toBe(false)
+    })
+
+    test("list filters by label key/value", async () => {
+        await request(app, "/api/inventory", { method: "POST", headers: authHeaders, body: { name: "Labeled Item", labels: [{ key: "Brand", value: "Belden" }] } })
+
+        const match = await request(app, "/api/inventory?label.Brand=Belden", { headers: authHeaders })
+        expect(match.body.data.some((i: any) => i.name === "Labeled Item")).toBe(true)
+        expect(match.body.data.some((i: any) => i.id === inventoryId)).toBe(false)
+
+        const noMatch = await request(app, "/api/inventory?label.Brand=Other", { headers: authHeaders })
+        expect(noMatch.body.data.some((i: any) => i.name === "Labeled Item")).toBe(false)
+    })
 })
