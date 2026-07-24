@@ -4328,7 +4328,7 @@ paths:
       summary: Export inventory to Excel
       description: |
         Exports inventory items as .xlsx file. Supports all the same filters as GET /inventory.
-        One row per (item, variant, branch × condition) leaf — items with no variants, or variants with no stock, still get one row with the deeper columns left blank.
+        One physical row per (item, variant, branch × condition) leaf — items with no variants, or variants with no stock, still get one row with the deeper columns left blank. Item- and variant-level columns are merged (rowspan) across their own leaf rows so the hierarchy reads visually in the spreadsheet.
         The exported file includes columns: No, Image, Code, Name, Description, Category, Sub Category, Unit, Status, Variant Name, Variant Code, Variant Description, Branch, Condition, Quantity, and dynamic label columns.
       security: [{ bearerAuth: [] }]
       parameters:
