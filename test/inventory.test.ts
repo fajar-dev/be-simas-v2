@@ -172,19 +172,21 @@ describe("Inventory API", () => {
         expect(res.body.data).toEqual(expect.arrayContaining(["Brand", "Color"]))
     })
 
-    test("list returns variantCount and total balanceCount per item", async () => {
+    test("list returns variantCount and per-condition newCount/usedCount per item", async () => {
         await setStock(branchA, [{ variantId: variant1, new: 7, used: 3 }])
         await setStock(branchB, [{ variantId: variant1, new: 2, used: 0 }])
         const res = await request(app, "/api/inventory", { headers: authHeaders })
         expect(res.status).toBe(200)
         const item = res.body.data.find((i: any) => i.id === inventoryId)
-        expect(item.variantCount).toBe(2)   // Cat6 + Cat5e
-        expect(item.balanceCount).toBe(12)  // 7 + 3 + 2 on-hand
+        expect(item.variantCount).toBe(2)  // Cat6 + Cat5e
+        expect(item.newCount).toBe(9)      // 7 + 2 on-hand "new"
+        expect(item.usedCount).toBe(3)     // 3 on-hand "used"
     })
 
-    test("list can sort by variantCount and balanceCount", async () => {
+    test("list can sort by variantCount, newCount, and usedCount", async () => {
         expect((await request(app, "/api/inventory?sortBy=variantCount&order=DESC", { headers: authHeaders })).status).toBe(200)
-        expect((await request(app, "/api/inventory?sortBy=balanceCount&order=ASC", { headers: authHeaders })).status).toBe(200)
+        expect((await request(app, "/api/inventory?sortBy=newCount&order=ASC", { headers: authHeaders })).status).toBe(200)
+        expect((await request(app, "/api/inventory?sortBy=usedCount&order=ASC", { headers: authHeaders })).status).toBe(200)
         expect((await request(app, "/api/inventory?sortBy=category&order=ASC", { headers: authHeaders })).status).toBe(200)
     })
 })
