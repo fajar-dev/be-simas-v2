@@ -1080,12 +1080,11 @@ components:
     CreateHandoverRequest:
       type: object
       required: [receivedById, handedOverById, transactionType]
-      description: "A handover carries either assets (itemKind=asset, use `items`) or stock (itemKind=stock, use `stockItems`)."
+      description: "A handover may carry asset lines (`items`), stock lines (`stockItems`), or both together — at least one of the two must be non-empty. A return may only include assets and/or stock currently held by `handedOverById`."
       properties:
         receivedById: { type: integer, example: 1, description: "Employee receiving (penerima)" }
         handedOverById: { type: integer, example: 2, description: "Employee handing over (penyerah)" }
         transactionType: { type: string, enum: [assign, return], example: "assign" }
-        itemKind: { type: string, enum: [asset, stock], default: asset, description: "Whether this handover carries assets or stock." }
         note: { type: string, nullable: true, example: "Operational use" }
         customFields:
           type: object
@@ -1095,11 +1094,11 @@ components:
           example: { pic_name: "Budi", condition: "Good" }
         items:
           type: array
-          description: "Asset lines — required when itemKind is asset."
+          description: "Asset lines. At least one of `items`/`stockItems` is required."
           items: { $ref: "#/components/schemas/HandoverItemRequest" }
         stockItems:
           type: array
-          description: "Stock lines — required when itemKind is stock."
+          description: "Stock lines. At least one of `items`/`stockItems` is required."
           items:
             type: object
             required: [variantId, branchId, condition, quantity]
@@ -1136,7 +1135,6 @@ components:
             photo: { type: string, nullable: true }
         status: { type: string, enum: [pending, approve, reject, cancel], example: "pending" }
         transactionType: { type: string, enum: [assign, return] }
-        itemKind: { type: string, enum: [asset, stock], example: "asset" }
         note: { type: string, nullable: true }
         customFields:
           type: array
@@ -1171,7 +1169,7 @@ components:
           items: { $ref: "#/components/schemas/AttachmentResponse" }
         items:
           type: array
-          description: "Asset lines (present when itemKind is asset)."
+          description: "Asset lines on this handover (may coexist with stockItems)."
           items:
             type: object
             properties:
@@ -1187,7 +1185,7 @@ components:
                   image: { type: string, nullable: true, example: "http://cdn.test.com/stock/assets/laptop.jpg" }
         stockItems:
           type: array
-          description: "Stock lines (present when itemKind is stock)."
+          description: "Stock lines on this handover (may coexist with items)."
           items:
             type: object
             properties:

@@ -35,6 +35,7 @@ let inventoryId: number
 let variantId: number
 let admin: number
 let holder: number
+let assetId: number
 
 const SIGNED_URL = "https://esign.test/documents/signed-doc.pdf"
 
@@ -72,6 +73,10 @@ beforeEach(async () => {
     holder = (await request(app, "/api/employee", { method: "POST", headers: authHeaders, body: { name: "Holder", employeeId: "HLD-1", jobPosition: "Staff", email: "holder@ex.com", phone: "0801" } })).body.data.id
 
     await request(app, "/api/inventory/stock/entry", { method: "POST", headers: authHeaders, body: { branchId: branchA, inventoryId, items: [{ variantId, new: 10, used: 0 }] } })
+
+    const cat = await request(app, "/api/category", { method: "POST", headers: authHeaders, body: { code: "CAT-HS", name: "Cat HS" } })
+    const sub = await request(app, "/api/sub-category", { method: "POST", headers: authHeaders, body: { code: "SUB-HS", name: "Sub HS", categoryId: cat.body.data.id } })
+    assetId = (await request(app, "/api/asset", { method: "POST", headers: authHeaders, body: { code: "AST-HS01", name: "Router", subCategoryId: sub.body.data.id } })).body.data.id
 })
 
 describe("Inventory stock handover (assign & return)", () => {
@@ -82,12 +87,10 @@ describe("Inventory stock handover (assign & return)", () => {
                 receivedById: holder,
                 handedOverById: admin,
                 transactionType: "assign",
-                itemKind: "stock",
                 stockItems: [{ variantId, branchId: branchA, condition: "new", quantity: 4 }],
             },
         })
         expect(create.status).toBe(201)
-        expect(create.body.data.itemKind).toBe("stock")
         expect(create.body.data.stockItems.length).toBe(1)
 
         // Pending: branch stock not yet reduced.
@@ -106,14 +109,14 @@ describe("Inventory stock handover (assign & return)", () => {
         // First assign 4 to the holder.
         const assign = await request(app, "/api/handover", {
             method: "POST", headers: authHeaders,
-            body: { receivedById: holder, handedOverById: admin, transactionType: "assign", itemKind: "stock", stockItems: [{ variantId, branchId: branchA, condition: "new", quantity: 4 }] },
+            body: { receivedById: holder, handedOverById: admin, transactionType: "assign", stockItems: [{ variantId, branchId: branchA, condition: "new", quantity: 4 }] },
         })
         await approve(assign.body.data.id)
 
         // Return 3 (holder hands over to admin).
         const ret = await request(app, "/api/handover", {
             method: "POST", headers: authHeaders,
-            body: { receivedById: admin, handedOverById: holder, transactionType: "return", itemKind: "stock", stockItems: [{ variantId, branchId: branchA, condition: "used", quantity: 3 }] },
+            body: { receivedById: admin, handedOverById: holder, transactionType: "return", stockItems: [{ variantId, branchId: branchA, condition: "used", quantity: 3 }] },
         })
         expect(ret.status).toBe(201)
         const res = await approve(ret.body.data.id)
@@ -127,7 +130,7 @@ describe("Inventory stock handover (assign & return)", () => {
     test("stock assign handover rejects when branch stock is insufficient", async () => {
         const create = await request(app, "/api/handover", {
             method: "POST", headers: authHeaders,
-            body: { receivedById: holder, handedOverById: admin, transactionType: "assign", itemKind: "stock", stockItems: [{ variantId, branchId: branchA, condition: "new", quantity: 50 }] },
+            body: { receivedById: holder, handedOverById: admin, transactionType: "assign", stockItems: [{ variantId, branchId: branchA, condition: "new", quantity: 50 }] },
         })
         expect(create.status).toBe(400)
     })
@@ -135,8 +138,97 @@ describe("Inventory stock handover (assign & return)", () => {
     test("stock return handover rejects when employee does not hold enough", async () => {
         const ret = await request(app, "/api/handover", {
             method: "POST", headers: authHeaders,
-            body: { receivedById: admin, handedOverById: holder, transactionType: "return", itemKind: "stock", stockItems: [{ variantId, branchId: branchA, condition: "used", quantity: 2 }] },
+            body: { receivedById: admin, handedOverById: holder, transactionType: "return", stockItems: [{ variantId, branchId: branchA, condition: "used", quantity: 2 }] },
         })
         expect(ret.status).toBe(400)
+    })
+
+    // ── Mixed handover: one document carrying both an asset and stock items ────
+    describe("Mixed asset + stock handover", () => {
+        test("mixed assign: approve creates an asset holder AND moves branch stock", async () => {
+            const create = await request(app, "/api/handover", {
+                method: "POST", headers: authHeaders,
+                body: {
+                    receivedById: holder,
+                    handedOverById: admin,
+                    transactionType: "assign",
+                    items: [{ assetId }],
+                    stockItems: [{ variantId, branchId: branchA, condition: "new", quantity: 4 }],
+                },
+            })
+            expect(create.status).toBe(201)
+            expect(create.body.data.items.length).toBe(1)
+            expect(create.body.data.stockItems.length).toBe(1)
+
+            const res = await approve(create.body.data.id)
+            expect(res.status).toBe(200)
+            expect(res.body.data.handover.status).toBe("approve")
+
+            expect(await qtyAt(variantId, "new")).toBe(6)
+            expect(await remainingHeld(holder)).toBe(4)
+
+            const activeHolder = await request(app, `/api/asset-holder/active/${assetId}`, { headers: authHeaders })
+            expect(activeHolder.body.data).not.toBeNull()
+            expect(activeHolder.body.data.employee.id).toBe(holder)
+        })
+
+        test("mixed return: only succeeds when both the asset and the stock are held by the returning employee", async () => {
+            const assign = await request(app, "/api/handover", {
+                method: "POST", headers: authHeaders,
+                body: {
+                    receivedById: holder,
+                    handedOverById: admin,
+                    transactionType: "assign",
+                    items: [{ assetId }],
+                    stockItems: [{ variantId, branchId: branchA, condition: "new", quantity: 4 }],
+                },
+            })
+            await approve(assign.body.data.id)
+
+            const ret = await request(app, "/api/handover", {
+                method: "POST", headers: authHeaders,
+                body: {
+                    receivedById: admin,
+                    handedOverById: holder,
+                    transactionType: "return",
+                    items: [{ assetId }],
+                    stockItems: [{ variantId, branchId: branchA, condition: "used", quantity: 3 }],
+                },
+            })
+            expect(ret.status).toBe(201)
+            const res = await approve(ret.body.data.id)
+            expect(res.body.data.handover.status).toBe("approve")
+
+            expect(await qtyAt(variantId, "used")).toBe(3)
+            expect(await remainingHeld(holder)).toBe(1)
+
+            const activeHolder = await request(app, `/api/asset-holder/active/${assetId}`, { headers: authHeaders })
+            expect(activeHolder.body.data).toBeNull()
+        })
+
+        test("mixed return rejects when the asset is not held by the returning employee, even if the stock is", async () => {
+            // Assign the stock to `holder` but the asset stays with `admin`.
+            await request(app, "/api/asset-holder", {
+                method: "POST", headers: authHeaders,
+                body: { assetId, employeeId: admin, assignedDate: "2026-07-01" },
+            })
+            const assign = await request(app, "/api/handover", {
+                method: "POST", headers: authHeaders,
+                body: { receivedById: holder, handedOverById: admin, transactionType: "assign", stockItems: [{ variantId, branchId: branchA, condition: "new", quantity: 4 }] },
+            })
+            await approve(assign.body.data.id)
+
+            const ret = await request(app, "/api/handover", {
+                method: "POST", headers: authHeaders,
+                body: {
+                    receivedById: admin,
+                    handedOverById: holder,
+                    transactionType: "return",
+                    items: [{ assetId }],
+                    stockItems: [{ variantId, branchId: branchA, condition: "used", quantity: 3 }],
+                },
+            })
+            expect(ret.status).toBe(400)
+        })
     })
 })
