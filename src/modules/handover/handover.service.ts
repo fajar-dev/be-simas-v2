@@ -133,6 +133,8 @@ export class HandoverService {
 
     async create(data: CreateHandoverValidator, userId?: number): Promise<HandoverWithAttachments> {
         const isReturn = data.transactionType === "return"
+        const items = data.items ?? []
+        const stockItems = data.stockItems ?? []
 
         // Receiving employee must exist & be active.
         const receivedByEmployee = await this.employeeService.getById(data.receivedById)
@@ -150,40 +152,35 @@ export class HandoverService {
         // Snapshot the configured custom fields + values (self-contained; unaffected by later edits).
         const customFields = await this.handoverFieldService.resolveSnapshot(data.transactionType, data.customFields ?? {})
 
-        const handover = data.itemKind === "stock"
-            ? await this.createStockHandover(data, userId, isReturn, customFields)
-            : await this.createAssetHandover(data, userId, isReturn, customFields)
+        // Validate each kind present — eligibility is independent per kind:
+        // a return only requires the assets/stock actually held by `handedOverById`.
+        if (items.length > 0) {
+            await this.validateItems(data.transactionType, items, data.handedOverById)
+        }
+        if (stockItems.length > 0) {
+            if (isReturn) {
+                await this.inventoryStockOutService.assertCanReturn(
+                    data.handedOverById,
+                    stockItems.map((si) => ({ variantId: si.variantId, branchId: si.branchId, quantity: si.quantity }))
+                )
+            } else {
+                await this.inventoryStockOutService.assertCanAssign(
+                    stockItems.map((si) => ({ variantId: si.variantId, branchId: si.branchId, condition: si.condition, quantity: si.quantity }))
+                )
+            }
+        }
 
-        const full = await this.findOrFail(handover.id)
-
-        // Generate the signed-handover form, store it as an attachment, and
-        // send it to the e-sign provider for the two parties to sign.
-        await this.dispatchForSigning(full)
-
-        return await this.getById(handover.id)
-    }
-
-    /** Persist an asset-kind handover (existing behaviour). */
-    private async createAssetHandover(
-        data: CreateHandoverValidator,
-        userId: number | undefined,
-        isReturn: boolean,
-        customFields: { key: string; label: string; type: string; value: string | null }[]
-    ): Promise<Handover> {
-        const items = data.items ?? []
-        await this.validateItems(data.transactionType, items, data.handedOverById)
-
-        // A return handover links back (best-effort) to the origin assign handover.
-        const parentHandoverId = isReturn
+        // A return handover links back (best-effort) to the origin assign handover
+        // — only meaningful for the asset side, which tracks per-asset origin.
+        const parentHandoverId = isReturn && items.length > 0
             ? await this.resolveParentHandoverId(items.map((i) => i.assetId))
             : null
 
-        return await withTransaction(async (manager) => {
+        const handover = await withTransaction(async (manager) => {
             const created = await this.repository.save({
                 receivedById: data.receivedById,
                 handedOverById: data.handedOverById,
                 transactionType: data.transactionType,
-                itemKind: "asset",
                 note: data.note ?? null,
                 customFields: customFields.length ? customFields : null,
                 status: "pending",
@@ -199,44 +196,6 @@ export class HandoverService {
                 }, manager)
             }
 
-            return created
-        })
-    }
-
-    /** Persist a stock-kind handover. Stock availability is validated up front and again (locked) on approval. */
-    private async createStockHandover(
-        data: CreateHandoverValidator,
-        userId: number | undefined,
-        isReturn: boolean,
-        customFields: { key: string; label: string; type: string; value: string | null }[]
-    ): Promise<Handover> {
-        const stockItems = data.stockItems ?? []
-
-        if (isReturn) {
-            // The handing-over employee returns stock they currently hold.
-            await this.inventoryStockOutService.assertCanReturn(
-                data.handedOverById,
-                stockItems.map((si) => ({ variantId: si.variantId, branchId: si.branchId, quantity: si.quantity }))
-            )
-        } else {
-            await this.inventoryStockOutService.assertCanAssign(
-                stockItems.map((si) => ({ variantId: si.variantId, branchId: si.branchId, condition: si.condition, quantity: si.quantity }))
-            )
-        }
-
-        return await withTransaction(async (manager) => {
-            const created = await this.repository.save({
-                receivedById: data.receivedById,
-                handedOverById: data.handedOverById,
-                transactionType: data.transactionType,
-                itemKind: "stock",
-                note: data.note ?? null,
-                customFields: customFields.length ? customFields : null,
-                status: "pending",
-                parentHandoverId: null,
-                createdByUserId: userId ?? null,
-            }, manager)
-
             for (const si of stockItems) {
                 await this.repository.saveStockItem({
                     handoverId: created.id,
@@ -250,6 +209,14 @@ export class HandoverService {
 
             return created
         })
+
+        const full = await this.findOrFail(handover.id)
+
+        // Generate the signed-handover form, store it as an attachment, and
+        // send it to the e-sign provider for the two parties to sign.
+        await this.dispatchForSigning(full)
+
+        return await this.getById(handover.id)
     }
 
     /** Build the handover PDF form, attach it to the handover, and submit it to e-sign. */
@@ -287,6 +254,17 @@ export class HandoverService {
         })
     }
 
+    /**
+     * Approve applies the asset-side and stock-side effects independently (each
+     * kind manages its own transaction/atomicity internally — see the two
+     * subsystems' respective services). The handover's `status` is only flipped
+     * to "approve" after BOTH kinds present on the handover have fully
+     * succeeded, so a mid-way failure leaves the handover "pending" rather than
+     * falsely marked approved with only partial effects applied. Note: retrying
+     * `approve()` after a partial failure will re-validate the kind that already
+     * succeeded (e.g. re-assigning already-held assets), so a partial failure
+     * needs manual reconciliation rather than a bare retry.
+     */
     async approve(id: number, fileUrl?: string): Promise<HandoverWithAttachments> {
         const handover = await this.findOrFail(id)
         if (handover.status !== "pending") {
@@ -294,17 +272,21 @@ export class HandoverService {
         }
 
         let affectedHolders: AssetHolder[] = []
-        if (handover.itemKind === "stock") {
+        if ((handover.items?.length ?? 0) > 0) {
+            affectedHolders = handover.transactionType === "return"
+                ? await this.applyReturn(handover)
+                : await this.applyAssign(handover)
+        }
+        if ((handover.stockItems?.length ?? 0) > 0) {
             if (handover.transactionType === "return") {
                 await this.applyStockReturn(handover)
             } else {
                 await this.applyStockAssign(handover)
             }
-        } else {
-            affectedHolders = handover.transactionType === "return"
-                ? await this.applyReturn(handover)
-                : await this.applyAssign(handover)
         }
+
+        this.repository.merge(handover, { status: "approve" })
+        await this.repository.save(handover)
 
         // On approval from e-sign, point the handover's document at the signed
         // file URL and attach that signed document to every affected holder.
@@ -328,8 +310,6 @@ export class HandoverService {
             handover.createdByUserId ?? undefined,
             { handoverId: handover.id }
         )
-        this.repository.merge(handover, { status: "approve" })
-        await this.repository.save(handover)
     }
 
     /** Approve a stock `return` handover: return the holder's stock back into `used` at the branch. */
@@ -344,8 +324,6 @@ export class HandoverService {
             handover.createdByUserId ?? undefined,
             { handoverId: handover.id }
         )
-        this.repository.merge(handover, { status: "approve" })
-        await this.repository.save(handover)
     }
 
     /** Approve an `assign` handover: create a new active holder per item. */
@@ -380,9 +358,6 @@ export class HandoverService {
                     newValue: { assignHandoverId: handover.id, assetHolderId: holder.id },
                 }, manager)
             }
-
-            this.repository.merge(handover, { status: "approve" })
-            await this.repository.save(handover, manager)
         })
 
         return createdHolders
@@ -419,9 +394,6 @@ export class HandoverService {
                     newValue: { returnHandoverId: handover.id, assetHolderId: activeHolder.id },
                 }, manager)
             }
-
-            this.repository.merge(handover, { status: "approve" })
-            await this.repository.save(handover, manager)
         })
 
         return returnedHolders

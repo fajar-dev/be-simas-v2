@@ -14,7 +14,7 @@ import { User } from "../../user/entities/user.entity"
 import { Employee } from "../../employee/entities/employee.entity"
 import { HandoverItem } from "./handover-item.entity"
 import { HandoverStockItem } from "./handover-stock-item.entity"
-import type { HandoverTransactionType, HandoverStatus, HandoverItemKind } from "../../../core/enums"
+import type { HandoverTransactionType, HandoverStatus } from "../../../core/enums"
 
 @Entity("handovers")
 export class Handover {
@@ -39,10 +39,6 @@ export class Handover {
 
     @Column({ name: "transaction_type", type: "varchar" })
     transactionType!: HandoverTransactionType
-
-    /** Whether this handover carries assets or stock. */
-    @Column({ name: "item_kind", type: "varchar", default: "asset" })
-    itemKind!: HandoverItemKind
 
     @Column({ name: "note", type: "text", nullable: true })
     note?: string | null

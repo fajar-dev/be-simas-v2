@@ -16,10 +16,6 @@ export type AssetStatusValue = (typeof ASSET_STATUSES)[number]
 export const HANDOVER_TRANSACTION_TYPES = ["assign", "return"] as const
 export type HandoverTransactionType = (typeof HANDOVER_TRANSACTION_TYPES)[number]
 
-/** What a handover carries — column `handovers.item_kind`. */
-export const HANDOVER_ITEM_KINDS = ["asset", "stock"] as const
-export type HandoverItemKind = (typeof HANDOVER_ITEM_KINDS)[number]
-
 /** Asset handover approval status — column `handovers.status`. */
 export const HANDOVER_STATUSES = ["pending", "approve", "reject", "cancel"] as const
 export type HandoverStatus = (typeof HANDOVER_STATUSES)[number]

@@ -156,13 +156,13 @@ export async function generateHandoverPdf(handover: Handover): Promise<Uint8Arra
     y -= 12
 
     // ---- Items table ----
-    const isStock = handover.itemKind === "stock"
     const conditionLabel = (c: string) => (c === "new" ? "Baru" : c === "used" ? "Bekas" : c)
     const cols = [
-        { title: "No.", w: 34 },
-        { title: "Nama Barang", w: 165 },
-        { title: isStock ? "Jumlah" : "Code", w: 110 },
-        { title: "Keterangan", w: CONTENT_W - 34 - 165 - 110 },
+        { title: "No.", w: 30 },
+        { title: "Nama Barang", w: 150 },
+        { title: "Code", w: 90 },
+        { title: "Jumlah", w: 70 },
+        { title: "Keterangan", w: CONTENT_W - 30 - 150 - 90 - 70 },
     ]
     const colX: number[] = []
     let cx = LEFT
@@ -182,36 +182,41 @@ export async function generateHandoverPdf(handover: Handover): Promise<Uint8Arra
     }
     y -= headerH
 
-    // Normalize asset / stock lines into a common {name, code, note} shape.
-    const rows: { name: string; code: string; note: string }[] = isStock
-        ? (handover.stockItems ?? []).map((item) => {
-            const inventoryName = item.variant?.inventory?.name ?? "-"
-            const variantName = item.variant?.name ? ` - ${item.variant.name}` : ""
-            const unit = item.variant?.inventory?.unit ? ` ${item.variant.inventory.unit}` : ""
-            const branch = item.branch?.name ? `Cabang: ${item.branch.name}` : ""
-            return {
-                name: `${inventoryName}${variantName} (${conditionLabel(item.condition)})`,
-                code: `${item.quantity}${unit}`,
-                note: [branch, item.note || ""].filter(Boolean).join(" — ") || "-",
-            }
-        })
-        : (handover.items ?? []).map((item) => ({
-            name: item.asset?.name ?? "-",
-            code: item.asset?.code ?? "-",
-            note: item.note || "-",
-        }))
+    // Normalize asset + stock lines into one common {name, code, jumlah, note} shape —
+    // both kinds render together in a single table now.
+    const assetRows = (handover.items ?? []).map((item) => ({
+        name: item.asset?.name ?? "-",
+        code: item.asset?.code ?? "-",
+        jumlah: "1",
+        note: item.note || "-",
+    }))
+    const stockRows = (handover.stockItems ?? []).map((item) => {
+        const inventoryName = item.variant?.inventory?.name ?? "-"
+        const variantName = item.variant?.name ? ` - ${item.variant.name}` : ""
+        const unit = item.variant?.inventory?.unit ? ` ${item.variant.inventory.unit}` : ""
+        const branch = item.branch?.name ? `Cabang: ${item.branch.name}` : ""
+        return {
+            name: `${inventoryName}${variantName} (${conditionLabel(item.condition)})`,
+            code: item.variant?.code || "-",
+            jumlah: `${item.quantity}${unit}`,
+            note: [branch, item.note || ""].filter(Boolean).join(" — ") || "-",
+        }
+    })
+    const rows = [...assetRows, ...stockRows]
 
     // Rows
     rows.forEach((item, idx) => {
         const no = String(idx + 1)
         const name = item.name
         const code = item.code
+        const jumlah = item.jumlah
         const note = item.note
 
         const nameLines = wrapText(name, font, size, cols[1].w - 12)
         const codeLines = wrapText(code, font, size, cols[2].w - 12)
-        const descLines = wrapText(note, font, size, cols[3].w - 12)
-        const maxLines = Math.max(nameLines.length, codeLines.length, descLines.length, 1)
+        const jumlahLines = wrapText(jumlah, font, size, cols[3].w - 12)
+        const descLines = wrapText(note, font, size, cols[4].w - 12)
+        const maxLines = Math.max(nameLines.length, codeLines.length, jumlahLines.length, descLines.length, 1)
         const rowH = maxLines * (lineH - 4) + 8
 
         cx = LEFT
@@ -224,7 +229,8 @@ export async function generateHandoverPdf(handover: Handover): Promise<Uint8Arra
         drawText(no, colX[0] + (cols[0].w - font.widthOfTextAtSize(no, size)) / 2, cellTop, size, font)
         nameLines.forEach((l, i) => drawText(l, colX[1] + 6, cellTop - i * (lineH - 4), size, font))
         codeLines.forEach((l, i) => drawText(l, colX[2] + 6, cellTop - i * (lineH - 4), size, font))
-        descLines.forEach((l, i) => drawText(l, colX[3] + 6, cellTop - i * (lineH - 4), size, font))
+        jumlahLines.forEach((l, i) => drawText(l, colX[3] + 6, cellTop - i * (lineH - 4), size, font))
+        descLines.forEach((l, i) => drawText(l, colX[4] + 6, cellTop - i * (lineH - 4), size, font))
 
         y -= rowH
     })
