@@ -226,6 +226,54 @@ describe("Asset Handover API", () => {
         expect(detail.body.data.attachments.length).toBe(1)
     })
 
+    // ── Supporting attachments ────────────────────────────────────────────────
+    async function uploadFile(name: string): Promise<number> {
+        const fd = new FormData()
+        fd.append("file", new File(["content"], name, { type: "text/plain" }))
+        const res = await app.request("/api/attachment", {
+            method: "POST",
+            headers: { Authorization: authHeaders.Authorization },
+            body: fd,
+        })
+        return ((await res.json()) as any).data.id
+    }
+
+    test("POST /api/handover - accepts supporting attachments alongside the generated form", async () => {
+        const attId = await uploadFile("supporting.txt")
+        const created = await request(app, "/api/handover", {
+            method: "POST", headers: authHeaders,
+            body: createHandoverData([{ assetId }], employeeId, { attachmentIds: [attId] }),
+        })
+        expect(created.status).toBe(201)
+
+        // The generated form plus the user's document.
+        expect(created.body.data.attachments.length).toBe(2)
+        expect(created.body.data.attachments.some((a: any) => a.originalName === "supporting.txt")).toBe(true)
+    })
+
+    test("POST /api/webhook/esign - signing only rewrites the generated form, not user attachments", async () => {
+        const attId = await uploadFile("supporting.txt")
+        const created = await request(app, "/api/handover", {
+            method: "POST", headers: authHeaders,
+            body: createHandoverData([{ assetId }], employeeId, { attachmentIds: [attId] }),
+        })
+        const id = created.body.data.id
+
+        await request(app, "/api/webhook/esign", {
+            method: "POST",
+            body: { external_reference_id: String(id), status: "COMPLETED", file_url: "https://esign.test/documents/signed-doc.pdf" },
+        })
+
+        const detail = await request(app, `/api/handover/${id}`, { headers: authHeaders })
+        const form = detail.body.data.attachments.find((a: any) => a.originalName === `handover-${id}.pdf`)
+        const supporting = detail.body.data.attachments.find((a: any) => a.originalName === "supporting.txt")
+
+        // The form now points at the signed document...
+        expect(form.url).toBe("https://esign.test/documents/signed-doc.pdf")
+        // ...while the user's own upload still points at its own file.
+        expect(supporting.url).not.toBe("https://esign.test/documents/signed-doc.pdf")
+    })
+
     // ── Approve via e-sign webhook (COMPLETED) ─────────────────────────────────
     const SIGNED_URL = "https://esign.test/documents/signed-doc.pdf"
 

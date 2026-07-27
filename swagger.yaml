@@ -1108,6 +1108,11 @@ components:
               condition: { type: string, enum: [new, used] }
               quantity: { type: integer, minimum: 1, example: 4 }
               note: { type: string, nullable: true }
+        attachmentIds:
+          type: array
+          description: "Supporting documents to attach, in addition to the signing form generated on create. These keep pointing at their own files when the signed document replaces the form."
+          items: { type: integer }
+          example: [1, 2]
 
     HandoverResponse:
       type: object
@@ -1165,7 +1170,7 @@ components:
             photo: { type: string, nullable: true }
         attachments:
           type: array
-          description: "Signing form PDF on create; replaced with the signed document URL after the e-sign webhook completes."
+          description: "The generated signing form PDF plus any supporting documents sent as `attachmentIds`. Only the generated form is replaced with the signed document URL after the e-sign webhook completes."
           items: { $ref: "#/components/schemas/AttachmentResponse" }
         items:
           type: array
