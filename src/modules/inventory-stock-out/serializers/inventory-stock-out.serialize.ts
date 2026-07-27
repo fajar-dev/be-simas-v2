@@ -18,7 +18,7 @@ export class InventoryStockOutSerializer {
                 name: s.createdBy.name,
                 photo: await resolveFileUrl(s.createdBy.photo),
             } : null,
-            items: (s.items ?? []).map((item) => ({
+            items: await Promise.all((s.items ?? []).map(async (item) => ({
                 id: item.id,
                 conditionAssigned: item.conditionAssigned,
                 quantity: item.quantity,
@@ -33,9 +33,10 @@ export class InventoryStockOutSerializer {
                     name: item.variant.name,
                     code: item.variant.code || null,
                     unit: item.variant.inventory?.unit ?? "",
+                    image: await resolveFileUrl(item.variant.image || item.variant.inventory?.image),
                     inventory: item.variant.inventory ? { id: item.variant.inventory.id, name: item.variant.inventory.name, code: item.variant.inventory.code || null } : null,
                 } : null,
-            })),
+            }))),
             attachments: await AttachmentSerializer.collection(attachments),
         }
     }

@@ -20,13 +20,13 @@ export class InventoryStockService {
         private readonly inventoryLogService: InventoryLogService
     ) {}
 
-    /** Variants of an item + current on-hand quantities for a branch (for the nested input form). Unit comes from the item. */
-    async getEntryTemplate(branchId: number, inventoryId: number): Promise<{ variants: InventoryVariant[]; balances: InventoryStockBalance[]; unit: string }> {
+    /** Variants of an item + current on-hand quantities for a branch (for the nested input form). Unit/image come from the item, used as a variant fallback. */
+    async getEntryTemplate(branchId: number, inventoryId: number): Promise<{ variants: InventoryVariant[]; balances: InventoryStockBalance[]; unit: string; itemImage: string | null }> {
         await this.branchService.getById(branchId)
         const item = await this.inventoryService.getById(inventoryId)
         const variants = await this.inventoryVariantService.getByInventory(inventoryId)
         const balances = await this.repository.findBalancesByBranchAndVariants(branchId, variants.map((v) => v.id))
-        return { variants, balances, unit: item.unit }
+        return { variants, balances, unit: item.unit, itemImage: item.image || null }
     }
 
     /**

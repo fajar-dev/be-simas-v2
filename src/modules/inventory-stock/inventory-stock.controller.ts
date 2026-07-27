@@ -12,8 +12,8 @@ export class InventoryStockController {
         const branchId = Number(c.req.query("branchId"))
         const inventoryId = Number(c.req.query("inventoryId"))
         if (!branchId || !inventoryId) throw new BadRequestException("branchId and inventoryId are required")
-        const { variants, balances, unit } = await this.service.getEntryTemplate(branchId, inventoryId)
-        return ApiResponse.success(c, InventoryStockSerializer.entryTemplate(variants, balances, unit))
+        const { variants, balances, unit, itemImage } = await this.service.getEntryTemplate(branchId, inventoryId)
+        return ApiResponse.success(c, await InventoryStockSerializer.entryTemplate(variants, balances, unit, itemImage))
     }
 
     async entry(c: Context) {

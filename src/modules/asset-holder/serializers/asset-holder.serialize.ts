@@ -18,6 +18,7 @@ export class AssetHolderSerializer {
                 id: log.asset.id,
                 name: log.asset.name,
                 code: log.asset.code,
+                image: await resolveFileUrl(log.asset.image),
             } : null,
             employee: log.employee ? {
                 id: log.employee.id,
