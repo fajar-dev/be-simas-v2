@@ -26,8 +26,6 @@ export class AssetScheduleSerializer {
             title: schedule.title,
             description: schedule.description || null,
             startDate: schedule.startDate,
-            startTime: schedule.startTime || null,
-            endTime: schedule.endTime || null,
             recurrence: schedule.recurrence,
             daysOfWeek: schedule.daysOfWeek || null,
             dayOfMonth: schedule.dayOfMonth ?? null,

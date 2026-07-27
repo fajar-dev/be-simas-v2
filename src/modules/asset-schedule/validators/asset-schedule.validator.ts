@@ -2,7 +2,6 @@ import { z } from "zod"
 import { SCHEDULE_RECURRENCES } from "../../../core/enums"
 
 const dateString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format")
-const timeString = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Time must be in HH:mm format")
 const weekday = z.number().int().min(0, "Weekday must be 0–6").max(6, "Weekday must be 0–6")
 const dayOfMonth = z.number().int().min(1, "Day of month must be 1–31").max(31, "Day of month must be 1–31")
 const monthNumber = z.number().int().min(1, "Month must be 1–12").max(12, "Month must be 1–12")
@@ -16,8 +15,6 @@ function validateRecurrence(
         month?: number | null
         startDate?: string
         recurrenceEndDate?: string | null
-        startTime?: string | null
-        endTime?: string | null
     },
     ctx: z.RefinementCtx
 ) {
@@ -42,9 +39,6 @@ function validateRecurrence(
     if (data.recurrenceEndDate && data.startDate && data.recurrenceEndDate < data.startDate) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["recurrenceEndDate"], message: "Recurrence end date must be on or after the start date" })
     }
-    if (data.startTime && data.endTime && data.endTime < data.startTime) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["endTime"], message: "End time must be on or after the start time" })
-    }
 }
 
 export const CreateAssetScheduleValidator = z
@@ -53,8 +47,6 @@ export const CreateAssetScheduleValidator = z
         title: z.string().min(1, "Title is required"),
         description: z.string().optional().nullable(),
         startDate: dateString,
-        startTime: timeString.optional().nullable(),
-        endTime: timeString.optional().nullable(),
         recurrence: z.enum(SCHEDULE_RECURRENCES).default("none"),
         daysOfWeek: z.array(weekday).optional().nullable(),
         dayOfMonth: dayOfMonth.optional().nullable(),
@@ -72,8 +64,6 @@ export const UpdateAssetScheduleValidator = z
         title: z.string().min(1, "Title is required").optional(),
         description: z.string().optional().nullable(),
         startDate: dateString.optional(),
-        startTime: timeString.optional().nullable(),
-        endTime: timeString.optional().nullable(),
         recurrence: z.enum(SCHEDULE_RECURRENCES).optional(),
         daysOfWeek: z.array(weekday).optional().nullable(),
         dayOfMonth: dayOfMonth.optional().nullable(),
@@ -84,9 +74,6 @@ export const UpdateAssetScheduleValidator = z
     .superRefine((data, ctx) => {
         // Only enforce recurrence-pattern requirements when the recurrence itself is being set.
         if (data.recurrence !== undefined) validateRecurrence(data, ctx)
-        else if (data.startTime && data.endTime && data.endTime < data.startTime) {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["endTime"], message: "End time must be on or after the start time" })
-        }
     })
 
 export type UpdateAssetScheduleValidator = z.infer<typeof UpdateAssetScheduleValidator>

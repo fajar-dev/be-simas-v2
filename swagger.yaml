@@ -1083,7 +1083,7 @@ components:
       type: object
       required: [assetIds, title, startDate]
       description: >-
-        A schedule pins a title/description (and optional time + attachments) to one or more assets from a start date.
+        A schedule pins a title/description (and optional attachments) to one or more assets from a start date.
         Recurrence: `none` (single date), `weekly` (requires `daysOfWeek`), `monthly` (requires `dayOfMonth`),
         `yearly` (requires `month` + `dayOfMonth`). `recurrenceEndDate` optionally caps a recurring series.
       properties:
@@ -1091,8 +1091,6 @@ components:
         title: { type: string, example: "Quarterly maintenance" }
         description: { type: string, nullable: true, example: "Full service and inspection" }
         startDate: { type: string, format: date, example: "2026-08-10", description: "First occurrence / series lower bound, YYYY-MM-DD." }
-        startTime: { type: string, nullable: true, example: "09:00", description: "Optional time-of-day, HH:mm. Null = all-day." }
-        endTime: { type: string, nullable: true, example: "10:30" }
         recurrence: { type: string, enum: [none, weekly, monthly, yearly], default: none }
         daysOfWeek: { type: array, items: { type: integer, minimum: 0, maximum: 6 }, nullable: true, description: "weekly only — 0=Sunday … 6=Saturday.", example: [1, 3, 5] }
         dayOfMonth: { type: integer, minimum: 1, maximum: 31, nullable: true, description: "monthly & yearly only.", example: 15 }
@@ -1112,8 +1110,6 @@ components:
         title: { type: string, example: "Quarterly maintenance" }
         description: { type: string, nullable: true }
         startDate: { type: string, format: date, example: "2026-08-10" }
-        startTime: { type: string, nullable: true, example: "09:00" }
-        endTime: { type: string, nullable: true, example: "10:30" }
         recurrence: { type: string, enum: [none, weekly, monthly, yearly] }
         daysOfWeek: { type: array, items: { type: integer, minimum: 0, maximum: 6 }, nullable: true }
         dayOfMonth: { type: integer, minimum: 1, maximum: 31, nullable: true }
@@ -1130,8 +1126,6 @@ components:
         title: { type: string, example: "Quarterly maintenance" }
         description: { type: string, nullable: true }
         startDate: { type: string, format: date, example: "2026-08-10" }
-        startTime: { type: string, nullable: true, example: "09:00" }
-        endTime: { type: string, nullable: true, example: "10:30" }
         recurrence: { type: string, enum: [none, weekly, monthly, yearly], example: "weekly" }
         daysOfWeek: { type: array, items: { type: integer }, nullable: true, example: [1, 3, 5] }
         dayOfMonth: { type: integer, nullable: true, example: 15 }

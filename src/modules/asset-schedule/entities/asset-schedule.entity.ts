@@ -30,13 +30,6 @@ export class AssetSchedule {
     @Column({ name: "start_date", type: "date" })
     startDate!: string
 
-    /** Optional time-of-day for the occurrence, `HH:mm`. Null = all-day. */
-    @Column({ name: "start_time", type: "varchar", length: 5, nullable: true })
-    startTime?: string | null
-
-    @Column({ name: "end_time", type: "varchar", length: 5, nullable: true })
-    endTime?: string | null
-
     @Column({ name: "recurrence", type: "varchar", default: "none" })
     recurrence!: ScheduleRecurrence
 

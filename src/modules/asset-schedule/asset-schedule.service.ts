@@ -41,7 +41,7 @@ export class AssetScheduleService {
 
     /**
      * Expand every schedule that can touch `[from, to]` into concrete dated
-     * occurrences, sorted by date then time — this is what the calendar renders.
+     * occurrences, sorted by date — this is what the calendar renders.
      */
     async getCalendar(from: string, to: string, filters?: AssetScheduleFilter): Promise<ScheduleOccurrence[]> {
         const schedules = await this.repository.findForRange(from, to, filters)
@@ -53,12 +53,7 @@ export class AssetScheduleService {
             }
         }
 
-        occurrences.sort((a, b) => {
-            if (a.date !== b.date) return a.date < b.date ? -1 : 1
-            const at = a.schedule.startTime ?? ""
-            const bt = b.schedule.startTime ?? ""
-            return at < bt ? -1 : at > bt ? 1 : 0
-        })
+        occurrences.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
 
         return occurrences
     }
@@ -73,8 +68,6 @@ export class AssetScheduleService {
                     title: data.title,
                     description: data.description ?? null,
                     startDate: data.startDate,
-                    startTime: data.startTime ?? null,
-                    endTime: data.endTime ?? null,
                     recurrence: data.recurrence,
                     ...pattern,
                     createdByUserId: userId ?? null,
@@ -104,8 +97,6 @@ export class AssetScheduleService {
             if (data.title !== undefined) patch.title = data.title
             if (data.description !== undefined) patch.description = data.description ?? null
             if (data.startDate !== undefined) patch.startDate = data.startDate
-            if (data.startTime !== undefined) patch.startTime = data.startTime ?? null
-            if (data.endTime !== undefined) patch.endTime = data.endTime ?? null
 
             if (data.recurrence !== undefined) {
                 // Recurrence change → renormalize pattern fields from the incoming payload.
