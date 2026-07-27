@@ -145,6 +145,7 @@ routes.delete("/location/:id", authMiddleware, requirePermission("location:delet
 
 // Asset
 routes.get("/asset", authMiddleware, requirePermission("asset:read"), (c) => assetController.index(c))
+routes.get("/asset/options", authMiddleware, (c) => assetController.options(c))
 routes.get("/asset/check-code", authMiddleware, (c) => assetController.checkCode(c))
 routes.get("/asset/label-keys", authMiddleware, (c) => assetController.getLabelKeys(c))
 routes.get("/asset/export", authMiddleware, requirePermission("asset:export"), (c) => assetController.export(c))
@@ -206,6 +207,7 @@ routes.delete("/asset-schedule/:id", authMiddleware, requirePermission("asset-sc
 
 // Asset Handover
 routes.get("/handover", authMiddleware, requirePermission("handover:read"), (c) => handoverController.index(c))
+routes.get("/handover/pending-assets", authMiddleware, (c) => handoverController.pendingAssetIds(c))
 routes.get("/handover/:id", authMiddleware, requirePermission("handover:read"), (c) => handoverController.show(c))
 routes.post("/handover", authMiddleware, requirePermission("handover:create"), zValidator("json", CreateHandoverValidator, validationHook), (c) => handoverController.store(c))
 routes.post("/handover/:id/cancel", authMiddleware, requirePermission("handover:cancel"), (c) => handoverController.cancel(c))

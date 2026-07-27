@@ -4,6 +4,9 @@ import { AssetUtilService } from "./asset-util.service"
 import { AssetSerializer } from "./serializers/asset.serialize"
 import { ApiResponse } from "../../core/helpers/response"
 import { AssetFilter } from "./interfaces/asset.repository.interface"
+import { resolveFileUrl } from "../../core/helpers/serializer-utils"
+
+const MAX_OPTIONS_LIMIT = 50
 
 export class AssetController {
     constructor(
@@ -86,6 +89,24 @@ export class AssetController {
         const asset = await this.service.getById(id)
         const serialized = await AssetSerializer.single(asset)
         return ApiResponse.success(c, serialized, "Asset retrieved successfully")
+    }
+
+    /** Lightweight picker/select search — not the full paginated list, so it stays fast on very large asset tables. */
+    async options(c: Context) {
+        const q = c.req.query("q") || ""
+        const requestedLimit = Number(c.req.query("limit")) || 20
+        const limit = Math.min(Math.max(requestedLimit, 1), MAX_OPTIONS_LIMIT)
+
+        const assets = await this.service.searchOptions(q, limit)
+        const data = await Promise.all(
+            assets.map(async (asset) => ({
+                id: asset.id,
+                code: asset.code,
+                name: asset.name,
+                image: await resolveFileUrl(asset.image),
+            }))
+        )
+        return ApiResponse.success(c, data, "Asset options retrieved successfully")
     }
 
     async checkCode(c: Context) {

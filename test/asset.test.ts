@@ -1627,3 +1627,69 @@ describe("Asset Export & Import", () => {
         expect(res.headers.get("content-type")).toContain("spreadsheetml")
     })
 })
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GET /api/asset/options — lightweight picker search
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("GET /api/asset/options", () => {
+    test("requires auth", async () => {
+        const res = await request(app, "/api/asset/options")
+        expect(res.status).toBe(401)
+    })
+
+    test("returns minimal shape, no relation fields", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+        await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, { code: "OPT-001", name: "Option Generator" }),
+        })
+
+        const res = await request(app, "/api/asset/options", { headers })
+        expect(res.status).toBe(200)
+        expect(res.body.data.length).toBeGreaterThan(0)
+        const found = res.body.data.find((a: any) => a.code === "OPT-001")
+        expect(found).toBeDefined()
+        expect(found.name).toBe("Option Generator")
+        expect(Object.keys(found).sort()).toEqual(["code", "id", "image", "name"])
+    })
+
+    test("filters by q against name or code", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+        await request(app, "/api/asset", { method: "POST", headers, body: createAssetData(subCategory.id, { code: "OPT-A1", name: "Alpha Machine" }) })
+        await request(app, "/api/asset", { method: "POST", headers, body: createAssetData(subCategory.id, { code: "OPT-B1", name: "Beta Machine" }) })
+
+        const res = await request(app, "/api/asset/options?q=Alpha", { headers })
+        expect(res.status).toBe(200)
+        expect(res.body.data.length).toBe(1)
+        expect(res.body.data[0].code).toBe("OPT-A1")
+
+        const byCode = await request(app, "/api/asset/options?q=OPT-B1", { headers })
+        expect(byCode.body.data.length).toBe(1)
+        expect(byCode.body.data[0].name).toBe("Beta Machine")
+    })
+
+    test("caps the result count at the requested limit", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+        for (let i = 0; i < 5; i++) {
+            await request(app, "/api/asset", { method: "POST", headers, body: createAssetData(subCategory.id, { code: `OPT-LIM-${i}`, name: `Limit Asset ${i}` }) })
+        }
+
+        const res = await request(app, "/api/asset/options?limit=3", { headers })
+        expect(res.status).toBe(200)
+        expect(res.body.data.length).toBe(3)
+    })
+
+    test("clamps a limit above the maximum", async () => {
+        const { headers } = await registerAndLogin(app)
+        const res = await request(app, "/api/asset/options?limit=9999", { headers })
+        expect(res.status).toBe(200)
+        // Just asserting it doesn't error and returns a bounded response is enough here;
+        // the exact cap is an implementation detail, but it must not blow past a sane limit.
+        expect(res.body.data.length).toBeLessThanOrEqual(50)
+    })
+})

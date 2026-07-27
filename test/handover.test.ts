@@ -97,6 +97,31 @@ describe("Asset Handover API", () => {
         expect(res.status).toBe(401)
     })
 
+    // ── Pending asset ids ────────────────────────────────────────────────────
+    test("GET /api/handover/pending-assets - requires auth", async () => {
+        const res = await request(app, "/api/handover/pending-assets")
+        expect(res.status).toBe(401)
+    })
+
+    test("GET /api/handover/pending-assets - lists asset ids from pending handovers only", async () => {
+        const created = await request(app, "/api/handover", {
+            method: "POST",
+            headers: authHeaders,
+            body: createHandoverData([{ assetId }], employeeId),
+        })
+        expect(created.status).toBe(201)
+
+        const res = await request(app, "/api/handover/pending-assets", { headers: authHeaders })
+        expect(res.status).toBe(200)
+        expect(res.body.data.assetIds).toContain(assetId)
+        expect(res.body.data.assetIds).not.toContain(assetId2)
+
+        // Cancelling the handover frees the asset — it must drop out of the pending list.
+        await request(app, `/api/handover/${created.body.data.id}/cancel`, { method: "POST", headers: authHeaders })
+        const afterCancel = await request(app, "/api/handover/pending-assets", { headers: authHeaders })
+        expect(afterCancel.body.data.assetIds).not.toContain(assetId)
+    })
+
     // ── Create ────────────────────────────────────────────────────────────────
     test("POST /api/handover - create success (multiple items)", async () => {
         const payload = createHandoverData([

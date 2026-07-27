@@ -32,6 +32,12 @@ export interface AssetFilter {
 export interface IAssetRepository {
     findAll(page: number, limit: number, q: string, sortBy?: string, order?: 'ASC' | 'DESC', filters?: AssetFilter): Promise<{ data: Asset[]; total: number }>
     findAllWithoutPagination(q: string, sortBy?: string, order?: 'ASC' | 'DESC', filters?: AssetFilter): Promise<Asset[]>
+    /**
+     * Lightweight lookup for pickers/selects: only id/code/name/image, no relation joins,
+     * capped at `limit`. Scales to large asset tables where `findAll` (which joins holder/
+     * location/category/labels for the full list view) would be far too expensive.
+     */
+    searchOptions(q: string, limit: number): Promise<Pick<Asset, 'id' | 'code' | 'name' | 'image'>[]>
     findById(id: number): Promise<Asset | null>
     findByCode(code: string): Promise<Asset | null>
     findByBleTagMac(mac: string): Promise<Asset | null>

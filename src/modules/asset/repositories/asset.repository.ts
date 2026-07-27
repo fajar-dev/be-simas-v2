@@ -224,6 +224,20 @@ export class AssetRepository implements IAssetRepository {
         return await query.getMany()
     }
 
+    async searchOptions(q: string, limit: number): Promise<Pick<Asset, 'id' | 'code' | 'name' | 'image'>[]> {
+        const query = this.repository
+            .createQueryBuilder("asset")
+            .select(["asset.id", "asset.code", "asset.name", "asset.image"])
+            .orderBy("asset.name", "ASC")
+            .take(limit)
+
+        if (q) {
+            query.where("(asset.name LIKE :q OR asset.code LIKE :q)", { q: `%${q}%` })
+        }
+
+        return await query.getMany()
+    }
+
     async findById(id: number): Promise<Asset | null> {
         return await this.repository.findOne({
             where: { id },

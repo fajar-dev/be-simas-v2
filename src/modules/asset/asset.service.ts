@@ -68,6 +68,11 @@ export class AssetService {
         asset.lastStatus = await this.assetStatusService.findLastStatus(asset.id)
     }
 
+    /** Lightweight picker search — no relation population, capped result count. */
+    async searchOptions(q: string, limit: number): Promise<Pick<Asset, 'id' | 'code' | 'name' | 'image'>[]> {
+        return await this.repository.searchOptions(q, limit)
+    }
+
     async checkCode(code: string, excludeId?: number): Promise<{ exists: boolean; id?: number }> {
         const asset = await this.repository.findByCode(code)
         if (asset && excludeId && asset.id === excludeId) return { exists: false }

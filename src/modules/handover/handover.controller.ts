@@ -22,6 +22,12 @@ export class HandoverController {
         return ApiResponse.paginate(c, serialized, total, page, limit, "Asset handovers retrieved successfully")
     }
 
+    /** Asset ids currently tied to a pending handover — used by other modules to gate actions (e.g. disallow assigning a new holder) without paging through the full handover list. */
+    async pendingAssetIds(c: Context) {
+        const assetIds = await this.service.getPendingItemAssetIds()
+        return ApiResponse.success(c, { assetIds }, "Pending asset ids retrieved successfully")
+    }
+
     async show(c: Context) {
         const id = Number(c.req.param("id"))
         const { handover, attachments } = await this.service.getById(id)
