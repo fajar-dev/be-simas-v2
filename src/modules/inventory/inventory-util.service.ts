@@ -64,6 +64,7 @@ export class InventoryUtilService {
 
         // Column indices (1-indexed)
         const imageCol = columns.findIndex((c) => c.key === "image") + 1
+        const codeCol = columns.findIndex((c) => c.key === "code") + 1
         const variantNameCol = columns.findIndex((c) => c.key === "variantName") + 1
         const variantCodeCol = columns.findIndex((c) => c.key === "variantCode") + 1
         const variantDescriptionCol = columns.findIndex((c) => c.key === "variantDescription") + 1
@@ -200,6 +201,11 @@ export class InventoryUtilService {
                 imageCell.value = { text: "View Image", hyperlink: proxyUrl }
                 imageCell.font = { color: { argb: "FF0066CC" }, underline: true }
             }
+
+            // Link the item's code cell to its detail page, once on the block's top (master) cell.
+            const codeCell = sheet.getCell(itemStartRow, codeCol)
+            codeCell.value = { text: item.code || String(item.id), hyperlink: `${config.app.appUrl}/inventory/${item.id}` }
+            codeCell.font = { color: { argb: "FF0066CC" }, underline: true }
 
             itemColIndices.forEach((colIdx) => {
                 mergeVertical(colIdx, itemStartRow, itemEndRow)

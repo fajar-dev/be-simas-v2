@@ -46,6 +46,7 @@ export class AssetUtilService {
 
         // Column indices (1-indexed)
         const imageCol = columns.findIndex(c => c.key === 'image') + 1
+        const codeCol = columns.findIndex(c => c.key === 'code') + 1
         const holderNameCol = columns.findIndex(c => c.key === 'holderName') + 1
         const holderEmpIdCol = columns.findIndex(c => c.key === 'holderEmployeeId') + 1
         const locationCol = columns.findIndex(c => c.key === 'location') + 1
@@ -148,6 +149,11 @@ export class AssetUtilService {
                 imageCell.value = { text: 'View Image', hyperlink: proxyUrl }
                 imageCell.font = { color: { argb: 'FF0066CC' }, underline: true }
             }
+
+            // Link the code cell to the asset's detail page
+            const codeCell = dataRow.getCell(codeCol)
+            codeCell.value = { text: asset.code, hyperlink: `${config.app.appUrl}/asset/${asset.id}` }
+            codeCell.font = { color: { argb: 'FF0066CC' }, underline: true }
 
             if (index % 2 === 1) {
                 dataRow.fill = {
