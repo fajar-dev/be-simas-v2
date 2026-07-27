@@ -19,6 +19,8 @@ import { AssetLocation } from "../src/modules/asset-location/entities/asset-loca
 import { AssetHolder } from "../src/modules/asset-holder/entities/asset-holder.entity"
 import { AssetLog } from "../src/modules/asset-log/entities/asset-log.entity"
 import { AssetStatus } from "../src/modules/asset-status/entities/asset-status.entity"
+import { AssetSchedule } from "../src/modules/asset-schedule/entities/asset-schedule.entity"
+import { AssetScheduleAsset } from "../src/modules/asset-schedule/entities/asset-schedule-asset.entity"
 import { Handover } from "../src/modules/handover/entities/handover.entity"
 import { HandoverItem } from "../src/modules/handover/entities/handover-item.entity"
 import { HandoverStockItem } from "../src/modules/handover/entities/handover-stock-item.entity"
@@ -57,7 +59,7 @@ const TestDataSource = new DataSource({
     database: testDbName,
     synchronize: true,
     dropSchema: true,
-    entities: [User, Role, Permission, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetNote, AssetLocation, AssetHolder, AssetLog, AssetStatus, Handover, HandoverItem, HandoverStockItem, HandoverField, Inventory, InventoryLabel, InventoryVariant, InventoryStockBalance, InventoryStockOut, InventoryStockOutItem, InventoryStockTransfer, InventoryStockTransferItem, InventoryStockIn, InventoryStockInItem, InventoryLog, PasswordResetToken],
+    entities: [User, Role, Permission, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetNote, AssetLocation, AssetHolder, AssetLog, AssetStatus, AssetSchedule, AssetScheduleAsset, Handover, HandoverItem, HandoverStockItem, HandoverField, Inventory, InventoryLabel, InventoryVariant, InventoryStockBalance, InventoryStockOut, InventoryStockOutItem, InventoryStockTransfer, InventoryStockTransferItem, InventoryStockIn, InventoryStockInItem, InventoryLog, PasswordResetToken],
     logging: false,
 })
 

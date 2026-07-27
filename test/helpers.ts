@@ -34,6 +34,19 @@ export function createHandoverData(
     }
 }
 
+// ── Asset Schedule Test Data ────────────────────────────────────────────────
+
+export function createAssetScheduleData(assetIds: number[], overrides: Record<string, any> = {}) {
+    return {
+        assetIds,
+        title: "Maintenance check",
+        description: "Routine servicing",
+        startDate: "2026-08-10",
+        recurrence: "none",
+        ...overrides,
+    }
+}
+
 // ── Response Assertions ─────────────────────────────────────────────────────
 
 export function expectSuccess(body: any, statusCode: number = 200) {
