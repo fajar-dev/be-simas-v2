@@ -9,6 +9,7 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased] — 2026-07-19
 
 ### Added
+- **Gambar item pada respons Asset Holder & Stock Out**: `AssetHolderResponse.asset.image` dan `InventoryStockOutResponse.items[].variant.image` (fallback ke gambar item induk jika varian tidak punya gambar sendiri) serta `InventoryStockEntryTemplateResponse.image` (varian, fallback ke gambar item) — dipakai FE untuk menampilkan gambar asli (bukan ikon generik) pada pemilih aset/stok yang dipegang karyawan di form serah terima. Swagger diperbarui.
 - **Lampiran pendukung pada serah terima**: `POST /handover` kini menerima `attachmentIds` — dokumen pendukung yang diunggah user, tersimpan berdampingan dengan form tanda tangan yang di-generate otomatis. Saat webhook e-sign menyelesaikan penandatanganan, **hanya form generate-an** (dikenali dari `originalName` = `handover-{id}.pdf`) yang di-repoint ke URL dokumen bertanda tangan; sebelumnya loop-nya menimpa `filename` **semua** lampiran handover, sehingga lampiran user akan ikut tertimpa URL PDF signed begitu fitur ini ada. Test (termasuk kasus anti-timpa) & swagger diperbarui.
 
 ### Changed
