@@ -1079,6 +1079,94 @@ components:
           type: array
           items: { $ref: "#/components/schemas/AttachmentResponse" }
 
+    CreateAssetScheduleRequest:
+      type: object
+      required: [assetIds, title, startDate]
+      description: >-
+        A schedule pins a title/description (and optional time + attachments) to one or more assets from a start date.
+        Recurrence: `none` (single date), `weekly` (requires `daysOfWeek`), `monthly` (requires `dayOfMonth`),
+        `yearly` (requires `month` + `dayOfMonth`). `recurrenceEndDate` optionally caps a recurring series.
+      properties:
+        assetIds: { type: array, items: { type: integer }, minItems: 1, example: [1, 2] }
+        title: { type: string, example: "Quarterly maintenance" }
+        description: { type: string, nullable: true, example: "Full service and inspection" }
+        startDate: { type: string, format: date, example: "2026-08-10", description: "First occurrence / series lower bound, YYYY-MM-DD." }
+        startTime: { type: string, nullable: true, example: "09:00", description: "Optional time-of-day, HH:mm. Null = all-day." }
+        endTime: { type: string, nullable: true, example: "10:30" }
+        recurrence: { type: string, enum: [none, weekly, monthly, yearly], default: none }
+        daysOfWeek: { type: array, items: { type: integer, minimum: 0, maximum: 6 }, nullable: true, description: "weekly only — 0=Sunday … 6=Saturday.", example: [1, 3, 5] }
+        dayOfMonth: { type: integer, minimum: 1, maximum: 31, nullable: true, description: "monthly & yearly only.", example: 15 }
+        month: { type: integer, minimum: 1, maximum: 12, nullable: true, description: "yearly only.", example: 8 }
+        recurrenceEndDate: { type: string, format: date, nullable: true, example: "2026-12-31", description: "Only valid when recurring; must be on/after startDate." }
+        attachmentIds:
+          type: array
+          description: "Supporting documents to attach."
+          items: { type: integer }
+          example: [1, 2]
+
+    UpdateAssetScheduleRequest:
+      type: object
+      description: "All fields optional. Setting `recurrence` renormalizes the pattern fields; reverting to `none` clears them."
+      properties:
+        assetIds: { type: array, items: { type: integer }, minItems: 1 }
+        title: { type: string, example: "Quarterly maintenance" }
+        description: { type: string, nullable: true }
+        startDate: { type: string, format: date, example: "2026-08-10" }
+        startTime: { type: string, nullable: true, example: "09:00" }
+        endTime: { type: string, nullable: true, example: "10:30" }
+        recurrence: { type: string, enum: [none, weekly, monthly, yearly] }
+        daysOfWeek: { type: array, items: { type: integer, minimum: 0, maximum: 6 }, nullable: true }
+        dayOfMonth: { type: integer, minimum: 1, maximum: 31, nullable: true }
+        month: { type: integer, minimum: 1, maximum: 12, nullable: true }
+        recurrenceEndDate: { type: string, format: date, nullable: true }
+        attachmentIds:
+          type: array
+          items: { type: integer }
+
+    AssetScheduleResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        title: { type: string, example: "Quarterly maintenance" }
+        description: { type: string, nullable: true }
+        startDate: { type: string, format: date, example: "2026-08-10" }
+        startTime: { type: string, nullable: true, example: "09:00" }
+        endTime: { type: string, nullable: true, example: "10:30" }
+        recurrence: { type: string, enum: [none, weekly, monthly, yearly], example: "weekly" }
+        daysOfWeek: { type: array, items: { type: integer }, nullable: true, example: [1, 3, 5] }
+        dayOfMonth: { type: integer, nullable: true, example: 15 }
+        month: { type: integer, nullable: true, example: 8 }
+        recurrenceEndDate: { type: string, format: date, nullable: true, example: "2026-12-31" }
+        assets:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer, example: 1 }
+              name: { type: string, example: "Generator" }
+              code: { type: string, example: "AST-001" }
+              image: { type: string, nullable: true }
+        createdBy:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            photo: { type: string, nullable: true }
+        attachments:
+          type: array
+          items: { $ref: "#/components/schemas/AttachmentResponse" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    AssetScheduleOccurrenceResponse:
+      allOf:
+        - $ref: "#/components/schemas/AssetScheduleResponse"
+        - type: object
+          properties:
+            date: { type: string, format: date, example: "2026-08-17", description: "The concrete date this occurrence falls on." }
+            isRecurring: { type: boolean, example: true }
+
     CreateHandoverRequest:
       type: object
       required: [receivedById, handedOverById, transactionType]
@@ -4039,6 +4127,123 @@ paths:
         "401": { description: Unauthorized }
         "404": { description: Asset assignment record not found }
         "422": { description: Validation error }
+
+  /asset-schedule:
+    get:
+      tags: [Asset Schedule]
+      summary: List asset schedules (paginated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, default: 10 } }
+        - { name: q, in: query, schema: { type: string }, description: "Search by title or asset name/code." }
+        - { name: sortBy, in: query, schema: { type: string, enum: [title, startDate, recurrence, createdAt] } }
+        - { name: order, in: query, schema: { type: string, enum: [ASC, DESC] } }
+        - { name: assetId, in: query, schema: { type: integer }, description: "Filter by asset." }
+        - { name: recurrence, in: query, schema: { type: string, enum: [none, daily, weekly, monthly, yearly] } }
+      responses:
+        "200":
+          description: Paginated list of schedules
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/AssetScheduleResponse" }
+        "401": { description: Unauthorized }
+    post:
+      tags: [Asset Schedule]
+      summary: Create a schedule
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateAssetScheduleRequest" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssetScheduleResponse" }
+        "404": { description: Asset not found }
+        "422": { description: Validation error }
+
+  /asset-schedule/calendar:
+    get:
+      tags: [Asset Schedule]
+      summary: Expanded occurrences within a date window (for the calendar view)
+      description: "Returns one entry per concrete occurrence date, expanding recurring schedules across `[from, to]`."
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date }, example: "2026-08-01" }
+        - { name: to, in: query, required: true, schema: { type: string, format: date }, example: "2026-08-31" }
+        - { name: assetId, in: query, schema: { type: integer } }
+        - { name: recurrence, in: query, schema: { type: string, enum: [none, daily, weekly, monthly, yearly] } }
+      responses:
+        "200":
+          description: Occurrences sorted by date then time
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/AssetScheduleOccurrenceResponse" }
+        "400": { description: "Missing/invalid from or to" }
+        "401": { description: Unauthorized }
+
+  /asset-schedule/{id}:
+    get:
+      tags: [Asset Schedule]
+      summary: Get a schedule
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Schedule
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssetScheduleResponse" }
+        "404": { description: Not found }
+    put:
+      tags: [Asset Schedule]
+      summary: Update a schedule
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateAssetScheduleRequest" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssetScheduleResponse" }
+        "404": { description: Not found }
+        "422": { description: Validation error }
+    delete:
+      tags: [Asset Schedule]
+      summary: Delete a schedule (and its attachments)
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Deleted }
+        "404": { description: Not found }
 
   /handover:
     get:
