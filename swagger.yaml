@@ -897,6 +897,7 @@ components:
         name: { type: string }
         code: { type: string, nullable: true }
         unit: { type: string }
+        image: { type: string, nullable: true, description: "Variant image, falling back to the parent item's image.", example: "http://cdn.test.com/stock/variants/cable.jpg" }
         new: { type: integer, example: 10 }
         used: { type: integer, example: 3 }
 
@@ -1066,6 +1067,7 @@ components:
                   name: { type: string }
                   code: { type: string, nullable: true }
                   unit: { type: string }
+                  image: { type: string, nullable: true, description: "Variant image, falling back to the parent item's image." }
                   inventory:
                     type: object
                     nullable: true
@@ -1260,6 +1262,7 @@ components:
             id: { type: integer, example: 1 }
             name: { type: string, example: "MacBook Pro M3" }
             code: { type: string, example: "AST-001" }
+            image: { type: string, nullable: true, example: "http://cdn.test.com/stock/assets/laptop.jpg" }
         employee:
           type: object
           properties:
