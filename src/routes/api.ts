@@ -19,6 +19,7 @@ import { StoreFeedbackValidator } from "../modules/feedback/validators/feedback.
 import { CreateAssetStatusValidator, BulkCreateAssetStatusValidator } from "../modules/asset-status/validators/asset-status.validator"
 import { CreateRoleValidator, UpdateRoleValidator } from "../modules/role/validators/role.validator"
 import { DecodeBarcodeValidator } from "../modules/ai/validators/ai.validator"
+import { CreateAssetScheduleValidator, UpdateAssetScheduleValidator } from "../modules/asset-schedule/validators/asset-schedule.validator"
 import { CreateHandoverValidator } from "../modules/handover/validators/handover.validator"
 import { ReplaceHandoverFieldsValidator } from "../modules/handover-field/validators/handover-field.validator"
 import { CreateInventoryValidator, UpdateInventoryValidator } from "../modules/inventory/validators/inventory.validator"
@@ -57,6 +58,7 @@ import { webhookClientController } from "../modules/webhook-client/webhook-clien
 import { aiController } from "../modules/ai/ai.module"
 import { bookController } from "../modules/book/book.module"
 import { BorrowBookValidator, ReturnBookValidator } from "../modules/book/validators/book.validator"
+import { assetScheduleController } from "../modules/asset-schedule/asset-schedule.module"
 import { handoverController } from "../modules/handover/handover.module"
 import { handoverFieldController } from "../modules/handover-field/handover-field.module"
 import { inventoryController } from "../modules/inventory/inventory.module"
@@ -193,6 +195,14 @@ routes.get("/asset-log", authMiddleware, requirePermission("asset:read"), (c) =>
 routes.get("/asset-status", authMiddleware, requirePermission("asset-status:read"), (c) => assetStatusController.index(c))
 routes.post("/asset-status/bulk", authMiddleware, requirePermission("asset-status:create"), zValidator("json", BulkCreateAssetStatusValidator, validationHook), (c) => assetStatusController.bulkStore(c))
 routes.post("/asset-status", authMiddleware, requirePermission("asset-status:create"), zValidator("json", CreateAssetStatusValidator, validationHook), (c) => assetStatusController.store(c))
+
+// Asset Schedule (calendar)
+routes.get("/asset-schedule", authMiddleware, requirePermission("asset-schedule:read"), (c) => assetScheduleController.index(c))
+routes.get("/asset-schedule/calendar", authMiddleware, requirePermission("asset-schedule:read"), (c) => assetScheduleController.calendar(c))
+routes.get("/asset-schedule/:id", authMiddleware, requirePermission("asset-schedule:read"), (c) => assetScheduleController.show(c))
+routes.post("/asset-schedule", authMiddleware, requirePermission("asset-schedule:create"), zValidator("json", CreateAssetScheduleValidator, validationHook), (c) => assetScheduleController.store(c))
+routes.put("/asset-schedule/:id", authMiddleware, requirePermission("asset-schedule:update"), zValidator("json", UpdateAssetScheduleValidator, validationHook), (c) => assetScheduleController.update(c))
+routes.delete("/asset-schedule/:id", authMiddleware, requirePermission("asset-schedule:delete"), (c) => assetScheduleController.destroy(c))
 
 // Asset Handover
 routes.get("/handover", authMiddleware, requirePermission("handover:read"), (c) => handoverController.index(c))

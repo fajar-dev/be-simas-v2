@@ -32,6 +32,10 @@ export type AssetLocationSource = (typeof ASSET_LOCATION_SOURCES)[number]
 export const STOCK_CONDITIONS = ["new", "used"] as const
 export type StockCondition = (typeof STOCK_CONDITIONS)[number]
 
+/** Asset schedule recurrence pattern — column `asset_schedules.recurrence`. */
+export const SCHEDULE_RECURRENCES = ["none", "weekly", "monthly", "yearly"] as const
+export type ScheduleRecurrence = (typeof SCHEDULE_RECURRENCES)[number]
+
 /** Suggested units of measure for an inventory item (`inventories.unit`). Free-text; this list only powers the select. */
 export const INVENTORY_UNITS = ["Pcs", "Unit", "Box", "Pack", "Set", "Roll", "Meter", "Cm", "Kg", "Gram", "Liter", "Lusin", "Rim"] as const
 export type InventoryUnit = (typeof INVENTORY_UNITS)[number]
