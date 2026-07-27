@@ -485,7 +485,7 @@ describe("Asset Handover API", () => {
         expect(h2.body.data.employee.id).toBe(employeeId)
     })
 
-    test("POST /api/asset-holder/:id/return - manual return blocked for handover-sourced holder", async () => {
+    test("POST /api/asset-holder/:id/return - manual return also works for a handover-sourced holder", async () => {
         await assignToAlice([assetId])
         const active = await request(app, `/api/asset-holder/active/${assetId}`, { headers: authHeaders })
         const holderId = active.body.data.id
@@ -494,7 +494,10 @@ describe("Asset Handover API", () => {
             method: "POST", headers: authHeaders,
             body: { returnedDate: "2026-07-10" },
         })
-        expect(res.status).toBe(400)
+        expect(res.status).toBe(200)
+
+        const holder = await request(app, `/api/asset-holder/active/${assetId}`, { headers: authHeaders })
+        expect(holder.body.data).toBeNull()
     })
 
     test("POST /api/asset-status - blocked while asset is held via a handover", async () => {
