@@ -58,7 +58,7 @@ export class EsignHelper {
         form.append("signers", JSON.stringify(params.signers))
 
         const res = await this.http.post<any>(
-            `/${config.esign.tenantSlug}/api/esign/v2/integration/documents/direct`,
+            `/${config.esign.tenantSlug}/api/esign/v2.1/integration/documents/direct`,
             form,
             {
                 headers: {
