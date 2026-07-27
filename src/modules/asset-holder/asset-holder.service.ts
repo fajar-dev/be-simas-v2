@@ -134,18 +134,11 @@ export class AssetHolderService {
 
     async returnAsset(
         id: number,
-        data: { returnedDate: string; returnNote?: string; returnedByUserId?: number; attachmentIds?: number[] },
-        options: { enforceHandoverPolicy?: boolean } = {}
+        data: { returnedDate: string; returnNote?: string; returnedByUserId?: number; attachmentIds?: number[] }
     ): Promise<AssetHolder> {
         const { log } = await this.getById(id)
         if (log.returnedDate) {
             throw new BadRequestException("Asset has already been returned")
-        }
-        // A user-initiated manual return is not allowed for holders created via an assign
-        // handover — those must be returned through a return handover. System-triggered
-        // returns (status change auto-return, book return) bypass this policy.
-        if (options.enforceHandoverPolicy && log.assignHandoverId) {
-            throw new BadRequestException("Asset assigned via handover must be returned through a return handover")
         }
 
         await withTransaction(async (manager) => {
