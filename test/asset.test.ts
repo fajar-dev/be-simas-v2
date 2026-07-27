@@ -1,5 +1,7 @@
 import { describe, test, expect, beforeAll, afterAll, beforeEach, mock } from "bun:test"
 import { Hono } from "hono"
+import ExcelJS from "exceljs"
+import { config } from "../src/config/config"
 import {
     initTestDatabase,
     destroyTestDatabase,
@@ -1568,6 +1570,36 @@ describe("Asset Export & Import", () => {
         })
         expect(res.status).toBe(200)
         expect(res.headers.get("content-type")).toContain("spreadsheetml")
+    })
+
+    test("Export links the code cell to the asset's detail page", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+
+        const created = await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, { code: "EXP-LINK-1", name: "Linked Export Asset" }),
+        })
+        const assetId = created.body.data.id
+
+        const res = await app.request("/api/asset/export", { method: "GET", headers })
+        expect(res.status).toBe(200)
+        const buffer = Buffer.from(await res.arrayBuffer())
+
+        const workbook = new ExcelJS.Workbook()
+        await workbook.xlsx.load(buffer as any)
+        const sheet = workbook.getWorksheet("Assets")!
+
+        let found = false
+        sheet.eachRow((row, rowNumber) => {
+            if (rowNumber < 3) return
+            if (row.getCell(3).text === "EXP-LINK-1") {
+                expect(row.getCell(3).hyperlink).toBe(`${config.app.appUrl}/asset/${assetId}`)
+                found = true
+            }
+        })
+        expect(found).toBe(true)
     })
 
     test("Export includes depreciation columns", async () => {

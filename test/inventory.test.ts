@@ -1,6 +1,7 @@
 import { describe, test, expect, beforeAll, afterAll, beforeEach } from "bun:test"
 import { Hono } from "hono"
 import ExcelJS from "exceljs"
+import { config } from "../src/config/config"
 import {
     initTestDatabase,
     destroyTestDatabase,
@@ -346,5 +347,27 @@ describe("Inventory Export", () => {
         })
 
         expect(rows.some((r) => r.includes("Inactive Export Item"))).toBe(false)
+    })
+
+    test("export links the code cell to the item's detail page", async () => {
+        const created = await request(app, "/api/inventory", { method: "POST", headers: authHeaders, body: { name: "Linked Export Item", code: "LNK-001" } })
+        const itemId = created.body.data.id
+
+        const res = await app.request("/api/inventory/export", { method: "GET", headers: authHeaders })
+        const buffer = Buffer.from(await res.arrayBuffer())
+
+        const workbook = new ExcelJS.Workbook()
+        await workbook.xlsx.load(buffer as any)
+        const sheet = workbook.getWorksheet("Inventory")!
+
+        let found = false
+        sheet.eachRow((row, rowNumber) => {
+            if (rowNumber < 3) return
+            if (row.getCell(3).text === "LNK-001") {
+                expect(row.getCell(3).hyperlink).toBe(`${config.app.appUrl}/inventory/${itemId}`)
+                found = true
+            }
+        })
+        expect(found).toBe(true)
     })
 })
