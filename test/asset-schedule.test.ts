@@ -183,6 +183,32 @@ describe("Asset Schedule API", () => {
         expect(res.status).toBe(404)
     })
 
+    // ── Optional multi-user assignment ──────────────────────────────────────
+    test("creates a schedule with no assigned users when userIds is omitted", async () => {
+        const res = await request(app, "/api/asset-schedule", { method: "POST", headers: authHeaders, body: scheduleData() })
+        expect(res.status).toBe(201)
+        expect(res.body.data.users).toEqual([])
+    })
+
+    test("creates a schedule assigned to multiple users", async () => {
+        const u1 = await request(app, "/api/user", { method: "POST", headers: authHeaders, body: { name: "Assignee One", email: "assignee1@example.com", password: "password123" } })
+        const u2 = await request(app, "/api/user", { method: "POST", headers: authHeaders, body: { name: "Assignee Two", email: "assignee2@example.com", password: "password123" } })
+
+        const res = await request(app, "/api/asset-schedule", {
+            method: "POST",
+            headers: authHeaders,
+            body: scheduleData({ userIds: [u1.body.data.id, u2.body.data.id] }),
+        })
+        expect(res.status).toBe(201)
+        const ids = res.body.data.users.map((u: any) => u.id).sort()
+        expect(ids).toEqual([u1.body.data.id, u2.body.data.id].sort())
+    })
+
+    test("rejects a schedule referencing a non-existent user", async () => {
+        const res = await request(app, "/api/asset-schedule", { method: "POST", headers: authHeaders, body: scheduleData({ userIds: [999999] }) })
+        expect(res.status).toBe(404)
+    })
+
     test("rejects weekly without weekdays", async () => {
         const res = await request(app, "/api/asset-schedule", { method: "POST", headers: authHeaders, body: scheduleData({ recurrence: "weekly" }) })
         expect(res.status).toBe(422)
@@ -253,6 +279,30 @@ describe("Asset Schedule API", () => {
 
         const missing = await request(app, `/api/asset-schedule/${id}`, { headers: authHeaders })
         expect(missing.status).toBe(404)
+    })
+
+    test("updates assigned users and can clear them with an explicit empty array", async () => {
+        const u1 = await request(app, "/api/user", { method: "POST", headers: authHeaders, body: { name: "Assignee One", email: "upd-assignee1@example.com", password: "password123" } })
+        const u2 = await request(app, "/api/user", { method: "POST", headers: authHeaders, body: { name: "Assignee Two", email: "upd-assignee2@example.com", password: "password123" } })
+
+        const created = await request(app, "/api/asset-schedule", { method: "POST", headers: authHeaders, body: scheduleData({ userIds: [u1.body.data.id] }) })
+        const id = created.body.data.id
+        expect(created.body.data.users.map((u: any) => u.id)).toEqual([u1.body.data.id])
+
+        // omitting userIds leaves the assignment untouched
+        const untouched = await request(app, `/api/asset-schedule/${id}`, { method: "PUT", headers: authHeaders, body: { title: "Still assigned" } })
+        expect(untouched.status).toBe(200)
+        expect(untouched.body.data.users.map((u: any) => u.id)).toEqual([u1.body.data.id])
+
+        // replacing with a different set
+        const replaced = await request(app, `/api/asset-schedule/${id}`, { method: "PUT", headers: authHeaders, body: { userIds: [u2.body.data.id] } })
+        expect(replaced.status).toBe(200)
+        expect(replaced.body.data.users.map((u: any) => u.id)).toEqual([u2.body.data.id])
+
+        // an explicit empty array clears all assigned users
+        const cleared = await request(app, `/api/asset-schedule/${id}`, { method: "PUT", headers: authHeaders, body: { userIds: [] } })
+        expect(cleared.status).toBe(200)
+        expect(cleared.body.data.users).toEqual([])
     })
 
     test("clears pattern fields when a schedule reverts to non-recurring", async () => {

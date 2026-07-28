@@ -552,6 +552,77 @@ describe("User - roleId", () => {
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
+// GET /api/user/options — lightweight picker search
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("GET /api/user/options", () => {
+    test("requires auth", async () => {
+        const res = await request(app, "/api/user/options")
+        expect(res.status).toBe(401)
+    })
+
+    test("returns minimal shape, no relation fields", async () => {
+        const { headers } = await registerAndLogin(app)
+        await request(app, "/api/user", {
+            method: "POST",
+            headers,
+            body: { name: "Option Alice", email: "opt-alice@example.com", password: "password123" },
+        })
+
+        const res = await request(app, "/api/user/options", { headers })
+        expect(res.status).toBe(200)
+        expect(res.body.data.length).toBeGreaterThan(0)
+        const found = res.body.data.find((u: any) => u.email === "opt-alice@example.com")
+        expect(found).toBeDefined()
+        expect(found.name).toBe("Option Alice")
+        expect(Object.keys(found).sort()).toEqual(["email", "id", "name", "photo"])
+    })
+
+    test("filters by q against name or email", async () => {
+        const { headers } = await registerAndLogin(app)
+        await request(app, "/api/user", { method: "POST", headers, body: { name: "Alpha Person", email: "opt-alpha@example.com", password: "password123" } })
+        await request(app, "/api/user", { method: "POST", headers, body: { name: "Beta Person", email: "opt-beta@example.com", password: "password123" } })
+
+        const res = await request(app, "/api/user/options?q=Alpha", { headers })
+        expect(res.status).toBe(200)
+        expect(res.body.data.length).toBe(1)
+        expect(res.body.data[0].name).toBe("Alpha Person")
+
+        const byEmail = await request(app, "/api/user/options?q=opt-beta", { headers })
+        expect(byEmail.body.data.length).toBe(1)
+        expect(byEmail.body.data[0].name).toBe("Beta Person")
+    })
+
+    test("excludes inactive users", async () => {
+        const { headers } = await registerAndLogin(app)
+        const created = await request(app, "/api/user", { method: "POST", headers, body: { name: "Inactive Guy", email: "opt-inactive@example.com", password: "password123" } })
+        await request(app, `/api/user/${created.body.data.id}`, { method: "PUT", headers, body: { isActive: false } })
+
+        const res = await request(app, "/api/user/options?q=Inactive", { headers })
+        expect(res.status).toBe(200)
+        expect(res.body.data.length).toBe(0)
+    })
+
+    test("caps the result count at the requested limit", async () => {
+        const { headers } = await registerAndLogin(app)
+        for (let i = 0; i < 5; i++) {
+            await request(app, "/api/user", { method: "POST", headers, body: { name: `Limit User ${i}`, email: `opt-lim-${i}@example.com`, password: "password123" } })
+        }
+
+        const res = await request(app, "/api/user/options?limit=3", { headers })
+        expect(res.status).toBe(200)
+        expect(res.body.data.length).toBe(3)
+    })
+
+    test("clamps a limit above the maximum", async () => {
+        const { headers } = await registerAndLogin(app)
+        const res = await request(app, "/api/user/options?limit=9999", { headers })
+        expect(res.status).toBe(200)
+        expect(res.body.data.length).toBeLessThanOrEqual(50)
+    })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
 // POST /api/upload — Upload File
 // ═══════════════════════════════════════════════════════════════════════════
 
