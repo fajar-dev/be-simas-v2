@@ -4174,7 +4174,7 @@ paths:
         - { name: sortBy, in: query, schema: { type: string, enum: [title, startDate, recurrence, createdAt] } }
         - { name: order, in: query, schema: { type: string, enum: [ASC, DESC] } }
         - { name: assetId, in: query, schema: { type: integer }, description: "Filter by asset." }
-        - { name: recurrence, in: query, schema: { type: string, enum: [none, daily, weekly, monthly, yearly] } }
+        - { name: recurrence, in: query, schema: { type: string, enum: [none, weekly, monthly, yearly] } }
       responses:
         "200":
           description: Paginated list of schedules
@@ -4217,7 +4217,7 @@ paths:
         - { name: from, in: query, required: true, schema: { type: string, format: date }, example: "2026-08-01" }
         - { name: to, in: query, required: true, schema: { type: string, format: date }, example: "2026-08-31" }
         - { name: assetId, in: query, schema: { type: integer } }
-        - { name: recurrence, in: query, schema: { type: string, enum: [none, daily, weekly, monthly, yearly] } }
+        - { name: recurrence, in: query, schema: { type: string, enum: [none, weekly, monthly, yearly] } }
       responses:
         "200":
           description: Occurrences sorted by date then time
@@ -5638,6 +5638,7 @@ paths:
                         items:
                           type: object
                           properties:
+                            id: { type: integer, example: 3, description: "Category id — usable as GET /asset?categoryIds=" }
                             name: { type: string, example: "Electronics" }
                             count: { type: integer, example: 45 }
                             totalPrice: { type: number, example: 2000000000 }
@@ -5670,6 +5671,7 @@ paths:
                         items:
                           type: object
                           properties:
+                            id: { type: integer, example: 7, description: "Location id — usable as GET /asset?locationIds=" }
                             name: { type: string, example: "Server Room" }
                             count: { type: integer, example: 30 }
                             totalPrice: { type: number, example: 1500000000 }
@@ -5702,6 +5704,7 @@ paths:
                         items:
                           type: object
                           properties:
+                            id: { type: integer, example: 12, description: "Sub-category id — usable as GET /asset?subCategoryIds=" }
                             name: { type: string, example: "Laptops" }
                             count: { type: integer, example: 20 }
                             totalPrice: { type: number, example: 800000000 }

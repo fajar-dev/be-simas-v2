@@ -8,6 +8,9 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] — 2026-07-19
 
+### Changed
+- **`id` pada respons statistik per-kategori/lokasi/sub-kategori**: `GET /statistic/assets-by-category`, `/assets-by-location`, `/assets-by-sub-category` kini menyertakan `id` di tiap item (sebelumnya hanya `name`/`count`/`totalPrice`/`totalBookValue`) — dipakai FE agar legenda chart di Dashboard bisa diklik langsung ke `GET /asset?categoryIds=`/`locationIds=`/`subCategoryIds=` tanpa perlu mencocokkan nama. Test & swagger diperbarui.
+
 ### Added
 - **`GET /asset/options`**: endpoint pencarian aset yang ringan untuk picker/select (`q` cocok ke nama/kode, `limit` default 20 maks 50) — hanya mengembalikan `id`/`code`/`name`/`image`, tanpa join relasi (holder/lokasi/kategori/label seperti `GET /asset` biasa). Dipakai FE (kalender: filter aset & modal Tambah Jadwal) sebagai pengganti memuat halaman pertama daftar aset penuh — jauh lebih murah pada tabel aset yang bisa berisi ratusan ribu baris. Repository baru `AssetRepository.searchOptions()` (query 1 tabel, tanpa join). Test & swagger diperbarui.
 - **`GET /handover/pending-assets`**: endpoint baru yang mengembalikan `assetIds` — daftar ID aset yang sedang terikat handover berstatus pending. Dipakai FE (halaman Asset Holder) untuk menonaktifkan tombol Assign tanpa harus memanggil `GET /handover` (endpoint list bertabel/berpaginasi, tidak cocok dipakai hanya untuk cek keanggotaan). Membungkus method service `HandoverService.getPendingItemAssetIds()` yang sebelumnya hanya dipakai internal untuk validasi create. Test & swagger diperbarui.

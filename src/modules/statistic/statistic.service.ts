@@ -84,7 +84,8 @@ export class StatisticService {
             .createQueryBuilder("asset")
             .innerJoin("asset.subCategory", "subCategory")
             .innerJoin("subCategory.category", "category")
-            .select("category.name", "name")
+            .select("category.id", "id")
+            .addSelect("category.name", "name")
             .addSelect("COUNT(asset.id)", "count")
             .addSelect("COALESCE(SUM(asset.price), 0)", "totalPrice")
             .addSelect(`COALESCE(SUM(
@@ -101,6 +102,7 @@ export class StatisticService {
             .getRawMany()
 
         return result.map((row) => ({
+            id: Number(row.id),
             name: row.name,
             count: Number(row.count),
             totalPrice: Number(row.totalPrice),
@@ -131,7 +133,8 @@ export class StatisticService {
                 "asset.id = current_loc.asset_id",
             )
             .innerJoin(Location, "location", "location.id = current_loc.location_id")
-            .select("location.name", "name")
+            .select("location.id", "id")
+            .addSelect("location.name", "name")
             .addSelect("COUNT(asset.id)", "count")
             .addSelect("COALESCE(SUM(asset.price), 0)", "totalPrice")
             .addSelect(`COALESCE(SUM(
@@ -148,6 +151,7 @@ export class StatisticService {
             .getRawMany()
 
         return result.map((row) => ({
+            id: Number(row.id),
             name: row.name,
             count: Number(row.count),
             totalPrice: Number(row.totalPrice),
@@ -159,7 +163,8 @@ export class StatisticService {
         const query = AppDataSource.getRepository(Asset)
             .createQueryBuilder("asset")
             .innerJoin("asset.subCategory", "subCategory")
-            .select("subCategory.name", "name")
+            .select("subCategory.id", "id")
+            .addSelect("subCategory.name", "name")
             .addSelect("COUNT(asset.id)", "count")
             .addSelect("COALESCE(SUM(asset.price), 0)", "totalPrice")
         this.applyStatusFilter(query, statuses)
@@ -170,6 +175,7 @@ export class StatisticService {
             .getRawMany()
 
         return result.map((row) => ({
+            id: Number(row.id),
             name: row.name,
             count: Number(row.count),
             totalPrice: Number(row.totalPrice),
