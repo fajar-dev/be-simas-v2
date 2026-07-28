@@ -54,6 +54,22 @@ export class UserRepository implements IUserRepository {
         return { data, total }
     }
 
+    async searchOptions(q: string, limit: number): Promise<Pick<User, "id" | "name" | "email" | "photo">[]> {
+        const query = this.repository
+            .createQueryBuilder("user")
+            .select(["user.id", "user.name", "user.email", "user.photo"])
+            .where("user.deleted_at IS NULL")
+            .andWhere("user.isActive = :isActive", { isActive: true })
+            .orderBy("user.name", "ASC")
+            .take(limit)
+
+        if (q) {
+            query.andWhere("(user.name LIKE :q OR user.email LIKE :q)", { q: `%${q}%` })
+        }
+
+        return await query.getMany()
+    }
+
     async findById(id: number): Promise<User | null> {
         return await this.repository.createQueryBuilder("user")
             .leftJoinAndSelect("user.role", "role")

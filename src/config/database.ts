@@ -17,6 +17,7 @@ import { AssetLog } from "../modules/asset-log/entities/asset-log.entity"
 import { AssetStatus } from "../modules/asset-status/entities/asset-status.entity"
 import { AssetSchedule } from "../modules/asset-schedule/entities/asset-schedule.entity"
 import { AssetScheduleAsset } from "../modules/asset-schedule/entities/asset-schedule-asset.entity"
+import { AssetScheduleUser } from "../modules/asset-schedule/entities/asset-schedule-user.entity"
 import { Handover } from "../modules/handover/entities/handover.entity"
 import { HandoverItem } from "../modules/handover/entities/handover-item.entity"
 import { HandoverStockItem } from "../modules/handover/entities/handover-stock-item.entity"
@@ -52,7 +53,7 @@ const defaultDataSource = new DataSource({
     password: config.database.pass,
     database: config.database.name,
     synchronize: config.database.sync,
-    entities: [User, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetNote, AssetLocation, AssetHolder, AssetLog, AssetStatus, AssetSchedule, AssetScheduleAsset, Handover, HandoverItem, HandoverStockItem, HandoverField, Inventory, InventoryLabel, InventoryVariant, InventoryStockBalance, InventoryStockOut, InventoryStockOutItem, InventoryStockTransfer, InventoryStockTransferItem, InventoryStockIn, InventoryStockInItem, InventoryLog, Role, Permission, PasswordResetToken],
+    entities: [User, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetNote, AssetLocation, AssetHolder, AssetLog, AssetStatus, AssetSchedule, AssetScheduleAsset, AssetScheduleUser, Handover, HandoverItem, HandoverStockItem, HandoverField, Inventory, InventoryLabel, InventoryVariant, InventoryStockBalance, InventoryStockOut, InventoryStockOutItem, InventoryStockTransfer, InventoryStockTransferItem, InventoryStockIn, InventoryStockInItem, InventoryLog, Role, Permission, PasswordResetToken],
     migrations: [],
     subscribers: [],
 })

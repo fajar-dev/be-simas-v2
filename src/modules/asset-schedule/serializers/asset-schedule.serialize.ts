@@ -20,6 +20,20 @@ export class AssetScheduleSerializer {
         )
     }
 
+    private static async users(schedule: AssetSchedule) {
+        const links = schedule.scheduleUsers || []
+        return await Promise.all(
+            links
+                .filter((l) => l.user)
+                .map(async (l) => ({
+                    id: l.user.id,
+                    name: l.user.name,
+                    email: l.user.email,
+                    photo: await resolveFileUrl(l.user.photo),
+                }))
+        )
+    }
+
     static async single(schedule: AssetSchedule, attachments: Attachment[] = []) {
         return {
             id: schedule.id,
@@ -32,6 +46,7 @@ export class AssetScheduleSerializer {
             month: schedule.month ?? null,
             recurrenceEndDate: schedule.recurrenceEndDate || null,
             assets: await this.assets(schedule),
+            users: await this.users(schedule),
             createdBy: schedule.createdBy
                 ? {
                       id: schedule.createdBy.id,

@@ -12,6 +12,11 @@ export class UserService {
         return await this.repository.findAll(page, limit, q, filters, sortBy, order)
     }
 
+    /** Lightweight picker search — no relation population, active users only, capped result count. */
+    async searchOptions(q: string, limit: number): Promise<Pick<User, "id" | "name" | "email" | "photo">[]> {
+        return await this.repository.searchOptions(q, limit)
+    }
+
     async getById(id: number): Promise<User> {
         const user = await this.repository.findById(id)
         if (!user) {

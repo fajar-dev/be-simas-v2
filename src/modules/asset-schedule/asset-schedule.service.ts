@@ -3,6 +3,7 @@ import { IAssetScheduleRepository, AssetScheduleFilter } from "./interfaces/asse
 import { NotFoundException } from "../../core/exceptions/base"
 import { withTransaction } from "../../core/helpers/transaction"
 import { AssetService } from "../asset/asset.service"
+import { UserService } from "../user/user.service"
 import { AttachmentService } from "../attachment/attachment.service"
 import { AssetScheduleWithAttachments } from "./serializers/asset-schedule.serialize"
 import { expandOccurrences } from "./recurrence"
@@ -17,6 +18,7 @@ export class AssetScheduleService {
     constructor(
         private readonly repository: IAssetScheduleRepository,
         private readonly assetService: AssetService,
+        private readonly userService: UserService,
         private readonly attachmentService: AttachmentService
     ) {}
 
@@ -60,6 +62,7 @@ export class AssetScheduleService {
 
     async create(data: CreateAssetScheduleValidator, userId?: number): Promise<AssetScheduleWithAttachments> {
         await this.assertAssetsExist(data.assetIds)
+        if (data.userIds?.length) await this.assertUsersExist(data.userIds)
         const pattern = this.normalizePattern(data.recurrence, data)
 
         const created = await withTransaction(async (manager) => {
@@ -77,6 +80,11 @@ export class AssetScheduleService {
 
             await this.repository.setAssets(schedule.id, data.assetIds, manager)
 
+            // Assigning users is optional — a schedule may be created with nobody assigned.
+            if (data.userIds?.length) {
+                await this.repository.setUsers(schedule.id, data.userIds, manager)
+            }
+
             if (data.attachmentIds?.length) {
                 await this.attachmentService.associate(data.attachmentIds, ENTITY_ASSET_SCHEDULE, schedule.id, manager)
             }
@@ -91,6 +99,7 @@ export class AssetScheduleService {
         const schedule = await this.findOrFail(id)
 
         if (data.assetIds) await this.assertAssetsExist(data.assetIds)
+        if (data.userIds?.length) await this.assertUsersExist(data.userIds)
 
         await withTransaction(async (manager) => {
             const patch: Partial<AssetSchedule> = {}
@@ -115,6 +124,11 @@ export class AssetScheduleService {
 
             if (data.assetIds) {
                 await this.repository.setAssets(id, data.assetIds, manager)
+            }
+
+            // `!== undefined` (not truthy) so an explicit empty array clears all assigned users.
+            if (data.userIds !== undefined) {
+                await this.repository.setUsers(id, data.userIds, manager)
             }
 
             if (data.attachmentIds !== undefined) {
@@ -156,6 +170,12 @@ export class AssetScheduleService {
     private async assertAssetsExist(assetIds: number[]): Promise<void> {
         for (const assetId of assetIds) {
             await this.assetService.getById(assetId) // throws NotFoundException if missing
+        }
+    }
+
+    private async assertUsersExist(userIds: number[]): Promise<void> {
+        for (const userId of userIds) {
+            await this.userService.getById(userId) // throws NotFoundException if missing
         }
     }
 

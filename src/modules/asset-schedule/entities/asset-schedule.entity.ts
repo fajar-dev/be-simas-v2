@@ -12,6 +12,7 @@ import {
 import type { Relation } from "typeorm"
 import { User } from "../../user/entities/user.entity"
 import { AssetScheduleAsset } from "./asset-schedule-asset.entity"
+import { AssetScheduleUser } from "./asset-schedule-user.entity"
 import type { ScheduleRecurrence } from "../../../core/enums"
 
 @Entity("asset_schedules")
@@ -51,6 +52,10 @@ export class AssetSchedule {
 
     @OneToMany(() => AssetScheduleAsset, (link) => link.schedule)
     scheduleAssets?: Relation<AssetScheduleAsset[]>
+
+    /** Users to notify about this schedule — optional, may be empty (assigned to nobody). */
+    @OneToMany(() => AssetScheduleUser, (link) => link.schedule)
+    scheduleUsers?: Relation<AssetScheduleUser[]>
 
     @Column({ name: "created_by", nullable: true })
     createdByUserId?: number | null

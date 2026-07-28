@@ -44,6 +44,7 @@ function validateRecurrence(
 export const CreateAssetScheduleValidator = z
     .object({
         assetIds: z.array(z.number().int().positive()).min(1, "At least one asset is required"),
+        userIds: z.array(z.number().int().positive()).optional(),
         title: z.string().min(1, "Title is required"),
         description: z.string().optional().nullable(),
         startDate: dateString,
@@ -61,6 +62,7 @@ export type CreateAssetScheduleValidator = z.infer<typeof CreateAssetScheduleVal
 export const UpdateAssetScheduleValidator = z
     .object({
         assetIds: z.array(z.number().int().positive()).min(1, "At least one asset is required").optional(),
+        userIds: z.array(z.number().int().positive()).optional(),
         title: z.string().min(1, "Title is required").optional(),
         description: z.string().optional().nullable(),
         startDate: dateString.optional(),

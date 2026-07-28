@@ -2,6 +2,7 @@ import { Brackets, EntityManager, In, Repository } from "typeorm"
 import { AppDataSource } from "../../../config/database"
 import { AssetSchedule } from "../entities/asset-schedule.entity"
 import { AssetScheduleAsset } from "../entities/asset-schedule-asset.entity"
+import { AssetScheduleUser } from "../entities/asset-schedule-user.entity"
 import { IAssetScheduleRepository, AssetScheduleFilter } from "../interfaces/asset-schedule.repository.interface"
 
 const SORTABLE = new Set(["title", "startDate", "recurrence", "createdAt"])
@@ -18,6 +19,8 @@ export class TypeOrmAssetScheduleRepository implements IAssetScheduleRepository 
             .createQueryBuilder("schedule")
             .leftJoinAndSelect("schedule.scheduleAssets", "link")
             .leftJoinAndSelect("link.asset", "asset")
+            .leftJoinAndSelect("schedule.scheduleUsers", "userLink")
+            .leftJoinAndSelect("userLink.user", "assignedUser")
             .leftJoinAndSelect("schedule.createdBy", "createdBy")
     }
 
@@ -127,6 +130,19 @@ export class TypeOrmAssetScheduleRepository implements IAssetScheduleRepository 
 
         const toAdd = assetIds.filter((id) => !existingIds.has(id))
         if (toAdd.length) await linkRepo.save(toAdd.map((assetId) => linkRepo.create({ scheduleId, assetId })))
+    }
+
+    async setUsers(scheduleId: number, userIds: number[], manager?: EntityManager): Promise<void> {
+        const linkRepo = manager ? manager.getRepository(AssetScheduleUser) : AppDataSource.getRepository(AssetScheduleUser)
+        const existing = await linkRepo.find({ where: { scheduleId } })
+        const existingIds = new Set(existing.map((l) => l.userId))
+        const wanted = new Set(userIds)
+
+        const toRemove = existing.filter((l) => !wanted.has(l.userId)).map((l) => l.id)
+        if (toRemove.length) await linkRepo.delete({ id: In(toRemove) })
+
+        const toAdd = userIds.filter((id) => !existingIds.has(id))
+        if (toAdd.length) await linkRepo.save(toAdd.map((userId) => linkRepo.create({ scheduleId, userId })))
     }
 
     async delete(id: number): Promise<void> {

@@ -94,6 +94,7 @@ routes.post("/auth/qrcode/login", (c) => authController.qrCodeLogin(c))
 
 // User
 routes.get("/user", authMiddleware, requirePermission("user:read"), (c) => userController.index(c))
+routes.get("/user/options", authMiddleware, (c) => userController.options(c))
 routes.get("/user/:id", authMiddleware, requirePermission("user:read"), (c) => userController.show(c))
 routes.post("/user", authMiddleware, requirePermission("user:create"), zValidator("json", CreateUserValidator, validationHook), (c) => userController.store(c))
 routes.put("/user/:id", authMiddleware, requirePermission("user:update"), zValidator("json", UpdateUserValidator, validationHook), (c) => userController.update(c))

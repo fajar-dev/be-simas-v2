@@ -26,5 +26,7 @@ export interface IAssetScheduleRepository {
     merge(entity: AssetSchedule, data: Partial<AssetSchedule>): AssetSchedule
     /** Replace the schedule's asset links with exactly `assetIds`. */
     setAssets(scheduleId: number, assetIds: number[], manager?: EntityManager): Promise<void>
+    /** Replace the schedule's assigned-user links with exactly `userIds` (may be empty — assigned to nobody). */
+    setUsers(scheduleId: number, userIds: number[], manager?: EntityManager): Promise<void>
     delete(id: number): Promise<void>
 }

@@ -8,7 +8,8 @@
     "seed:permissions": "bun run src/seeds/seed-permissions.ts",
     "sync:employee": "bun run src/jobs/sync-employee.job.ts",
     "sync:user": "bun run src/jobs/sync-user.job.ts",
-    "sync:branch": "bun run src/jobs/sync-branch.job.ts"
+    "sync:branch": "bun run src/jobs/sync-branch.job.ts",
+    "job:asset-schedule-reminder": "bun run src/jobs/asset-schedule-reminder.job.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
