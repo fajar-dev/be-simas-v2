@@ -656,3 +656,40 @@ describe("Branch - assetCount", () => {
         expect(branch.assetCount).toBe(1)
     })
 })
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Branch - inventoryCount
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("Branch - inventoryCount", () => {
+    test("should return inventoryCount in list response, counting only items with on-hand stock", async () => {
+        const { headers } = await registerAndLogin(app)
+
+        const branchRes = await request(app, "/api/branch", { method: "POST", headers, body: { name: "Inv Count Branch", code: "BR-INVCNT" } })
+        const branchId = branchRes.body.data.id
+
+        // Item with on-hand stock at the branch — should be counted.
+        await request(app, "/api/inventory", {
+            method: "POST", headers,
+            body: { name: "Stocked Item", variants: [{ name: "V1", initialStock: [{ branchId, new: 5, used: 0 }] }] },
+        })
+
+        // Item with a zero-quantity balance row at the branch — should NOT be counted.
+        await request(app, "/api/inventory", {
+            method: "POST", headers,
+            body: { name: "Empty Item", variants: [{ name: "V1", initialStock: [{ branchId, new: 0, used: 0 }] }] },
+        })
+
+        // Item with stock at a different branch — should NOT be counted.
+        const otherBranchRes = await request(app, "/api/branch", { method: "POST", headers, body: { name: "Other Branch", code: "BR-OTHER" } })
+        await request(app, "/api/inventory", {
+            method: "POST", headers,
+            body: { name: "Other Branch Item", variants: [{ name: "V1", initialStock: [{ branchId: otherBranchRes.body.data.id, new: 3, used: 0 }] }] },
+        })
+
+        const { body } = await request(app, "/api/branch", { method: "GET", headers })
+        const branch = body.data.find((b: any) => b.id === branchId)
+        expect(branch).toBeDefined()
+        expect(branch.inventoryCount).toBe(1)
+    })
+})
