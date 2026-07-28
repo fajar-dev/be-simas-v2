@@ -8,6 +8,7 @@ export class CategorySerializer {
             name: category.name,
             description: category.description || null,
             assetCount: (category as any).assetCount ?? 0,
+            inventoryCount: (category as any).inventoryCount ?? 0,
             createdAt: category.createdAt,
             updatedAt: category.updatedAt,
         }

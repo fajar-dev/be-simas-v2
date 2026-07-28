@@ -21,6 +21,12 @@ export class SubCategoryRepository implements ISubCategoryRepository {
                     .from("assets", "a")
                     .where("a.sub_category_id = sub_category.id")
             }, "assetCount")
+            .addSelect(subQuery => {
+                return subQuery
+                    .select("COUNT(i.id)", "count")
+                    .from("inventories", "i")
+                    .where("i.sub_category_id = sub_category.id")
+            }, "inventoryCount")
 
         if (q) {
             query.where(
@@ -42,6 +48,7 @@ export class SubCategoryRepository implements ISubCategoryRepository {
             category: "category.name",
             description: "sub_category.description",
             assetCount: "assetCount",
+            inventoryCount: "inventoryCount",
         }
 
         const sortColumn = sortColumnMap[sortBy || ''] || "sub_category.id"
@@ -54,7 +61,8 @@ export class SubCategoryRepository implements ISubCategoryRepository {
             .getRawAndEntities()
 
         const result = data.entities.map((entity, i) => {
-            (entity as any).assetCount = parseInt(data.raw[i].assetCount || '0', 10)
+            (entity as any).assetCount = parseInt(data.raw[i].assetCount || '0', 10);
+            (entity as any).inventoryCount = parseInt(data.raw[i].inventoryCount || '0', 10)
             return entity
         })
 

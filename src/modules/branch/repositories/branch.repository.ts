@@ -22,6 +22,14 @@ export class BranchRepository implements IBranchRepository {
                     .where("loc.branch_id = branch.id")
                     .andWhere("al.id = (SELECT MAX(al2.id) FROM asset_locations al2 WHERE al2.asset_id = al.asset_id)")
             }, "assetCount")
+            .addSelect(subQuery => {
+                return subQuery
+                    .select("COUNT(DISTINCT iv.inventory_id)", "count")
+                    .from("inventory_stock_balances", "bal")
+                    .innerJoin("inventory_variants", "iv", "iv.id = bal.variant_id")
+                    .where("bal.branch_id = branch.id")
+                    .andWhere("bal.quantity > 0")
+            }, "inventoryCount")
 
         if (q) {
             query.where(
@@ -38,6 +46,7 @@ export class BranchRepository implements IBranchRepository {
             name: "branch.name",
             description: "branch.description",
             assetCount: "assetCount",
+            inventoryCount: "inventoryCount",
         }
 
         const sortColumn = sortColumnMap[sortBy || ''] || "branch.id"
@@ -50,7 +59,8 @@ export class BranchRepository implements IBranchRepository {
             .getRawAndEntities()
 
         const result = data.entities.map((entity, i) => {
-            (entity as any).assetCount = parseInt(data.raw[i].assetCount || '0', 10)
+            (entity as any).assetCount = parseInt(data.raw[i].assetCount || '0', 10);
+            (entity as any).inventoryCount = parseInt(data.raw[i].inventoryCount || '0', 10)
             return entity
         })
 
