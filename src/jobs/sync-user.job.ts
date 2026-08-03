@@ -2,34 +2,35 @@ import { AppDataSource } from "../config/database"
 import { User } from "../modules/user/entities/user.entity"
 import { Role } from "../modules/role/entities/role.entity"
 import { nusaworkHelper } from "../core/helpers/nusawork"
+import { logger } from "../core/helpers/logger"
 
 async function sync() {
     try {
-        console.log("[Sync] Starting user sync from Nusawork...")
+        logger.info("Starting user sync from Nusawork...")
         const startTime = Date.now()
 
         await AppDataSource.initialize()
-        console.log("[Sync] App database connected")
+        logger.info("App database connected")
 
         const roleRepo = AppDataSource.getRepository(Role)
         let employeeRole = await roleRepo.findOne({ where: { name: 'Employee' } })
         if (!employeeRole) {
-            console.log("[Sync] 'Employee' role not found. Creating one...")
+            logger.info("'Employee' role not found. Creating one...")
             employeeRole = roleRepo.create({ name: 'Employee', isSuperAdmin: false })
             await roleRepo.save(employeeRole)
         }
 
         const employees = await nusaworkHelper.getEmployees()
         if (employees.length === 0) {
-            console.log("[Sync] No employees found from Nusawork to sync users")
+            logger.info("No employees found from Nusawork to sync users")
             await AppDataSource.destroy()
             process.exit(0)
         }
 
-        console.log(`[Sync] Fetched ${employees.length} employees from Nusawork`)
+        logger.info(`Fetched ${employees.length} employees from Nusawork`)
 
         const userRepo = AppDataSource.getRepository(User)
-        
+
         // Fetch all existing users to map by email
         const existingUsers = await userRepo.find()
         const existingUsersMap = new Map<string, User>()
@@ -53,7 +54,7 @@ async function sync() {
 
                 // If user exists with this email but a different ID, suffix the old user record
                 if (existing && existing.id !== emp.user_id) {
-                    console.log(`[Sync] Found ID change for user email ${emp.email} (Old ID: ${existing.id}, New ID: ${emp.user_id}). Suffixing old record.`)
+                    logger.info(`Found ID change for user email ${emp.email} (Old ID: ${existing.id}, New ID: ${emp.user_id}). Suffixing old record.`)
                     existing.email = `${existing.email}_old_${existing.id}`
                     existing.isActive = false
                     await userRepo.save(existing)
@@ -97,7 +98,7 @@ async function sync() {
             if (entities.length > 0) {
                 await userRepo.save(entities)
             }
-            console.log(`[Sync] Batch ${Math.floor(i / batchSize) + 1}: processed ${entities.length} users`)
+            logger.info(`Batch ${Math.floor(i / batchSize) + 1}: processed ${entities.length} users`)
         }
 
         // Deactivate users not in Nusawork response (only for synced users who have employeeId)
@@ -108,16 +109,16 @@ async function sync() {
                 user.isActive = false
             }
             await userRepo.save(missingUsers)
-            console.log(`[Sync] Marked ${missingUsers.length} missing/resigned users as inactive.`)
+            logger.info(`Marked ${missingUsers.length} missing/resigned users as inactive.`)
         }
 
         const duration = ((Date.now() - startTime) / 1000).toFixed(2)
-        console.log(`[Sync] Completed in ${duration}s. Created ${createdCount} users, updated ${updatedCount} users.`)
+        logger.info(`Completed in ${duration}s. Created ${createdCount} users, updated ${updatedCount} users.`)
 
         await AppDataSource.destroy()
         process.exit(0)
     } catch (error) {
-        console.error("[Sync] Failed:", error)
+        logger.error("User sync failed", { error: (error as any)?.message, stack: (error as any)?.stack })
         process.exit(1)
     }
 }

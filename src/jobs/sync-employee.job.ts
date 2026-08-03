@@ -1,26 +1,27 @@
 import { AppDataSource } from "../config/database"
 import { Employee } from "../modules/employee/entities/employee.entity"
 import { nusaworkHelper } from "../core/helpers/nusawork"
+import { logger } from "../core/helpers/logger"
 
 async function sync() {
     try {
-        console.log("[Sync] Starting employee sync from Nusawork...")
+        logger.info("Starting employee sync from Nusawork...")
         const startTime = Date.now()
 
         await AppDataSource.initialize()
-        console.log("[Sync] App database connected")
+        logger.info("App database connected")
 
         const employees = await nusaworkHelper.getEmployees()
         if (employees.length === 0) {
-            console.log("[Sync] No employees found from Nusawork")
+            logger.info("No employees found from Nusawork")
             await AppDataSource.destroy()
             process.exit(0)
         }
 
-        console.log(`[Sync] Fetched ${employees.length} employees from Nusawork`)
+        logger.info(`Fetched ${employees.length} employees from Nusawork`)
 
         const repo = AppDataSource.getRepository(Employee)
-        
+
         // Fetch all existing employees to map by email
         const dbEmployees = await repo.find()
         const existingEmailsMap = new Map<string, Employee>()
@@ -33,14 +34,14 @@ async function sync() {
 
         for (let i = 0; i < employees.length; i += batchSize) {
             const batch = employees.slice(i, i + batchSize)
-            
+
             // Resolve email duplicates for ID changes
             for (const emp of batch) {
                 if (!emp.email) continue
                 const emailLower = emp.email.toLowerCase()
                 const existingWithEmail = existingEmailsMap.get(emailLower)
                 if (existingWithEmail && existingWithEmail.id !== emp.user_id) {
-                    console.log(`[Sync] Found ID change for employee email ${emp.email} (Old ID: ${existingWithEmail.id}, New ID: ${emp.user_id}). Suffixing old record.`)
+                    logger.info(`Found ID change for employee email ${emp.email} (Old ID: ${existingWithEmail.id}, New ID: ${emp.user_id}). Suffixing old record.`)
                     existingWithEmail.email = `${existingWithEmail.email}_old_${existingWithEmail.id}`
                     existingWithEmail.isActive = false
                     await repo.save(existingWithEmail)
@@ -63,7 +64,7 @@ async function sync() {
 
             await repo.save(entities)
             synced += entities.length
-            console.log(`[Sync] Batch ${Math.floor(i / batchSize) + 1}: saved ${entities.length} employees`)
+            logger.info(`Batch ${Math.floor(i / batchSize) + 1}: saved ${entities.length} employees`)
         }
 
         // Deactivate employees not in Nusawork response
@@ -75,16 +76,16 @@ async function sync() {
                 emp.isActive = false
             }
             await repo.save(missingEmployees)
-            console.log(`[Sync] Marked ${missingEmployees.length} missing/resigned employees as inactive.`)
+            logger.info(`Marked ${missingEmployees.length} missing/resigned employees as inactive.`)
         }
 
         const duration = ((Date.now() - startTime) / 1000).toFixed(2)
-        console.log(`[Sync] Completed in ${duration}s. Synced ${synced} employees.`)
+        logger.info(`Completed in ${duration}s. Synced ${synced} employees.`)
 
         await AppDataSource.destroy()
         process.exit(0)
     } catch (error) {
-        console.error("[Sync] Failed:", error)
+        logger.error("Employee sync failed", { error: (error as any)?.message, stack: (error as any)?.stack })
         process.exit(1)
     }
 }

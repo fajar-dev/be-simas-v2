@@ -11,6 +11,7 @@ import path from "path"
 import { AppDataSource } from "../config/database"
 import { config } from "../config/config"
 import { mail } from "../core/helpers/mail"
+import { logger } from "../core/helpers/logger"
 import { assetScheduleService } from "../modules/asset-schedule/asset-schedule.module"
 import type { AssetSchedule } from "../modules/asset-schedule/entities/asset-schedule.entity"
 
@@ -55,15 +56,15 @@ function collectRecipients(schedule: AssetSchedule): { name: string; email: stri
 }
 
 async function run() {
-    console.log("[ScheduleReminder] Starting daily asset-schedule reminder job...")
+    logger.info("Starting daily asset-schedule reminder job...")
     const startTime = Date.now()
 
     await AppDataSource.initialize()
-    console.log("[ScheduleReminder] Database connected")
+    logger.info("Database connected")
 
     const today = todayIso()
     const occurrences = await assetScheduleService.getCalendar(today, today)
-    console.log(`[ScheduleReminder] Found ${occurrences.length} occurrence(s) for ${today}`)
+    logger.info(`Found ${occurrences.length} occurrence(s) for ${today}`)
 
     const templatePath = path.join(process.cwd(), "public/templates/asset-schedule-reminder.html")
     const templateSource = fs.readFileSync(templatePath, "utf8")
@@ -98,19 +99,19 @@ async function run() {
                 await mail.sendHtml(recipient.email, `Reminder: ${schedule.title}`, html)
                 sent++
             } catch (error) {
-                console.error(`[ScheduleReminder] Failed to email ${recipient.email} for schedule #${schedule.id}:`, error)
+                logger.error(`Failed to email ${recipient.email} for schedule #${schedule.id}`, { error: (error as any)?.message, stack: (error as any)?.stack })
             }
         }
     }
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2)
-    console.log(`[ScheduleReminder] Completed in ${duration}s. Sent ${sent} email(s), skipped ${skipped} schedule(s) with no recipients.`)
+    logger.info(`Completed in ${duration}s. Sent ${sent} email(s), skipped ${skipped} schedule(s) with no recipients.`)
 
     await AppDataSource.destroy()
     process.exit(0)
 }
 
 run().catch((error) => {
-    console.error("[ScheduleReminder] Failed:", error)
+    logger.error("Asset-schedule reminder failed", { error: (error as any)?.message, stack: (error as any)?.stack })
     process.exit(1)
 })

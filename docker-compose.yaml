@@ -9,7 +9,7 @@ services:
       - "${PORT:-4000}:4000"
     environment:
       - PORT=4000
-      - ENV=${ENV:-production}
+      - NODE_ENV=${NODE_ENV:-production}
       - APP_URL=${APP_URL}
       - DB_TYPE=${DB_TYPE:-postgres}
       - DB_HOST=db
