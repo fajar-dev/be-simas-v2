@@ -11,6 +11,15 @@ const BORDER = rgb(0, 0, 0)
 
 type Line = { text: string; checkbox?: boolean; checked?: boolean; bold?: boolean }
 
+/**
+ * The "Nama Karyawan" shown on the form: for Penetapan (assign) it's the employee receiving
+ * the item; for Pengembalian (return) it's the employee handing it back.
+ */
+export function resolveEmployeeName(handover: Pick<Handover, "transactionType" | "receivedBy" | "handedOverBy">): string {
+    const tt = handover.transactionType as HandoverTransactionType
+    return (tt === "return" ? handover.handedOverBy?.name : handover.receivedBy?.name) ?? "-"
+}
+
 function formatDate(value?: string | Date | null): string {
     if (!value) return "-"
     const d = new Date(value)
@@ -102,11 +111,11 @@ export async function generateHandoverPdf(handover: Handover): Promise<Uint8Arra
 
     // ---- Info table ----
     const tt = handover.transactionType as HandoverTransactionType
-    const receivedName = handover.receivedBy?.name ?? "-"
+    const employeeName = resolveEmployeeName(handover)
 
     const infoRows: { label: string; lines: Line[] }[] = [
         { label: "Tanggal", lines: [{ text: formatDate(handover.createdAt) }] },
-        { label: "Nama Karyawan", lines: [{ text: receivedName }] },
+        { label: "Nama Karyawan", lines: [{ text: employeeName }] },
         {
             label: "Type",
             lines: [

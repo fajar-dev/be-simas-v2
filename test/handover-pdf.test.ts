@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test"
-import { generateHandoverPdf } from "../src/core/helpers/handover-pdf"
+import { generateHandoverPdf, resolveEmployeeName } from "../src/core/helpers/handover-pdf"
 import type { Handover } from "../src/modules/handover/entities/handover.entity"
 
 function baseHandover(overrides: Partial<Handover> = {}): Handover {
@@ -47,5 +47,30 @@ describe("generateHandoverPdf", () => {
         const bytes = await generateHandoverPdf(handover)
         expect(bytes.length).toBeGreaterThan(0)
         expect(Buffer.from(bytes.slice(0, 5)).toString()).toBe("%PDF-")
+    })
+})
+
+describe("resolveEmployeeName", () => {
+    test("assign (Penetapan) uses the receiving employee's name", () => {
+        const name = resolveEmployeeName({
+            transactionType: "assign",
+            receivedBy: { name: "Receiver" } as any,
+            handedOverBy: { name: "Giver" } as any,
+        })
+        expect(name).toBe("Receiver")
+    })
+
+    test("return (Pengembalian) uses the handing-over employee's name", () => {
+        const name = resolveEmployeeName({
+            transactionType: "return",
+            receivedBy: { name: "Receiver" } as any,
+            handedOverBy: { name: "Giver" } as any,
+        })
+        expect(name).toBe("Giver")
+    })
+
+    test("falls back to '-' when the relevant employee is missing", () => {
+        expect(resolveEmployeeName({ transactionType: "assign", receivedBy: null as any, handedOverBy: null as any })).toBe("-")
+        expect(resolveEmployeeName({ transactionType: "return", receivedBy: null as any, handedOverBy: null as any })).toBe("-")
     })
 })
