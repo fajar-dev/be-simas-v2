@@ -21,8 +21,17 @@ function formatDate(value?: string | Date | null): string {
     return `${dd}-${mm}-${yyyy}`
 }
 
+/**
+ * Strip control characters (e.g. stray bytes from bad imports/synced data) that pdf-lib's
+ * WinAnsi font encoding cannot represent — drawing them throws "WinAnsi cannot encode ...".
+ * \t, \n, \r are kept since the whitespace handling below deals with them separately.
+ */
+function sanitizeText(value: string): string {
+    return value.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+}
+
 function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
-    const clean = (text ?? "").toString().replace(/\r?\n/g, " ").trim()
+    const clean = sanitizeText((text ?? "").toString()).replace(/\r?\n/g, " ").trim()
     if (!clean) return [""]
     const words = clean.split(/\s+/)
     const lines: string[] = []
@@ -133,7 +142,7 @@ export async function generateHandoverPdf(handover: Handover): Promise<Uint8Arra
         cell(LEFT + labelW, y, valueW, h)
 
         // Label (top-aligned)
-        drawText(row.label, LEFT + 6, y - padV - size, size, font)
+        drawText(sanitizeText(row.label), LEFT + 6, y - padV - size, size, font)
 
         // Values
         let baseY = y - padV - size
@@ -241,8 +250,8 @@ export async function generateHandoverPdf(handover: Handover): Promise<Uint8Arra
     const sigHeaderH = 24
     const sigBodyH = 95
 
-    const menyerahkanName = handover.handedOverBy?.name ?? ""
-    const menerimaName = handover.receivedBy?.name ?? ""
+    const menyerahkanName = sanitizeText(handover.handedOverBy?.name ?? "")
+    const menerimaName = sanitizeText(handover.receivedBy?.name ?? "")
 
     const sig = (x: number, header: string, name: string) => {
         cell(x, y, halfW, sigHeaderH)
