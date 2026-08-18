@@ -8,6 +8,7 @@ export const CreateEmployeeValidator = z.object({
     phone: z.string().trim().min(1, "Phone is required"),
     photo: z.string().trim().nullable().optional(),
     isActive: z.boolean().optional(),
+    organizationId: z.number().int().positive().nullable().optional(),
 })
 
 export type CreateEmployeeValidator = z.infer<typeof CreateEmployeeValidator>
@@ -20,6 +21,7 @@ export const UpdateEmployeeValidator = z.object({
     phone: z.string().trim().min(1, "Phone is required").optional(),
     photo: z.string().trim().nullable().optional(),
     isActive: z.boolean().optional(),
+    organizationId: z.number().int().positive().nullable().optional(),
 })
 
 export type UpdateEmployeeValidator = z.infer<typeof UpdateEmployeeValidator>

@@ -13,6 +13,8 @@ export class EmployeeSerializer {
             phone: employee.phone,
             photo: await resolveFileUrl(employee.photo),
             isActive: Boolean(employee.isActive),
+            organizationId: employee.organizationId,
+            organization: employee.organization ? { id: employee.organization.id, name: employee.organization.name } : null,
             assetCount: (employee as any).assetCount ?? 0,
             createdAt: employee.createdAt,
             updatedAt: employee.updatedAt,

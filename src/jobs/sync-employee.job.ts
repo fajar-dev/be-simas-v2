@@ -1,5 +1,6 @@
 import { AppDataSource } from "../config/database"
 import { Employee } from "../modules/employee/entities/employee.entity"
+import { Organization } from "../modules/organization/entities/organization.entity"
 import { nusaworkHelper } from "../core/helpers/nusawork"
 import { logger } from "../core/helpers/logger"
 
@@ -21,6 +22,14 @@ async function sync() {
         logger.info(`Fetched ${employees.length} employees from Nusawork`)
 
         const repo = AppDataSource.getRepository(Employee)
+
+        // Match each employee's `organization_name` against Organization.name to fill organizationId.
+        const organizations = await AppDataSource.getRepository(Organization).find()
+        const orgIdByName = new Map<string, number>()
+        for (const org of organizations) {
+            orgIdByName.set(org.name.trim().toLowerCase(), org.id)
+        }
+        let unmatchedOrgCount = 0
 
         // Fetch all existing employees to map by email
         const dbEmployees = await repo.find()
@@ -50,6 +59,10 @@ async function sync() {
             }
 
             const entities = batch.map(emp => {
+                const orgName = emp.organization_name ? String(emp.organization_name).trim().toLowerCase() : ""
+                const organizationId = orgName ? orgIdByName.get(orgName) ?? null : null
+                if (orgName && organizationId === null) unmatchedOrgCount++
+
                 return repo.create({
                     id: emp.user_id,
                     employeeId: emp.employee_id,
@@ -59,12 +72,17 @@ async function sync() {
                     jobPosition: emp.job_position,
                     phone: emp.whatsapp || emp.mobile_phone,
                     isActive: emp.active_status === 'Active' ? true : false,
+                    organizationId,
                 })
             })
 
             await repo.save(entities)
             synced += entities.length
             logger.info(`Batch ${Math.floor(i / batchSize) + 1}: saved ${entities.length} employees`)
+        }
+
+        if (unmatchedOrgCount > 0) {
+            logger.info(`${unmatchedOrgCount} employee(s) had an organization_name with no matching Organization (run sync:organization first, or check for a name mismatch).`)
         }
 
         // Deactivate employees not in Nusawork response
