@@ -27,6 +27,7 @@ export class AssetUtilService {
             { header: 'Price', key: 'price', width: 15 },
             { header: 'Purchase Date', key: 'purchaseDate', width: 15 },
             { header: 'Status', key: 'status', width: 15 },
+            { header: 'Holder Type', key: 'holderType', width: 14 },
             { header: 'Holder Name', key: 'holderName', width: 22 },
             { header: 'Holder Employee ID', key: 'holderEmployeeId', width: 18 },
             { header: 'Location', key: 'location', width: 22 },
@@ -47,6 +48,7 @@ export class AssetUtilService {
         // Column indices (1-indexed)
         const imageCol = columns.findIndex(c => c.key === 'image') + 1
         const codeCol = columns.findIndex(c => c.key === 'code') + 1
+        const holderTypeCol = columns.findIndex(c => c.key === 'holderType') + 1
         const holderNameCol = columns.findIndex(c => c.key === 'holderName') + 1
         const holderEmpIdCol = columns.findIndex(c => c.key === 'holderEmployeeId') + 1
         const locationCol = columns.findIndex(c => c.key === 'location') + 1
@@ -69,8 +71,8 @@ export class AssetUtilService {
         })
 
         // Active Holder: merge horizontally in row 1
-        sheet.mergeCells(1, holderNameCol, 1, holderEmpIdCol)
-        groupRow.getCell(holderNameCol).value = 'Active Holder'
+        sheet.mergeCells(1, holderTypeCol, 1, holderEmpIdCol)
+        groupRow.getCell(holderTypeCol).value = 'Active Holder'
 
         // Last Location: merge horizontally in row 1
         sheet.mergeCells(1, locationCol, 1, branchCol)
@@ -122,7 +124,8 @@ export class AssetUtilService {
                 price: asset.price ?? '',
                 purchaseDate: asset.purchaseDate || '',
                 status: asset.lastStatus?.status || '',
-                holderName: asset.activeHolder?.employee?.name || '',
+                holderType: asset.activeHolder ? (asset.activeHolder.holderKind === 'employee' ? 'Employee' : 'Organization') : '',
+                holderName: asset.activeHolder?.employee?.name || asset.activeHolder?.organization?.name || '',
                 holderEmployeeId: asset.activeHolder?.employee?.employeeId || '',
                 location: asset.lastLocation?.location?.name || '',
                 branch: asset.lastLocation?.location?.branch?.name || '',

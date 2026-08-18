@@ -5,18 +5,21 @@ import { AttachmentService } from "../attachment/attachment.service"
 import { Attachment } from "../attachment/entities/attachment.entity"
 import { assetLogService } from "../asset-log/asset-log.module"
 import { EmployeeService } from "../employee/employee.service"
+import { OrganizationService } from "../organization/organization.service"
 import { withTransaction } from "../../core/helpers/transaction"
 import { EntityManager } from "typeorm"
 import { AppDataSource } from "../../config/database"
 import { Asset } from "../asset/entities/asset.entity"
 import { HandoverItem } from "../handover/entities/handover-item.entity"
 import { AssetStatus } from "../asset-status/entities/asset-status.entity"
+import type { AssetHolderKind } from "../../core/enums"
 
 export class AssetHolderService {
     constructor(
         private readonly repository: IAssetHolderRepository,
         private readonly attachmentService: AttachmentService,
-        private readonly employeeService: EmployeeService
+        private readonly employeeService: EmployeeService,
+        private readonly organizationService: OrganizationService
     ) {}
 
     async getAll(
@@ -26,9 +29,10 @@ export class AssetHolderService {
         sortBy?: string,
         order?: 'ASC' | 'DESC',
         assetId?: number,
-        employeeId?: number
+        employeeId?: number,
+        organizationId?: number
     ): Promise<{ data: { log: AssetHolder; attachments: Attachment[] }[]; total: number }> {
-        const { data, total } = await this.repository.findAll(page, limit, q, sortBy, order, assetId, employeeId)
+        const { data, total } = await this.repository.findAll(page, limit, q, sortBy, order, assetId, employeeId, organizationId)
 
         const mapped = await Promise.all(data.map(async (log) => {
             const attachments = await this.attachmentService.getForEntity("AssetHolder", log.id)
@@ -58,17 +62,27 @@ export class AssetHolderService {
         return await this.repository.findActiveByHandoverId(handoverId)
     }
 
-    async create(data: Partial<AssetHolder> & { attachmentIds?: number[] }): Promise<AssetHolder> {
+    async create(data: Partial<AssetHolder> & { holderKind: AssetHolderKind; attachmentIds?: number[] }): Promise<AssetHolder> {
         // Validate asset exists
         const assetExists = await AppDataSource.getRepository(Asset).findOneBy({ id: data.assetId! })
         if (!assetExists) {
             throw new NotFoundException("Asset not found")
         }
 
-        // Validate employee exists (throws NotFoundException if not found)
-        const employee = await this.employeeService.getById(data.employeeId!)
-        if (!employee.isActive) {
-            throw new BadRequestException("Cannot assign asset to inactive employee")
+        // Validate the holder (employee or organization) exists and is active.
+        let holderName: string
+        if (data.holderKind === "employee") {
+            const employee = await this.employeeService.getById(data.employeeId!)
+            if (!employee.isActive) {
+                throw new BadRequestException("Cannot assign asset to inactive employee")
+            }
+            holderName = employee.name
+        } else {
+            const organization = await this.organizationService.getById(data.organizationId!)
+            if (!organization.isActive) {
+                throw new BadRequestException("Cannot assign asset to inactive organization")
+            }
+            holderName = organization.name
         }
 
         // Check if there is an active holder for this asset
@@ -101,7 +115,9 @@ export class AssetHolderService {
         const log = await withTransaction(async (manager) => {
             const log = await this.repository.save({
                 assetId: data.assetId,
-                employeeId: data.employeeId,
+                holderKind: data.holderKind,
+                employeeId: data.holderKind === "employee" ? data.employeeId : null,
+                organizationId: data.holderKind === "organization" ? data.organizationId : null,
                 assignedDate: data.assignedDate,
                 assignNote: data.assignNote,
                 createdByUserId: data.createdByUserId,
@@ -118,7 +134,7 @@ export class AssetHolderService {
                 assetId: data.assetId!,
                 module: "holder",
                 action: "assign",
-                description: `Asset assigned to employee "${employee.name}".`,
+                description: `Asset assigned to ${data.holderKind} "${holderName}".`,
                 createdByUserId: data.createdByUserId,
                 newValue: data,
             }, manager)
@@ -153,11 +169,12 @@ export class AssetHolderService {
             }
 
             // Log Asset return
+            const holderName = log.holderKind === "employee" ? log.employee?.name : log.organization?.name
             await assetLogService.log({
                 assetId: log.assetId,
                 module: "holder",
                 action: "return",
-                description: `Asset returned from employee "${log.employee.name}".`,
+                description: `Asset returned from ${log.holderKind} "${holderName}".`,
                 createdByUserId: data.returnedByUserId,
                 oldValue: { ...log },
                 newValue: data,

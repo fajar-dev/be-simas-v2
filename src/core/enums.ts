@@ -40,3 +40,7 @@ export type ScheduleRecurrence = (typeof SCHEDULE_RECURRENCES)[number]
 export const INVENTORY_UNITS = ["Pcs", "Unit", "Box", "Pack", "Set", "Roll", "Meter", "Cm", "Kg", "Gram", "Liter", "Lusin", "Rim"] as const
 export type InventoryUnit = (typeof INVENTORY_UNITS)[number]
 
+/** Whether an AssetHolder row represents an employee or an organization holder — column `asset_holders.holder_kind`. */
+export const ASSET_HOLDER_KINDS = ["employee", "organization"] as const
+export type AssetHolderKind = (typeof ASSET_HOLDER_KINDS)[number]
+

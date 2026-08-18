@@ -6,6 +6,7 @@ import { assetHolderService } from "../asset-holder/asset-holder.module"
 import { assetLocationService } from "../asset-location/asset-location.module"
 import { assetStatusService } from "../asset-status/asset-status.module"
 import { employeeService } from "../employee/employee.module"
+import { organizationService } from "../organization/organization.module"
 import { locationService } from "../location/location.module"
 
 const assetRepository = new AssetRepository()
@@ -15,6 +16,7 @@ export const assetService = new AssetService(
     assetLocationService,
     assetStatusService,
     employeeService,
+    organizationService,
     locationService
 )
 const assetUtilService = new AssetUtilService(assetService)

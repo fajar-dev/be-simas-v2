@@ -25,6 +25,7 @@ let app: Hono
 let authHeaders: Record<string, string>
 let assetId: number
 let employeeId: number
+let organizationId: number
 
 beforeAll(async () => {
     await initTestDatabase()
@@ -53,6 +54,14 @@ beforeEach(async () => {
         }
     })
     employeeId = empRes.body.data.id
+
+    // Setup: Create Organization
+    const orgRes = await request(app, "/api/organization", {
+        method: "POST",
+        headers: authHeaders,
+        body: { name: "Networking Dept", type: "department" },
+    })
+    organizationId = orgRes.body.data.id
 
     // Setup: Create Category and SubCategory
     const catRes = await request(app, "/api/category", {
@@ -241,5 +250,115 @@ describe("Asset Holder API Tests", () => {
 
         expect(res.status).toBe(201)
         expect(res.body.success).toBe(true)
+    })
+})
+
+describe("Asset Holder API Tests - organization holder", () => {
+    test("POST /api/asset-holder - assign to organization successfully", async () => {
+        const res = await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, holderKind: "organization", organizationId, assignedDate: "2026-06-19", assignNote: "Shared equipment" },
+        })
+
+        expect(res.status).toBe(201)
+        expect(res.body.success).toBe(true)
+        expect(res.body.data.holderKind).toBe("organization")
+        expect(res.body.data.organization.id).toBe(organizationId)
+        expect(res.body.data.organization.name).toBe("Networking Dept")
+        expect(res.body.data.employee).toBeNull()
+    })
+
+    test("POST /api/asset-holder - prevent double assignment to organization", async () => {
+        await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, holderKind: "organization", organizationId, assignedDate: "2026-06-19" },
+        })
+
+        const res = await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, holderKind: "organization", organizationId, assignedDate: "2026-06-20" },
+        })
+
+        expect(res.status).toBe(400)
+        expect(res.body.message).toContain("assigned")
+    })
+
+    test("POST /api/asset-holder/:id/return - return an organization holder successfully", async () => {
+        const assignRes = await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, holderKind: "organization", organizationId, assignedDate: "2026-06-19" },
+        })
+        const logId = assignRes.body.data.id
+
+        const returnRes = await request(app, `/api/asset-holder/${logId}/return`, {
+            method: "POST",
+            headers: authHeaders,
+            body: { returnedDate: "2026-06-21" },
+        })
+
+        expect(returnRes.status).toBe(200)
+        expect(returnRes.body.data.returnedDate).toBe("2026-06-21")
+
+        // Asset should be free to assign again
+        const reassignRes = await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, holderKind: "organization", organizationId, assignedDate: "2026-06-22" },
+        })
+        expect(reassignRes.status).toBe(201)
+    })
+
+    test("GET /api/asset-holder/active/:assetId - retrieve active organization holder", async () => {
+        await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, holderKind: "organization", organizationId, assignedDate: "2026-06-19" },
+        })
+
+        const res = await request(app, `/api/asset-holder/active/${assetId}`, { headers: authHeaders })
+        expect(res.status).toBe(200)
+        expect(res.body.data.holderKind).toBe("organization")
+        expect(res.body.data.organization.name).toBe("Networking Dept")
+    })
+
+    test("POST /api/asset-holder - rejects assigning to an inactive organization", async () => {
+        const inactiveOrg = await request(app, "/api/organization", {
+            method: "POST",
+            headers: authHeaders,
+            body: { name: "Retired Dept", type: "department", isActive: false },
+        })
+
+        const res = await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, holderKind: "organization", organizationId: inactiveOrg.body.data.id, assignedDate: "2026-06-19" },
+        })
+
+        expect(res.status).toBe(400)
+        expect(res.body.message).toContain("inactive organization")
+    })
+
+    test("POST /api/asset-holder - rejects both employeeId and organizationId set", async () => {
+        const res = await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, holderKind: "employee", employeeId, organizationId, assignedDate: "2026-06-19" },
+        })
+
+        expect(res.status).toBe(422)
+    })
+
+    test("POST /api/asset-holder - rejects organization holderKind with no organizationId", async () => {
+        const res = await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, holderKind: "organization", assignedDate: "2026-06-19" },
+        })
+
+        expect(res.status).toBe(422)
     })
 })

@@ -9,7 +9,8 @@ export interface IAssetHolderRepository {
         sortBy?: string,
         order?: 'ASC' | 'DESC',
         assetId?: number,
-        employeeId?: number
+        employeeId?: number,
+        organizationId?: number
     ): Promise<{ data: AssetHolder[]; total: number }>
     findById(id: number): Promise<AssetHolder | null>
     findActiveByAssetId(assetId: number): Promise<AssetHolder | null>

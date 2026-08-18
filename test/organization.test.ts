@@ -255,4 +255,22 @@ describe("Organization API", () => {
         const res = await request(app, `/api/organization/${parent.body.data.id}`, { method: "DELETE", headers })
         expect(res.status).toBe(409)
     })
+
+    test("blocks deleting an organization that is still an active asset holder", async () => {
+        const { headers } = await registerAndLogin(app)
+        const org = await request(app, "/api/organization", { method: "POST", headers, body: { name: "Holder Org", type: "division" } })
+
+        const cat = await request(app, "/api/category", { method: "POST", headers, body: { name: "Cat Org Holder" } })
+        const subCat = await request(app, "/api/sub-category", { method: "POST", headers, body: { name: "SubCat Org Holder", categoryId: cat.body.data.id } })
+        const asset = await request(app, "/api/asset", { method: "POST", headers, body: { code: "AST-ORGHLD", name: "Shared Printer", subCategoryId: subCat.body.data.id } })
+
+        await request(app, "/api/asset-holder", {
+            method: "POST", headers,
+            body: { assetId: asset.body.data.id, holderKind: "organization", organizationId: org.body.data.id, assignedDate: "2026-06-19" },
+        })
+
+        const res = await request(app, `/api/organization/${org.body.data.id}`, { method: "DELETE", headers })
+        expect(res.status).toBe(409)
+        expect(res.body.message).toContain("Cannot delete organization")
+    })
 })

@@ -474,6 +474,10 @@ components:
         hasLocation: { type: boolean, default: true, example: true }
         status: { type: string, enum: [active, idle, under_repair, damaged, lost, sold, disposed], example: "active", description: "Initial asset status" }
         statusNote: { type: string, nullable: true, example: "Asset is ready for use" }
+        employeeId: { type: integer, nullable: true, example: 1, description: "Optional initial holder — employee. At most one of employeeId/organizationId may be set; requires assignedDate." }
+        organizationId: { type: integer, nullable: true, example: 3, description: "Optional initial holder — organization. At most one of employeeId/organizationId may be set; requires assignedDate." }
+        assignedDate: { type: string, format: date, nullable: true, example: "2026-06-18", description: "Required when employeeId or organizationId is set." }
+        assignNote: { type: string, nullable: true, example: "Assigned at creation" }
 
     UpdateAssetRequest:
       type: object
@@ -565,16 +569,26 @@ components:
           nullable: true
           properties:
             id: { type: integer, example: 1 }
+            holderKind: { type: string, enum: [employee, organization], example: "employee" }
             assignedDate: { type: string, format: date, example: "2026-06-19" }
             assignHandoverId: { type: integer, nullable: true, example: 5 }
             employee:
               type: object
               nullable: true
+              description: "Set when holderKind is employee; null when holderKind is organization."
               properties:
                 id: { type: integer, example: 1 }
                 name: { type: string, example: "Alice Smith" }
                 employeeId: { type: string, example: "EMP001" }
                 jobPosition: { type: string, example: "Software Engineer" }
+            organization:
+              type: object
+              nullable: true
+              description: "Set when holderKind is organization; null when holderKind is employee."
+              properties:
+                id: { type: integer, example: 3 }
+                name: { type: string, example: "Networking Dept" }
+                type: { type: string, example: "department" }
         lastLocation:
           type: object
           nullable: true
@@ -1368,10 +1382,13 @@ components:
 
     AssignAssetRequest:
       type: object
-      required: [assetId, employeeId, assignedDate]
+      required: [assetId, assignedDate]
+      description: "Exactly one of employeeId/organizationId must be set, matching holderKind (holderKind defaults to \"employee\" when omitted for backward compatibility)."
       properties:
         assetId: { type: integer, example: 1 }
-        employeeId: { type: integer, example: 1 }
+        holderKind: { type: string, enum: [employee, organization], default: employee, example: "employee" }
+        employeeId: { type: integer, nullable: true, example: 1, description: "Required when holderKind is employee; must be omitted when holderKind is organization." }
+        organizationId: { type: integer, nullable: true, example: 3, description: "Required when holderKind is organization; must be omitted when holderKind is employee." }
         assignedDate: { type: string, format: date, example: "2026-06-19" }
         assignNote: { type: string, example: "Assigned for development work" }
         attachmentIds:
@@ -1394,6 +1411,7 @@ components:
       type: object
       properties:
         id: { type: integer, example: 1 }
+        holderKind: { type: string, enum: [employee, organization], example: "employee" }
         assignedDate: { type: string, format: date, example: "2026-06-19" }
         returnedDate: { type: string, format: date, nullable: true, example: "2026-06-25" }
         assignNote: { type: string, nullable: true, example: "Assigned for development work" }
@@ -1409,6 +1427,8 @@ components:
             image: { type: string, nullable: true, example: "http://cdn.test.com/stock/assets/laptop.jpg" }
         employee:
           type: object
+          nullable: true
+          description: "Set when holderKind is employee; null when holderKind is organization."
           properties:
             id: { type: integer, example: 1 }
             name: { type: string, example: "Alice Smith" }
@@ -1417,6 +1437,14 @@ components:
             email: { type: string, example: "alice@example.com" }
             phone: { type: string, example: "08123456789" }
             photo: { type: string, nullable: true, example: "employees/photo.png" }
+        organization:
+          type: object
+          nullable: true
+          description: "Set when holderKind is organization; null when holderKind is employee."
+          properties:
+            id: { type: integer, example: 3 }
+            name: { type: string, example: "Networking Dept" }
+            type: { type: string, example: "department" }
         createdBy:
           type: object
           nullable: true
@@ -3115,9 +3143,13 @@ paths:
           in: query
           description: "Filter by holder type (only when holderStatus=has_holder). active_holder = currently assigned, historical_holder = any holder ever assigned"
           schema: { type: string, enum: [active_holder, historical_holder] }
+        - name: holderKind
+          in: query
+          description: "Which table holderId refers to. Defaults to employee for backward compatibility."
+          schema: { type: string, enum: [employee, organization] }
         - name: holderId
           in: query
-          description: "Filter by holder employee ID. Uses active holder by default, or historical holder if holderType=historical_holder"
+          description: "Filter by holder ID (employee or organization, per holderKind). Uses active holder by default, or historical holder if holderType=historical_holder"
           schema: { type: integer }
         - name: bleTagStatus
           in: query
@@ -3336,7 +3368,7 @@ paths:
       summary: Export assets to Excel
       description: |
         Exports assets as .xlsx file. Supports all the same filters as GET /asset.
-        The exported file includes columns: No, Image, Code, Name, Description, Category, Sub Category, Brand, Model, BLE Tag MAC, Price, Purchase Date, Status, Active Holder (Name + Employee ID), Last Location (Location + Branch), Depreciation (Useful Life, Monthly Depreciation, Accumulated Depreciation, Book Value), and dynamic label columns.
+        The exported file includes columns: No, Image, Code, Name, Description, Category, Sub Category, Brand, Model, BLE Tag MAC, Price, Purchase Date, Status, Active Holder (Type + Name + Employee ID — Employee ID is blank for organization holders), Last Location (Location + Branch), Depreciation (Useful Life, Monthly Depreciation, Accumulated Depreciation, Book Value), and dynamic label columns.
       security: [{ bearerAuth: [] }]
       parameters:
         - name: q

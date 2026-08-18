@@ -22,8 +22,9 @@ export const CreateAssetValidator = z.object({
     hasLocation: z.boolean().default(true).optional(),
     usefulLife: z.preprocess((v) => (v === '' || v === undefined ? null : Number(v)), z.number().int().positive().optional().nullable()),
 
-    // Optional immediate assign fields
+    // Optional immediate assign fields — at most one of employeeId/organizationId
     employeeId: z.number().int().positive().optional().nullable(),
+    organizationId: z.number().int().positive().optional().nullable(),
     assignedDate: z.string().trim().optional().nullable(),
     assignNote: z.string().trim().optional().nullable(),
     assignAttachmentIds: z.array(z.number()).optional().nullable(),
@@ -48,6 +49,9 @@ export const CreateAssetValidator = z.object({
         if (!data.purchaseDate) {
             ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Purchase date is required when useful life is set", path: ["purchaseDate"] })
         }
+    }
+    if (data.employeeId && data.organizationId) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Cannot assign to both an employee and an organization", path: ["organizationId"] })
     }
 })
 

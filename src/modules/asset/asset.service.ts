@@ -15,6 +15,7 @@ import { AssetHolderService } from "../asset-holder/asset-holder.service"
 import { AssetLocationService } from "../asset-location/asset-location.service"
 import { AssetStatusService } from "../asset-status/asset-status.service"
 import { EmployeeService } from "../employee/employee.service"
+import { OrganizationService } from "../organization/organization.service"
 import { LocationService } from "../location/location.service"
 
 export class AssetService {
@@ -24,6 +25,7 @@ export class AssetService {
         private readonly assetLocationService: AssetLocationService,
         private readonly assetStatusService: AssetStatusService,
         private readonly employeeService: EmployeeService,
+        private readonly organizationService: OrganizationService,
         private readonly locationService: LocationService
     ) {}
 
@@ -82,6 +84,7 @@ export class AssetService {
     async create(data: any): Promise<Asset> {
         const {
             employeeId,
+            organizationId,
             assignedDate,
             assignNote,
             assignAttachmentIds,
@@ -100,13 +103,24 @@ export class AssetService {
             assetData.image = minio.sanitizePath(assetData.image) ?? undefined
         }
 
-        // Validate employee exists before starting transaction
-        let employeeExists: any = null
+        if (employeeId && organizationId) {
+            throw new BadRequestException("Cannot assign an asset to both an employee and an organization")
+        }
+
+        // Validate the initial holder (employee or organization) exists before starting transaction
+        let holderName: string | null = null
         if (employeeId) {
-            employeeExists = await this.employeeService.getById(employeeId)
+            const employeeExists = await this.employeeService.getById(employeeId)
             if (!employeeExists.isActive) {
                 throw new BadRequestException("Cannot assign asset to inactive employee")
             }
+            holderName = employeeExists.name
+        } else if (organizationId) {
+            const organizationExists = await this.organizationService.getById(organizationId)
+            if (!organizationExists.isActive) {
+                throw new BadRequestException("Cannot assign asset to inactive organization")
+            }
+            holderName = organizationExists.name
         }
 
         // Validate location exists before starting transaction
@@ -129,11 +143,14 @@ export class AssetService {
                     createdByUserId: assetData.createdByUserId,
                 }, manager)
 
-                // 2. If employeeId is provided, create AssetHolder
-                if (employeeId) {
+                // 2. If employeeId/organizationId is provided, create AssetHolder
+                if (employeeId || organizationId) {
+                    const holderKind = employeeId ? "employee" : "organization"
                     const log = await this.assetHolderService.save({
                         assetId: asset.id,
-                        employeeId,
+                        holderKind,
+                        employeeId: employeeId || null,
+                        organizationId: organizationId || null,
                         assignedDate: assignedDate || new Date().toISOString().split('T')[0],
                         assignNote: assignNote || null,
                         createdByUserId: assetData.createdByUserId,
@@ -148,7 +165,7 @@ export class AssetService {
                         assetId: asset.id,
                         module: "holder",
                         action: "assign",
-                        description: `Asset assigned to employee "${employeeExists.name}".`,
+                        description: `Asset assigned to ${holderKind} "${holderName}".`,
                         createdByUserId: assetData.createdByUserId,
                     }, manager)
                 }

@@ -6,6 +6,7 @@ import { IAssetRepository, AssetFilter } from "../interfaces/asset.repository.in
 import { AssetHolder } from "../../asset-holder/entities/asset-holder.entity"
 import { AssetLocation } from "../../asset-location/entities/asset-location.entity"
 import { Employee } from "../../employee/entities/employee.entity"
+import { Organization } from "../../organization/entities/organization.entity"
 import { Location } from "../../location/entities/location.entity"
 import { Branch } from "../../branch/entities/branch.entity"
 
@@ -23,16 +24,18 @@ export class AssetRepository implements IAssetRepository {
             .leftJoinAndSelect("asset.createdBy", "createdBy")
             .leftJoin(AssetHolder, "activeHolder", "activeHolder.assetId = asset.id AND activeHolder.returnedDate IS NULL")
             .leftJoin(Employee, "activeEmployee", "activeEmployee.id = activeHolder.employeeId")
+            .leftJoin(Organization, "activeOrganization", "activeOrganization.id = activeHolder.organizationId")
             .leftJoin(AssetLocation, "lastAssetLocation", "lastAssetLocation.id = (SELECT MAX(sub_al.id) FROM asset_locations sub_al WHERE sub_al.asset_id = asset.id)")
             .leftJoin(Location, "lastLoc", "lastLoc.id = lastAssetLocation.locationId")
             .leftJoin(Branch, "lastBranch", "lastBranch.id = lastLoc.branchId")
             .leftJoin("asset_labels", "searchLabel", "searchLabel.entityType = 'Asset' AND searchLabel.entityId = asset.id")
             .addSelect("activeEmployee.name")
+            .addSelect("activeOrganization.name")
             .addSelect("lastLoc.name")
 
         if (q) {
             query.where(
-                "(asset.name LIKE :q OR asset.code LIKE :q OR asset.brand LIKE :q OR asset.model LIKE :q OR asset.bleTagMac LIKE :q OR asset.description LIKE :q OR subCategory.name LIKE :q OR category.name LIKE :q OR activeEmployee.name LIKE :q OR activeEmployee.employeeId LIKE :q OR lastLoc.name LIKE :q OR lastLoc.mistZoneId LIKE :q OR lastBranch.name LIKE :q OR searchLabel.key LIKE :q OR searchLabel.value LIKE :q)",
+                "(asset.name LIKE :q OR asset.code LIKE :q OR asset.brand LIKE :q OR asset.model LIKE :q OR asset.bleTagMac LIKE :q OR asset.description LIKE :q OR subCategory.name LIKE :q OR category.name LIKE :q OR activeEmployee.name LIKE :q OR activeEmployee.employeeId LIKE :q OR activeOrganization.name LIKE :q OR lastLoc.name LIKE :q OR lastLoc.mistZoneId LIKE :q OR lastBranch.name LIKE :q OR searchLabel.key LIKE :q OR searchLabel.value LIKE :q)",
                 { q: `%${q}%` }
             )
         }
@@ -70,12 +73,14 @@ export class AssetRepository implements IAssetRepository {
             query.andWhere("activeHolder.id IS NULL")
         }
         if (filters?.holderId) {
+            const holderColumn = filters?.holderKind === 'organization' ? 'organizationId' : 'employeeId'
+            const holderColumnSql = filters?.holderKind === 'organization' ? 'organization_id' : 'employee_id'
             if (filters?.holderType === 'historical_holder') {
-                // Filter by employee across ALL holder records
-                query.andWhere("EXISTS (SELECT 1 FROM asset_holders ah WHERE ah.asset_id = asset.id AND ah.employee_id = :holderId)", { holderId: filters.holderId })
+                // Filter by holder across ALL holder records
+                query.andWhere(`EXISTS (SELECT 1 FROM asset_holders ah WHERE ah.asset_id = asset.id AND ah.${holderColumnSql} = :holderId)`, { holderId: filters.holderId })
             } else {
-                // Filter by employee on active holder only
-                query.andWhere("activeHolder.employeeId = :holderId", { holderId: filters.holderId })
+                // Filter by holder on active holder only
+                query.andWhere(`activeHolder.${holderColumn} = :holderId`, { holderId: filters.holderId })
             }
         }
         if (filters?.bleTagStatus === 'has_ble_tag') {
@@ -184,9 +189,9 @@ export class AssetRepository implements IAssetRepository {
             category: "category.name",
             subCategory: "subCategory.name",
             location: "lastLoc.name",
-            holder: "activeEmployee.name",
+            holder: "COALESCE(activeEmployee.name, activeOrganization.name)",
             lastLocation: "lastLoc.name",
-            activeHolder: "activeEmployee.name",
+            activeHolder: "COALESCE(activeEmployee.name, activeOrganization.name)",
         }
 
         const sortOrder = order === 'ASC' ? 'ASC' : 'DESC'

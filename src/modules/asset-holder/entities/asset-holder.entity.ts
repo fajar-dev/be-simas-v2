@@ -12,8 +12,10 @@ import type { Relation } from "typeorm"
 
 import { Asset } from "../../asset/entities/asset.entity"
 import { Employee } from "../../employee/entities/employee.entity"
+import { Organization } from "../../organization/entities/organization.entity"
 import { User } from "../../user/entities/user.entity"
 import { Handover } from "../../handover/entities/handover.entity"
+import type { AssetHolderKind } from "../../../core/enums"
 
 @Entity("asset_holders")
 export class AssetHolder {
@@ -28,13 +30,25 @@ export class AssetHolder {
     @JoinColumn({ name: "asset_id" })
     asset!: Relation<Asset>
 
-    @Index()
-    @Column({ name: "employee_id" })
-    employeeId!: number
+    /** Whether this holder is an Employee or an Organization — exactly one of employeeId/organizationId is set to match. */
+    @Column({ name: "holder_kind", type: "varchar", default: "employee" })
+    holderKind!: AssetHolderKind
 
-    @ManyToOne(() => Employee, { onDelete: "RESTRICT" })
+    @Index()
+    @Column({ name: "employee_id", nullable: true })
+    employeeId?: number | null
+
+    @ManyToOne(() => Employee, { onDelete: "RESTRICT", nullable: true })
     @JoinColumn({ name: "employee_id" })
-    employee!: Relation<Employee>
+    employee?: Relation<Employee> | null
+
+    @Index()
+    @Column({ name: "organization_id", nullable: true })
+    organizationId?: number | null
+
+    @ManyToOne(() => Organization, { onDelete: "RESTRICT", nullable: true })
+    @JoinColumn({ name: "organization_id" })
+    organization?: Relation<Organization> | null
 
     @Column({ name: "assigned_date", type: "varchar" })
     assignedDate!: string

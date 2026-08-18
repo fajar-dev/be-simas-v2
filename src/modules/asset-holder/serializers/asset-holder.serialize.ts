@@ -8,6 +8,7 @@ export class AssetHolderSerializer {
     static async single(log: AssetHolder, attachments: Attachment[] = []) {
         return {
             id: log.id,
+            holderKind: log.holderKind,
             assignedDate: log.assignedDate,
             returnedDate: log.returnedDate || null,
             assignNote: log.assignNote || null,
@@ -28,6 +29,11 @@ export class AssetHolderSerializer {
                 email: log.employee.email,
                 phone: log.employee.phone,
                 photo: await resolveFileUrl(log.employee.photo),
+            } : null,
+            organization: log.organization ? {
+                id: log.organization.id,
+                name: log.organization.name,
+                type: log.organization.type,
             } : null,
             createdBy: log.createdBy ? {
                 id: log.createdBy.id,

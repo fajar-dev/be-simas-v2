@@ -477,6 +477,20 @@ describe("Asset Handover API", () => {
         expect(res.status).toBe(400)
     })
 
+    test("POST /api/handover - return rejects an asset that is held by an organization, not an employee", async () => {
+        const org = await request(app, "/api/organization", { method: "POST", headers: authHeaders, body: { name: "HO Dept", type: "department" } })
+        await request(app, "/api/asset-holder", {
+            method: "POST", headers: authHeaders,
+            body: { assetId, holderKind: "organization", organizationId: org.body.data.id, assignedDate: "2026-06-19" },
+        })
+
+        // Asset is organization-held (employeeId is null), so no employee can "return" it via handover.
+        const body = createHandoverData([{ assetId }], employeeId2, { transactionType: "return", handedOverById: employeeId })
+        const res = await request(app, "/api/handover", { method: "POST", headers: authHeaders, body })
+        expect(res.status).toBe(400)
+        expect(res.body.message).toContain("is not currently held by the returning employee")
+    })
+
     test("POST /api/handover - return rejects asset with no active holder", async () => {
         const res = await request(app, "/api/handover", { method: "POST", headers: authHeaders, body: returnPayload([assetId]) })
         expect(res.status).toBe(400)

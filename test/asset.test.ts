@@ -930,6 +930,63 @@ describe("GET /api/asset - holderType filtering", () => {
     })
 })
 
+describe("Asset - organization holder", () => {
+    test("creates an asset with an inline organization holder", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+        const org = await request(app, "/api/organization", { method: "POST", headers, body: { name: "Shared Equipment Dept", type: "department" } })
+
+        const res = await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, { name: "Communal Printer", organizationId: org.body.data.id, assignedDate: "2026-01-01" }),
+        })
+
+        expect(res.status).toBe(201)
+        expect(res.body.data.activeHolder.holderKind).toBe("organization")
+        expect(res.body.data.activeHolder.organization.id).toBe(org.body.data.id)
+        expect(res.body.data.activeHolder.organization.name).toBe("Shared Equipment Dept")
+        expect(res.body.data.activeHolder.employee).toBeNull()
+    })
+
+    test("rejects an asset creation payload with both employeeId and organizationId", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+        const emp = await request(app, "/api/employee", { method: "POST", headers, body: { employeeId: "EMP-XOR", name: "X", jobPosition: "Y", email: "xor@test.com", phone: "081" } })
+        const org = await request(app, "/api/organization", { method: "POST", headers, body: { name: "Org XOR", type: "division" } })
+
+        const res = await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, { employeeId: emp.body.data.id, organizationId: org.body.data.id, assignedDate: "2026-01-01" }),
+        })
+
+        expect(res.status).toBe(422)
+    })
+
+    test("filters GET /api/asset by holderKind=organization", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+        const org = await request(app, "/api/organization", { method: "POST", headers, body: { name: "Ops Dept", type: "department" } })
+
+        await request(app, "/api/asset", {
+            method: "POST", headers,
+            body: createAssetData(subCategory.id, { name: "Org Held Asset", organizationId: org.body.data.id, assignedDate: "2026-01-01" }),
+        })
+        // An employee-held asset should not show up under the organization filter.
+        const emp = await request(app, "/api/employee", { method: "POST", headers, body: { employeeId: "EMP-ORGF", name: "Filter Emp", jobPosition: "Dev", email: "orgf@test.com", phone: "081" } })
+        await request(app, "/api/asset", {
+            method: "POST", headers,
+            body: createAssetData(subCategory.id, { name: "Employee Held Asset", employeeId: emp.body.data.id, assignedDate: "2026-01-01" }),
+        })
+
+        const res = await request(app, `/api/asset?holderStatus=has_holder&holderType=active_holder&holderKind=organization&holderId=${org.body.data.id}`, { method: "GET", headers })
+        expect(res.status).toBe(200)
+        expect(res.body.data.length).toBe(1)
+        expect(res.body.data[0].name).toBe("Org Held Asset")
+    })
+})
+
 describe("Asset Custom Labels - Keys & Sorting", () => {
     test("should fetch unique label keys and sort assets by custom label values", async () => {
         const { headers } = await registerAndLogin(app)

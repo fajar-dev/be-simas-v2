@@ -347,6 +347,7 @@ export class HandoverService {
 
                 const holder = await this.assetHolderService.save({
                     assetId: item.assetId,
+                    holderKind: "employee",
                     employeeId: handover.receivedById,
                     assignHandoverId: handover.id,
                     assignedDate: new Date().toISOString(),

@@ -37,6 +37,8 @@ export class AssetController {
         const bleTagStatus = c.req.query("bleTagStatus")
         if (bleTagStatus === 'has_ble_tag' || bleTagStatus === 'no_ble_tag') filters.bleTagStatus = bleTagStatus
         if (c.req.query("holderId")) filters.holderId = Number(c.req.query("holderId"))
+        const holderKind = c.req.query("holderKind")
+        if (holderKind === 'employee' || holderKind === 'organization') filters.holderKind = holderKind
         if (c.req.query("priceMin")) filters.priceMin = Number(c.req.query("priceMin"))
         if (c.req.query("priceMax")) filters.priceMax = Number(c.req.query("priceMax"))
         if (c.req.query("purchaseDateFrom")) filters.purchaseDateFrom = c.req.query("purchaseDateFrom")!

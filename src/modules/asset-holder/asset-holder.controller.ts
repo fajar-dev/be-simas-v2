@@ -17,8 +17,10 @@ export class AssetHolderController {
         const assetId = assetIdVal ? Number(assetIdVal) : undefined
         const employeeIdVal = c.req.query("employeeId")
         const employeeId = employeeIdVal ? Number(employeeIdVal) : undefined
+        const organizationIdVal = c.req.query("organizationId")
+        const organizationId = organizationIdVal ? Number(organizationIdVal) : undefined
 
-        const { data, total } = await this.service.getAll(page, limit, q, sortBy, order, assetId, employeeId)
+        const { data, total } = await this.service.getAll(page, limit, q, sortBy, order, assetId, employeeId, organizationId)
         const serialized = await AssetHolderSerializer.collection(data)
 
         return ApiResponse.success(c, serialized, "Asset holder history retrieved successfully", 200, {

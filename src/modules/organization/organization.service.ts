@@ -1,6 +1,9 @@
+import { IsNull } from "typeorm"
 import { Organization } from "./entities/organization.entity"
 import { NotFoundException, ConflictException, BadRequestException } from "../../core/exceptions/base"
 import { IOrganizationRepository } from "./interfaces/organization.repository.interface"
+import { AppDataSource } from "../../config/database"
+import { AssetHolder } from "../asset-holder/entities/asset-holder.entity"
 
 export class OrganizationService {
     constructor(private readonly repository: IOrganizationRepository) {}
@@ -60,6 +63,10 @@ export class OrganizationService {
         const childCount = await this.repository.countChildren(id)
         if (childCount > 0) {
             throw new ConflictException(`Cannot delete organization, ${childCount} sub-organization(s) are still linked to this organization`)
+        }
+        const holderCount = await AppDataSource.getRepository(AssetHolder).count({ where: { organizationId: id, returnedDate: IsNull() } })
+        if (holderCount > 0) {
+            throw new ConflictException(`Cannot delete organization, ${holderCount} asset(s) are still assigned to this organization`)
         }
         await this.repository.delete(id)
     }

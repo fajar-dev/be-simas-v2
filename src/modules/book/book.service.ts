@@ -41,6 +41,7 @@ export class BookService {
 
         const log = await this.assetHolderService.create({
             assetId: data.assetId,
+            holderKind: "employee",
             employeeId: data.employeeId,
             assignedDate: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
             assignNote: data.assignNote || null,
@@ -84,18 +85,19 @@ export class BookService {
 
         const employeeLoans: Record<string, any> = {}
 
+        // Book loans are always employee-held (borrow() always creates holderKind: "employee" rows), so `employee` is never null here.
         for (const loan of loans) {
-            const empId = loan.employee.employeeId
+            const empId = loan.employee!.employeeId
             if (!employeeLoans[empId]) {
                 employeeLoans[empId] = {
-                    employee: loan.employee.name,
+                    employee: loan.employee!.name,
                     bookLoans: {},
                 }
             }
         }
 
         await Promise.all(loans.map(async (loan) => {
-            const empId = loan.employee.employeeId
+            const empId = loan.employee!.employeeId
             const attachments = await this.attachmentService.getForEntity("AssetHolder", loan.id)
 
             const [imageUrl, loanPhoto, returnPhoto] = await Promise.all([

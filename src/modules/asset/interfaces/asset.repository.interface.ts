@@ -12,6 +12,8 @@ export interface AssetFilter {
     holderType?: 'active_holder' | 'historical_holder'
     bleTagStatus?: 'has_ble_tag' | 'no_ble_tag'
     holderId?: number
+    /** Which table `holderId` refers to. Defaults to 'employee' for backward compatibility. */
+    holderKind?: 'employee' | 'organization'
     priceMin?: number
     priceMax?: number
     purchaseDateFrom?: string
