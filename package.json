@@ -9,6 +9,7 @@
     "sync:employee": "bun run src/jobs/sync-employee.job.ts",
     "sync:user": "bun run src/jobs/sync-user.job.ts",
     "sync:branch": "bun run src/jobs/sync-branch.job.ts",
+    "sync:organization": "bun run src/jobs/sync-organization.job.ts",
     "job:asset-schedule-reminder": "bun run src/jobs/asset-schedule-reminder.job.ts"
   },
   "dependencies": {

@@ -38,6 +38,7 @@ import { InventoryStockIn } from "../src/modules/inventory-stock-in/entities/inv
 import { InventoryStockInItem } from "../src/modules/inventory-stock-in/entities/inventory-stock-in-item.entity"
 import { InventoryLog } from "../src/modules/inventory-log/entities/inventory-log.entity"
 import { PasswordResetToken } from "../src/modules/auth/entities/password-reset-token.entity"
+import { Organization } from "../src/modules/organization/entities/organization.entity"
 import { ApiResponse } from "../src/core/helpers/response"
 import { BaseException, ValidationException } from "../src/core/exceptions/base"
 import { ZodError } from "zod"
@@ -60,7 +61,7 @@ const TestDataSource = new DataSource({
     database: testDbName,
     synchronize: true,
     dropSchema: true,
-    entities: [User, Role, Permission, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetNote, AssetLocation, AssetHolder, AssetLog, AssetStatus, AssetSchedule, AssetScheduleAsset, AssetScheduleUser, Handover, HandoverItem, HandoverStockItem, HandoverField, Inventory, InventoryLabel, InventoryVariant, InventoryStockBalance, InventoryStockOut, InventoryStockOutItem, InventoryStockTransfer, InventoryStockTransferItem, InventoryStockIn, InventoryStockInItem, InventoryLog, PasswordResetToken],
+    entities: [User, Role, Permission, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetNote, AssetLocation, AssetHolder, AssetLog, AssetStatus, AssetSchedule, AssetScheduleAsset, AssetScheduleUser, Handover, HandoverItem, HandoverStockItem, HandoverField, Inventory, InventoryLabel, InventoryVariant, InventoryStockBalance, InventoryStockOut, InventoryStockOutItem, InventoryStockTransfer, InventoryStockTransferItem, InventoryStockIn, InventoryStockInItem, InventoryLog, PasswordResetToken, Organization],
     logging: false,
 })
 

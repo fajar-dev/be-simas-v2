@@ -54,6 +54,19 @@ export class NusaworkHelper {
         return (res?.data?.data as any[]) ?? []
     }
 
+    async getOrganization(): Promise<any[]> {
+        const token = await this.getToken()
+
+        const res = await this.http.get<any>('/emp/api/organization', {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        })
+
+        return (res?.data?.data as any[]) ?? []
+    }
+
     async authLogin(email: string, password: string): Promise<boolean> {
         try {
             const res = await this.http.post<any>('/auth/api/oauth/token', {

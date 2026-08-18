@@ -28,6 +28,7 @@ import { InventoryStockEntryValidator } from "../modules/inventory-stock/validat
 import { InventoryStockAssignValidator, InventoryStockReturnValidator } from "../modules/inventory-stock-out/validators/inventory-stock-out.validator"
 import { InventoryStockTransferValidator } from "../modules/inventory-stock-transfer/validators/inventory-stock-transfer.validator"
 import { InventoryStockInValidator } from "../modules/inventory-stock-in/validators/inventory-stock-in.validator"
+import { CreateOrganizationValidator, UpdateOrganizationValidator } from "../modules/organization/validators/organization.validator"
 
 // ── Middlewares ──────────────────────────────────────────────────────────────
 import { authMiddleware } from "../core/middlewares/auth.middleware"
@@ -68,6 +69,7 @@ import { inventoryStockOutController } from "../modules/inventory-stock-out/inve
 import { inventoryStockTransferController } from "../modules/inventory-stock-transfer/inventory-stock-transfer.module"
 import { inventoryStockInController } from "../modules/inventory-stock-in/inventory-stock-in.module"
 import { inventoryLogController } from "../modules/inventory-log/inventory-log.module"
+import { organizationController } from "../modules/organization/organization.module"
 import { apiKeyMiddleware } from "../core/middlewares/api-key.middleware"
 
 // ── Routes ───────────────────────────────────────────────────────────────────
@@ -107,6 +109,14 @@ routes.get("/category/:id", authMiddleware, requirePermission("category:read"), 
 routes.post("/category", authMiddleware, requirePermission("category:create"), zValidator("json", CreateCategoryValidator, validationHook), (c) => categoryController.store(c))
 routes.put("/category/:id", authMiddleware, requirePermission("category:update"), zValidator("json", UpdateCategoryValidator, validationHook), (c) => categoryController.update(c))
 routes.delete("/category/:id", authMiddleware, requirePermission("category:delete"), (c) => categoryController.destroy(c))
+
+// Organization
+routes.get("/organization/list", authMiddleware, (c) => organizationController.list(c))
+routes.get("/organization", authMiddleware, requirePermission("organization:read"), (c) => organizationController.index(c))
+routes.get("/organization/:id", authMiddleware, requirePermission("organization:read"), (c) => organizationController.show(c))
+routes.post("/organization", authMiddleware, requirePermission("organization:create"), zValidator("json", CreateOrganizationValidator, validationHook), (c) => organizationController.store(c))
+routes.put("/organization/:id", authMiddleware, requirePermission("organization:update"), zValidator("json", UpdateOrganizationValidator, validationHook), (c) => organizationController.update(c))
+routes.delete("/organization/:id", authMiddleware, requirePermission("organization:delete"), (c) => organizationController.destroy(c))
 
 // Sub Category
 routes.get("/sub-category", authMiddleware, requirePermission("sub-category:read"), (c) => subCategoryController.index(c))
