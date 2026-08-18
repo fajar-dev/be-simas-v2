@@ -764,3 +764,68 @@ describe("Employee - assetCount", () => {
         expect(emp.assetCount).toBe(1)
     })
 })
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Employee - organizationId
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe("Employee - organizationId", () => {
+    test("creates an employee with no organization by default", async () => {
+        const { headers } = await registerAndLogin(app)
+        const { status, body } = await request(app, "/api/employee", { method: "POST", headers, body: createEmployeeData() })
+        expect(status).toBe(201)
+        expect(body.data.organizationId).toBeNull()
+        expect(body.data.organization).toBeNull()
+    })
+
+    test("creates an employee linked to an organization", async () => {
+        const { headers } = await registerAndLogin(app)
+        const org = await request(app, "/api/organization", { method: "POST", headers, body: { name: "Networking", type: "department" } })
+
+        const { status, body } = await request(app, "/api/employee", {
+            method: "POST", headers,
+            body: createEmployeeData({ organizationId: org.body.data.id }),
+        })
+        expect(status).toBe(201)
+        expect(body.data.organizationId).toBe(org.body.data.id)
+        expect(body.data.organization).toEqual({ id: org.body.data.id, name: "Networking" })
+    })
+
+    test("updates an employee's organization", async () => {
+        const { headers } = await registerAndLogin(app)
+        const org = await request(app, "/api/organization", { method: "POST", headers, body: { name: "Sales", type: "division" } })
+        const created = await request(app, "/api/employee", { method: "POST", headers, body: createEmployeeData() })
+
+        const { status, body } = await request(app, `/api/employee/${created.body.data.id}`, {
+            method: "PUT", headers,
+            body: { organizationId: org.body.data.id },
+        })
+        expect(status).toBe(200)
+        expect(body.data.organizationId).toBe(org.body.data.id)
+    })
+
+    test("reassigns an employee that already has an organization to a different one", async () => {
+        const { headers } = await registerAndLogin(app)
+        const orgA = await request(app, "/api/organization", { method: "POST", headers, body: { name: "Sales", type: "division" } })
+        const orgB = await request(app, "/api/organization", { method: "POST", headers, body: { name: "Marketing", type: "division" } })
+        const created = await request(app, "/api/employee", { method: "POST", headers, body: createEmployeeData({ organizationId: orgA.body.data.id }) })
+
+        const { status, body } = await request(app, `/api/employee/${created.body.data.id}`, {
+            method: "PUT", headers,
+            body: { organizationId: orgB.body.data.id },
+        })
+        expect(status).toBe(200)
+        expect(body.data.organizationId).toBe(orgB.body.data.id)
+        expect(body.data.organization).toEqual({ id: orgB.body.data.id, name: "Marketing" })
+    })
+
+    test("returns the organization on show", async () => {
+        const { headers } = await registerAndLogin(app)
+        const org = await request(app, "/api/organization", { method: "POST", headers, body: { name: "Finance", type: "division" } })
+        const created = await request(app, "/api/employee", { method: "POST", headers, body: createEmployeeData({ organizationId: org.body.data.id }) })
+
+        const { status, body } = await request(app, `/api/employee/${created.body.data.id}`, { headers })
+        expect(status).toBe(200)
+        expect(body.data.organization).toEqual({ id: org.body.data.id, name: "Finance" })
+    })
+})
