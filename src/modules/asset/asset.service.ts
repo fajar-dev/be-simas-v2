@@ -107,7 +107,7 @@ export class AssetService {
             throw new BadRequestException("Cannot assign an asset to both an employee and an organization")
         }
 
-        // Validate the initial holder (employee or organization) exists before starting transaction
+        // Validate the initial holder before starting the transaction
         let holderName: string | null = null
         if (employeeId) {
             const employeeExists = await this.employeeService.getById(employeeId)

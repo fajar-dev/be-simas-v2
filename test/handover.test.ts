@@ -484,7 +484,7 @@ describe("Asset Handover API", () => {
             body: { assetId, holderKind: "organization", organizationId: org.body.data.id, assignedDate: "2026-06-19" },
         })
 
-        // Asset is organization-held (employeeId is null), so no employee can "return" it via handover.
+        // employeeId is null on an org-held asset, so no employee can return it.
         const body = createHandoverData([{ assetId }], employeeId2, { transactionType: "return", handedOverById: employeeId })
         const res = await request(app, "/api/handover", { method: "POST", headers: authHeaders, body })
         expect(res.status).toBe(400)

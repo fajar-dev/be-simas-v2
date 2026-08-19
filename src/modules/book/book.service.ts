@@ -85,7 +85,7 @@ export class BookService {
 
         const employeeLoans: Record<string, any> = {}
 
-        // Book loans are always employee-held (borrow() always creates holderKind: "employee" rows), so `employee` is never null here.
+        // borrow() always creates holderKind: "employee" rows, so `employee` is never null here.
         for (const loan of loans) {
             const empId = loan.employee!.employeeId
             if (!employeeLoans[empId]) {

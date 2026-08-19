@@ -69,7 +69,7 @@ export class AssetHolderService {
             throw new NotFoundException("Asset not found")
         }
 
-        // Validate the holder (employee or organization) exists and is active.
+        // Validate the holder exists and is active.
         let holderName: string
         if (data.holderKind === "employee") {
             const employee = await this.employeeService.getById(data.employeeId!)

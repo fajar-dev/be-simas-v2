@@ -3,7 +3,7 @@ import { ASSET_HOLDER_KINDS } from "../../../core/enums"
 
 export const AssignAssetValidator = z.object({
     assetId: z.number(),
-    // Defaults to "employee" so older clients that only send `employeeId` (no `holderKind` yet) keep working.
+    // Default keeps old employee-only clients working.
     holderKind: z.enum(ASSET_HOLDER_KINDS).default("employee"),
     employeeId: z.number().int().positive().optional().nullable(),
     organizationId: z.number().int().positive().optional().nullable(),

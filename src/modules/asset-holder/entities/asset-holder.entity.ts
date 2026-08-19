@@ -30,7 +30,7 @@ export class AssetHolder {
     @JoinColumn({ name: "asset_id" })
     asset!: Relation<Asset>
 
-    /** Whether this holder is an Employee or an Organization — exactly one of employeeId/organizationId is set to match. */
+    /** Matches whichever of employeeId/organizationId is set. */
     @Column({ name: "holder_kind", type: "varchar", default: "employee" })
     holderKind!: AssetHolderKind
 
