@@ -16,4 +16,6 @@ export interface IAssetHolderRepository {
     findActiveByAssetId(assetId: number): Promise<AssetHolder | null>
     findActiveByHandoverId(handoverId: number): Promise<AssetHolder[]>
     save(data: Partial<AssetHolder>, manager?: EntityManager): Promise<AssetHolder>
+    merge(entity: AssetHolder, data: Partial<AssetHolder>): AssetHolder
+    delete(id: number, manager?: EntityManager): Promise<void>
 }

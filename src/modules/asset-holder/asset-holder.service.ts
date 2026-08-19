@@ -187,6 +187,104 @@ export class AssetHolderService {
         return reloaded
     }
 
+    async update(
+        id: number,
+        data: Partial<AssetHolder> & { attachmentIds?: number[] },
+        operatorId?: number
+    ): Promise<AssetHolder> {
+        const { log } = await this.getById(id)
+        const oldSnapshot = { ...log }
+        const isReturned = !!log.returnedDate
+
+        // Return fields only make sense once the asset has actually been returned.
+        if (!isReturned && (data.returnedDate !== undefined || data.returnNote !== undefined)) {
+            throw new BadRequestException("Return data can only be edited after the asset has been returned")
+        }
+
+        const touchingHolder = data.holderKind !== undefined || data.employeeId !== undefined || data.organizationId !== undefined
+        let holderKind = log.holderKind
+        let employeeId = log.employeeId
+        let organizationId = log.organizationId
+        let holderName = log.holderKind === "employee" ? log.employee?.name : log.organization?.name
+
+        if (touchingHolder) {
+            holderKind = data.holderKind ?? log.holderKind
+            if (holderKind === "employee") {
+                employeeId = data.employeeId !== undefined ? data.employeeId : log.employeeId
+                organizationId = null
+                if (!employeeId) throw new BadRequestException("Employee ID is required")
+                const employee = await this.employeeService.getById(employeeId)
+                if (!employee.isActive) throw new BadRequestException("Cannot assign asset to inactive employee")
+                holderName = employee.name
+            } else {
+                organizationId = data.organizationId !== undefined ? data.organizationId : log.organizationId
+                employeeId = null
+                if (!organizationId) throw new BadRequestException("Organization ID is required")
+                const organization = await this.organizationService.getById(organizationId)
+                if (!organization.isActive) throw new BadRequestException("Cannot assign asset to inactive organization")
+                holderName = organization.name
+            }
+        }
+
+        await withTransaction(async (manager) => {
+            // Clear the eagerly-loaded relation objects first — save() otherwise prioritizes
+            // the stale relation over the scalar employeeId/organizationId we just merged.
+            log.employee = undefined as any
+            log.organization = undefined as any
+            this.repository.merge(log, {
+                holderKind,
+                employeeId,
+                organizationId,
+                assignedDate: data.assignedDate ?? log.assignedDate,
+                assignNote: data.assignNote !== undefined ? data.assignNote : log.assignNote,
+                ...(isReturned ? {
+                    returnedDate: data.returnedDate ?? log.returnedDate,
+                    returnNote: data.returnNote !== undefined ? data.returnNote : log.returnNote,
+                } : {}),
+            })
+
+            await this.repository.save(log, manager)
+
+            if (data.attachmentIds !== undefined) {
+                await this.attachmentService.disassociateOrphans("AssetHolder", id, data.attachmentIds, manager)
+                await this.attachmentService.associate(data.attachmentIds, "AssetHolder", id, manager)
+            }
+
+            await assetLogService.log({
+                assetId: log.assetId,
+                module: "holder",
+                action: "update",
+                description: `Asset holder record updated (${holderKind} "${holderName}").`,
+                createdByUserId: operatorId,
+                oldValue: oldSnapshot,
+                newValue: data,
+            }, manager)
+        })
+
+        const reloaded = await this.repository.findById(id)
+        if (!reloaded) throw new NotFoundException("Updated assignment could not be loaded")
+        return reloaded
+    }
+
+    async delete(id: number, operatorId?: number): Promise<void> {
+        const { log } = await this.getById(id)
+
+        await withTransaction(async (manager) => {
+            await this.attachmentService.disassociateOrphans("AssetHolder", id, [], manager)
+            await this.repository.delete(id, manager)
+
+            const holderName = log.holderKind === "employee" ? log.employee?.name : log.organization?.name
+            await assetLogService.log({
+                assetId: log.assetId,
+                module: "holder",
+                action: "delete",
+                description: `Asset holder record deleted (${log.holderKind} "${holderName}").`,
+                createdByUserId: operatorId,
+                oldValue: { ...log },
+            }, manager)
+        })
+    }
+
     async findActiveHolder(assetId: number): Promise<AssetHolder | null> {
         return await this.repository.findActiveByAssetId(assetId)
     }

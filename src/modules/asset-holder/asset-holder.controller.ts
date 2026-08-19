@@ -72,6 +72,32 @@ export class AssetHolderController {
         return ApiResponse.success(c, data, "Asset assigned successfully", 201)
     }
 
+    async update(c: Context) {
+        const id = Number(c.req.param("id"))
+        if (isNaN(id)) {
+            throw new BadRequestException("Invalid ID")
+        }
+
+        const user = c.get("user")
+        const body = c.req.valid("json" as never) as any
+        const log = await this.service.update(id, body, user?.id)
+
+        const { attachments } = await this.service.getById(log.id)
+        const data = await AssetHolderSerializer.single(log, attachments)
+        return ApiResponse.success(c, data, "Asset holder record updated successfully")
+    }
+
+    async destroy(c: Context) {
+        const id = Number(c.req.param("id"))
+        if (isNaN(id)) {
+            throw new BadRequestException("Invalid ID")
+        }
+
+        const user = c.get("user")
+        await this.service.delete(id, user?.id)
+        return ApiResponse.success(c, null, "Asset holder record deleted successfully")
+    }
+
     async returnAsset(c: Context) {
         const id = Number(c.req.param("id"))
         if (isNaN(id)) {

@@ -38,6 +38,8 @@ const PERMISSIONS = [
     { module: 'employee', action: 'delete' },
     { module: 'asset-holder', action: 'read' },
     { module: 'asset-holder', action: 'create' },
+    { module: 'asset-holder', action: 'update' },
+    { module: 'asset-holder', action: 'delete' },
     { module: 'asset-holder', action: 'return' },
     { module: 'asset-location', action: 'read' },
     { module: 'asset-location', action: 'create' },

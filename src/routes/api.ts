@@ -14,7 +14,7 @@ import { CreateAssetValidator, UpdateAssetValidator, BulkDeleteAssetValidator } 
 import { CreateAssetMaintenanceValidator, UpdateAssetMaintenanceValidator } from "../modules/asset-maintenance/validators/asset-maintenance.validator"
 import { CreateAssetNoteValidator, UpdateAssetNoteValidator } from "../modules/asset-note/validators/asset-note.validator"
 import { CreateAssetLocationValidator } from "../modules/asset-location/validators/asset-location.validator"
-import { AssignAssetValidator, ReturnAssetValidator } from "../modules/asset-holder/validators/asset-holder.validator"
+import { AssignAssetValidator, ReturnAssetValidator, UpdateAssetHolderValidator } from "../modules/asset-holder/validators/asset-holder.validator"
 import { StoreFeedbackValidator } from "../modules/feedback/validators/feedback.validator"
 import { CreateAssetStatusValidator, BulkCreateAssetStatusValidator } from "../modules/asset-status/validators/asset-status.validator"
 import { CreateRoleValidator, UpdateRoleValidator } from "../modules/role/validators/role.validator"
@@ -198,6 +198,8 @@ routes.get("/asset-holder", authMiddleware, requirePermission("asset-holder:read
 routes.get("/asset-holder/active/:assetId", authMiddleware, requirePermission("asset-holder:read"), (c) => assetHolderController.active(c))
 routes.get("/asset-holder/:id", authMiddleware, requirePermission("asset-holder:read"), (c) => assetHolderController.show(c))
 routes.post("/asset-holder", authMiddleware, requirePermission("asset-holder:create"), zValidator("json", AssignAssetValidator, validationHook), (c) => assetHolderController.store(c))
+routes.put("/asset-holder/:id", authMiddleware, requirePermission("asset-holder:update"), zValidator("json", UpdateAssetHolderValidator, validationHook), (c) => assetHolderController.update(c))
+routes.delete("/asset-holder/:id", authMiddleware, requirePermission("asset-holder:delete"), (c) => assetHolderController.destroy(c))
 routes.post("/asset-holder/:id/return", authMiddleware, requirePermission("asset-holder:return"), zValidator("json", ReturnAssetValidator, validationHook), (c) => assetHolderController.returnAsset(c))
 
 // Asset Log

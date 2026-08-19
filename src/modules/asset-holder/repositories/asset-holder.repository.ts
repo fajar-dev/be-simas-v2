@@ -108,4 +108,13 @@ export class AssetHolderRepository implements IAssetHolderRepository {
         const repo = manager ? manager.getRepository(AssetHolder) : this.repository
         return await repo.save(data)
     }
+
+    merge(entity: AssetHolder, data: Partial<AssetHolder>): AssetHolder {
+        return this.repository.merge(entity, data)
+    }
+
+    async delete(id: number, manager?: EntityManager): Promise<void> {
+        const repo = manager ? manager.getRepository(AssetHolder) : this.repository
+        await repo.delete(id)
+    }
 }

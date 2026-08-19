@@ -1407,6 +1407,24 @@ components:
           items: { type: integer }
           example: [3]
 
+    UpdateAssetHolderRequest:
+      type: object
+      description: >
+        All fields optional — only send what changed. returnedDate/returnNote are rejected with 400 unless the
+        record has already been returned. attachmentIds, when sent, replaces the full attachment set.
+      properties:
+        holderKind: { type: string, enum: [employee, organization] }
+        employeeId: { type: integer, nullable: true, example: 1 }
+        organizationId: { type: integer, nullable: true, example: 3 }
+        assignedDate: { type: string, format: date, example: "2026-06-19" }
+        assignNote: { type: string, example: "Corrected note" }
+        returnedDate: { type: string, format: date, example: "2026-06-25" }
+        returnNote: { type: string, example: "Corrected return note" }
+        attachmentIds:
+          type: array
+          items: { type: integer }
+          example: [1, 2]
+
     AssetHolderResponse:
       type: object
       properties:
@@ -4435,6 +4453,64 @@ paths:
                   - type: object
                     properties:
                       data: { $ref: "#/components/schemas/AssetHolderResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Asset assignment record not found }
+    put:
+      tags: [Asset Holder]
+      summary: Edit an asset holder record
+      description: >
+        While the record is still active (not returned), only assign-side fields (holderKind, employeeId,
+        organizationId, assignedDate, assignNote, attachmentIds) may be changed — sending returnedDate/returnNote
+        is rejected (400). Once the record has been returned, return-side fields become editable too.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateAssetHolderRequest" }
+      responses:
+        "200":
+          description: Asset holder record updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/AssetHolderResponse" }
+        "400": { description: "Return data can only be edited after the asset has been returned, or the target employee/organization is inactive" }
+        "401": { description: Unauthorized }
+        "404": { description: Asset assignment record not found }
+        "422": { description: Validation error }
+    delete:
+      tags: [Asset Holder]
+      summary: Delete an asset holder record
+      description: "Permanently removes the record (and any attachments associated with it). If the record was the asset's active holder, the asset becomes unheld."
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Asset holder record deleted successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { type: "null" }
         "401": { description: Unauthorized }
         "404": { description: Asset assignment record not found }
 
