@@ -81,6 +81,7 @@ const PERMISSIONS = [
     { module: 'inventory-stock', action: 'transfer' },
     { module: 'inventory-stock', action: 'assign' },
     { module: 'inventory-stock', action: 'return' },
+    { module: 'inventory-stock', action: 'opname' },
     { module: 'user', action: 'read' },
     { module: 'user', action: 'create' },
     { module: 'user', action: 'update' },

@@ -56,6 +56,23 @@ export class InventoryStockService {
         return await this.repository.saveBalance({ id: existing!.id, quantity: available - qty }, manager)
     }
 
+    /**
+     * Set a branch/variant/condition balance to an absolute value (opname-style)
+     * and report the signed delta applied. Shared by InventoryStockOpnameService
+     * so an opname document's line items can record system vs. counted quantity.
+     */
+    async setBalance(branchId: number, variantId: number, condition: StockCondition, targetQty: number, manager?: EntityManager): Promise<{ previousQuantity: number; newQuantity: number; delta: number }> {
+        const existing = await this.repository.findBalance(branchId, variantId, condition, manager, !!manager)
+        const previousQuantity = existing?.quantity ?? 0
+        const delta = targetQty - previousQuantity
+        if (delta === 0) return { previousQuantity, newQuantity: previousQuantity, delta: 0 }
+        const balance = await this.repository.saveBalance({
+            ...(existing ? { id: existing.id } : {}),
+            branchId, variantId, condition, quantity: targetQty,
+        }, manager)
+        return { previousQuantity, newQuantity: balance.quantity, delta }
+    }
+
     /** Set absolute new/used quantities per variant for a branch (opname-style). */
     async entry(data: InventoryStockEntryValidator, userId?: number): Promise<InventoryStockBalance[]> {
         await this.branchService.getById(data.branchId)

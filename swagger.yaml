@@ -1062,6 +1062,54 @@ components:
           type: array
           items: { $ref: "#/components/schemas/AttachmentResponse" }
 
+    InventoryStockOpnameResponse:
+      type: object
+      description: "A stock opname (physical count) document — sets variants at one branch to their counted quantities."
+      properties:
+        id: { type: integer, example: 1 }
+        branch:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer }
+            name: { type: string }
+        note: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        createdBy:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            photo: { type: string, nullable: true }
+        items:
+          type: array
+          description: "Only variants/conditions whose count differed from the recorded balance are included."
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              condition: { type: string, enum: [new, used] }
+              systemQuantity: { type: integer, example: 10, description: "Recorded on-hand before this count." }
+              countedQuantity: { type: integer, example: 7, description: "Physically counted quantity." }
+              quantity: { type: integer, example: -3, description: "Signed delta applied to the balance (countedQuantity - systemQuantity)." }
+              variant:
+                type: object
+                nullable: true
+                properties:
+                  id: { type: integer }
+                  name: { type: string }
+                  code: { type: string, nullable: true }
+                  inventory:
+                    type: object
+                    nullable: true
+                    properties:
+                      id: { type: integer }
+                      name: { type: string }
+        attachments:
+          type: array
+          items: { $ref: "#/components/schemas/AttachmentResponse" }
+
     InventoryLogResponse:
       type: object
       properties:
@@ -3386,7 +3434,7 @@ paths:
       summary: Export assets to Excel
       description: |
         Exports assets as .xlsx file. Supports all the same filters as GET /asset.
-        The exported file includes columns: No, Image, Code, Name, Description, Category, Sub Category, Brand, Model, BLE Tag MAC, Price, Purchase Date, Status, Active Holder (Type + Name + Employee ID — Employee ID is blank for organization holders), Last Location (Location + Branch), Depreciation (Useful Life, Monthly Depreciation, Accumulated Depreciation, Book Value), and dynamic label columns.
+        The exported file includes columns: No, Image, Code, Name, Description, Category, Sub Category, Brand, Model, BLE Tag MAC, Price, Purchase Date, Age (years/months/days since purchase date), Status, Active Holder (Type + Name + Employee ID — Employee ID is blank for organization holders), Last Location (Location + Branch), Depreciation (Useful Life, Monthly Depreciation, Accumulated Depreciation, Book Value), and dynamic label columns.
       security: [{ bearerAuth: [] }]
       parameters:
         - name: q
@@ -5590,6 +5638,78 @@ paths:
         "401": { description: Unauthorized }
         "403": { description: Forbidden - missing inventory-stock:entry }
         "404": { description: Inventory item not found }
+        "422": { description: Validation error }
+
+  # ── Inventory Stock Opname (own module, mirrors Inventory Stock In) ────────
+  /inventory-stock-opname:
+    get:
+      tags: [Inventory Stock Opname]
+      summary: List stock opname (physical count) history for an inventory item (paginated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: inventoryId, in: query, required: true, schema: { type: integer } }
+        - { name: page, in: query, required: false, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, required: false, schema: { type: integer, default: 20 } }
+      responses:
+        "200":
+          description: Stock opname history retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/InventoryStockOpnameResponse" } }
+                      meta: { $ref: "#/components/schemas/PaginationMeta" }
+        "400": { description: inventoryId is required }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden - missing inventory-stock:read }
+        "404": { description: Inventory item not found }
+    post:
+      tags: [Inventory Stock Opname]
+      summary: Record a physical stock count for variants at one branch
+      description: "SET semantics — each variant/condition's balance at the given branch is set to the counted quantity (opname, not an increment like stock-in). Only variants/conditions whose count differs from the recorded balance produce a line item. Optional note + attachments. Persists a stock opname record (history + line items + attachments), mirroring the stock-in document."
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [inventoryId, branchId, items]
+              properties:
+                inventoryId: { type: integer, example: 1 }
+                branchId: { type: integer, example: 1 }
+                note: { type: string, nullable: true }
+                attachmentIds: { type: array, items: { type: integer }, nullable: true }
+                items:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [variantId, new, used]
+                    properties:
+                      variantId: { type: integer, example: 1 }
+                      new: { type: integer, minimum: 0, example: 7, description: "Physically counted quantity in new condition." }
+                      used: { type: integer, minimum: 0, example: 2, description: "Physically counted quantity in used condition." }
+      responses:
+        "201":
+          description: Stock opname saved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/InventoryStockOpnameResponse" }
+        "400": { description: Invalid branch or variant not belonging to item }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden - missing inventory-stock:opname }
+        "404": { description: Inventory item or branch not found }
         "422": { description: Validation error }
 
   # ── Inventory Log (activity audit trail, mirrors Asset Log) ────────────────

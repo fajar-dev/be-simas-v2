@@ -28,6 +28,7 @@ import { InventoryStockEntryValidator } from "../modules/inventory-stock/validat
 import { InventoryStockAssignValidator, InventoryStockReturnValidator } from "../modules/inventory-stock-out/validators/inventory-stock-out.validator"
 import { InventoryStockTransferValidator } from "../modules/inventory-stock-transfer/validators/inventory-stock-transfer.validator"
 import { InventoryStockInValidator } from "../modules/inventory-stock-in/validators/inventory-stock-in.validator"
+import { InventoryStockOpnameValidator } from "../modules/inventory-stock-opname/validators/inventory-stock-opname.validator"
 import { CreateOrganizationValidator, UpdateOrganizationValidator } from "../modules/organization/validators/organization.validator"
 
 // ── Middlewares ──────────────────────────────────────────────────────────────
@@ -68,6 +69,7 @@ import { inventoryStockController } from "../modules/inventory-stock/inventory-s
 import { inventoryStockOutController } from "../modules/inventory-stock-out/inventory-stock-out.module"
 import { inventoryStockTransferController } from "../modules/inventory-stock-transfer/inventory-stock-transfer.module"
 import { inventoryStockInController } from "../modules/inventory-stock-in/inventory-stock-in.module"
+import { inventoryStockOpnameController } from "../modules/inventory-stock-opname/inventory-stock-opname.module"
 import { inventoryLogController } from "../modules/inventory-log/inventory-log.module"
 import { organizationController } from "../modules/organization/organization.module"
 import { apiKeyMiddleware } from "../core/middlewares/api-key.middleware"
@@ -245,6 +247,10 @@ routes.post("/inventory-stock-transfer", authMiddleware, requirePermission("inve
 // Inventory Stock In (own module, mirrors asset-holder/asset-status)
 routes.get("/inventory-stock-in", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockInController.index(c))
 routes.post("/inventory-stock-in", authMiddleware, requirePermission("inventory-stock:entry"), zValidator("json", InventoryStockInValidator, validationHook), (c) => inventoryStockInController.store(c))
+
+// Inventory Stock Opname (own module, mirrors inventory-stock-in)
+routes.get("/inventory-stock-opname", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockOpnameController.index(c))
+routes.post("/inventory-stock-opname", authMiddleware, requirePermission("inventory-stock:opname"), zValidator("json", InventoryStockOpnameValidator, validationHook), (c) => inventoryStockOpnameController.store(c))
 
 // Inventory Log (activity audit trail, mirrors asset-log)
 routes.get("/inventory-log", authMiddleware, requirePermission("inventory:read"), (c) => inventoryLogController.index(c))
