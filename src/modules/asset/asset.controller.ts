@@ -14,7 +14,7 @@ export class AssetController {
         private readonly utilService: AssetUtilService,
     ) {}
 
-        private parseFilters(c: Context): AssetFilter {
+    private parseFilters(c: Context): AssetFilter {
         const parseIds = (val: string | undefined) => val ? val.split(',').map(Number).filter(n => !isNaN(n)) : undefined
 
         const filters: AssetFilter = {}

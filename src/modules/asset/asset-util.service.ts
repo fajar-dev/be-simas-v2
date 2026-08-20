@@ -26,6 +26,7 @@ export class AssetUtilService {
             { header: 'BLE Tag MAC', key: 'bleTagMac', width: 20 },
             { header: 'Price', key: 'price', width: 15 },
             { header: 'Purchase Date', key: 'purchaseDate', width: 15 },
+            { header: 'Age', key: 'age', width: 20 },
             { header: 'Status', key: 'status', width: 15 },
             { header: 'Holder Type', key: 'holderType', width: 14 },
             { header: 'Holder Name', key: 'holderName', width: 22 },
@@ -62,7 +63,7 @@ export class AssetUtilService {
         const subHeaderRow = sheet.getRow(2)
 
         // Single-column headers: merge vertically (row 1 + row 2)
-        const singleCols = ['no', 'image', 'code', 'name', 'description', 'category', 'subCategory', 'brand', 'model', 'bleTagMac', 'price', 'purchaseDate', 'status']
+        const singleCols = ['no', 'image', 'code', 'name', 'description', 'category', 'subCategory', 'brand', 'model', 'bleTagMac', 'price', 'purchaseDate', 'age', 'status']
         singleCols.forEach(key => {
             const colIdx = columns.findIndex(c => c.key === key) + 1
             const header = columns[colIdx - 1].header
@@ -123,6 +124,7 @@ export class AssetUtilService {
                 bleTagMac: asset.bleTagMac || '',
                 price: asset.price ?? '',
                 purchaseDate: asset.purchaseDate || '',
+                age: this.calculateAge(asset.purchaseDate),
                 status: asset.lastStatus?.status || '',
                 holderType: asset.activeHolder ? (asset.activeHolder.holderKind === 'employee' ? 'Employee' : 'Organization') : '',
                 holderName: asset.activeHolder?.employee?.name || asset.activeHolder?.organization?.name || '',
@@ -484,6 +486,34 @@ export class AssetUtilService {
         }
 
         return { success, errors }
+    }
+
+    private calculateAge(purchaseDate?: string | null): string {
+        if (!purchaseDate) return ''
+        const start = new Date(purchaseDate)
+        if (isNaN(start.getTime())) return ''
+        const now = new Date()
+
+        let years = now.getFullYear() - start.getFullYear()
+        let months = now.getMonth() - start.getMonth()
+        let days = now.getDate() - start.getDate()
+
+        if (days < 0) {
+            months--
+            const prevMonth = new Date(now.getFullYear(), now.getMonth(), 0)
+            days += prevMonth.getDate()
+        }
+        if (months < 0) {
+            years--
+            months += 12
+        }
+
+        const parts: string[] = []
+        if (years > 0) parts.push(`${years} year${years > 1 ? 's' : ''}`)
+        if (months > 0) parts.push(`${months} month${months > 1 ? 's' : ''}`)
+        if (days > 0) parts.push(`${days} day${days > 1 ? 's' : ''}`)
+
+        return parts.length > 0 ? parts.join(' ') : '0 days'
     }
 
     private calculateDepreciation(price?: number | null, usefulLife?: number | null, purchaseDate?: string | null) {
