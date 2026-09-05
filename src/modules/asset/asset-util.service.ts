@@ -3,8 +3,10 @@ import ExcelJS from "exceljs"
 import { config } from "../../config/config"
 import { AppDataSource } from "../../config/database"
 import { SubCategory } from "../sub-category/entities/sub-category.entity"
+import type { AssetService } from "./asset.service"
 
 export class AssetUtilService {
+    constructor(private readonly assetService: AssetService) {}
 
     async export(data: Asset[], labelKeys: string[]): Promise<Buffer> {
         const workbook = new ExcelJS.Workbook()
@@ -24,7 +26,9 @@ export class AssetUtilService {
             { header: 'BLE Tag MAC', key: 'bleTagMac', width: 20 },
             { header: 'Price', key: 'price', width: 15 },
             { header: 'Purchase Date', key: 'purchaseDate', width: 15 },
+            { header: 'Age', key: 'age', width: 20 },
             { header: 'Status', key: 'status', width: 15 },
+            { header: 'Holder Type', key: 'holderType', width: 14 },
             { header: 'Holder Name', key: 'holderName', width: 22 },
             { header: 'Holder Employee ID', key: 'holderEmployeeId', width: 18 },
             { header: 'Location', key: 'location', width: 22 },
@@ -44,6 +48,8 @@ export class AssetUtilService {
 
         // Column indices (1-indexed)
         const imageCol = columns.findIndex(c => c.key === 'image') + 1
+        const codeCol = columns.findIndex(c => c.key === 'code') + 1
+        const holderTypeCol = columns.findIndex(c => c.key === 'holderType') + 1
         const holderNameCol = columns.findIndex(c => c.key === 'holderName') + 1
         const holderEmpIdCol = columns.findIndex(c => c.key === 'holderEmployeeId') + 1
         const locationCol = columns.findIndex(c => c.key === 'location') + 1
@@ -57,7 +63,7 @@ export class AssetUtilService {
         const subHeaderRow = sheet.getRow(2)
 
         // Single-column headers: merge vertically (row 1 + row 2)
-        const singleCols = ['no', 'image', 'code', 'name', 'description', 'category', 'subCategory', 'brand', 'model', 'bleTagMac', 'price', 'purchaseDate', 'status']
+        const singleCols = ['no', 'image', 'code', 'name', 'description', 'category', 'subCategory', 'brand', 'model', 'bleTagMac', 'price', 'purchaseDate', 'age', 'status']
         singleCols.forEach(key => {
             const colIdx = columns.findIndex(c => c.key === key) + 1
             const header = columns[colIdx - 1].header
@@ -66,8 +72,8 @@ export class AssetUtilService {
         })
 
         // Active Holder: merge horizontally in row 1
-        sheet.mergeCells(1, holderNameCol, 1, holderEmpIdCol)
-        groupRow.getCell(holderNameCol).value = 'Active Holder'
+        sheet.mergeCells(1, holderTypeCol, 1, holderEmpIdCol)
+        groupRow.getCell(holderTypeCol).value = 'Active Holder'
 
         // Last Location: merge horizontally in row 1
         sheet.mergeCells(1, locationCol, 1, branchCol)
@@ -118,8 +124,10 @@ export class AssetUtilService {
                 bleTagMac: asset.bleTagMac || '',
                 price: asset.price ?? '',
                 purchaseDate: asset.purchaseDate || '',
+                age: this.calculateAge(asset.purchaseDate),
                 status: asset.lastStatus?.status || '',
-                holderName: asset.activeHolder?.employee?.name || '',
+                holderType: asset.activeHolder ? (asset.activeHolder.holderKind === 'employee' ? 'Employee' : 'Organization') : '',
+                holderName: asset.activeHolder?.employee?.name || asset.activeHolder?.organization?.name || '',
                 holderEmployeeId: asset.activeHolder?.employee?.employeeId || '',
                 location: asset.lastLocation?.location?.name || '',
                 branch: asset.lastLocation?.location?.branch?.name || '',
@@ -146,6 +154,11 @@ export class AssetUtilService {
                 imageCell.value = { text: 'View Image', hyperlink: proxyUrl }
                 imageCell.font = { color: { argb: 'FF0066CC' }, underline: true }
             }
+
+            // Link the code cell to the asset's detail page
+            const codeCell = dataRow.getCell(codeCol)
+            codeCell.value = { text: asset.code, hyperlink: `${config.app.appUrl}/asset/${asset.id}` }
+            codeCell.font = { color: { argb: 'FF0066CC' }, underline: true }
 
             if (index % 2 === 1) {
                 dataRow.fill = {
@@ -367,8 +380,6 @@ export class AssetUtilService {
         const subCategories = await subCategoryRepo.find()
         const scMap = new Map(subCategories.map(sc => [sc.code.toLowerCase(), sc]))
 
-        // Lazy import to avoid circular deps
-        const { assetService } = require("./asset.module")
 
         const errors: { row: number; message: string }[] = []
         let success = 0
@@ -451,7 +462,7 @@ export class AssetUtilService {
             const finalUsefulLife = (usefulLife && !isNaN(usefulLife) && price && !isNaN(price) && purchaseDate) ? usefulLife : undefined
 
             try {
-                await assetService.create({
+                await this.assetService.create({
                     code,
                     name,
                     description: description || undefined,
@@ -475,6 +486,34 @@ export class AssetUtilService {
         }
 
         return { success, errors }
+    }
+
+    private calculateAge(purchaseDate?: string | null): string {
+        if (!purchaseDate) return ''
+        const start = new Date(purchaseDate)
+        if (isNaN(start.getTime())) return ''
+        const now = new Date()
+
+        let years = now.getFullYear() - start.getFullYear()
+        let months = now.getMonth() - start.getMonth()
+        let days = now.getDate() - start.getDate()
+
+        if (days < 0) {
+            months--
+            const prevMonth = new Date(now.getFullYear(), now.getMonth(), 0)
+            days += prevMonth.getDate()
+        }
+        if (months < 0) {
+            years--
+            months += 12
+        }
+
+        const parts: string[] = []
+        if (years > 0) parts.push(`${years} year${years > 1 ? 's' : ''}`)
+        if (months > 0) parts.push(`${months} month${months > 1 ? 's' : ''}`)
+        if (days > 0) parts.push(`${days} day${days > 1 ? 's' : ''}`)
+
+        return parts.length > 0 ? parts.join(' ') : '0 days'
     }
 
     private calculateDepreciation(price?: number | null, usefulLife?: number | null, purchaseDate?: string | null) {

@@ -10,7 +10,6 @@ export class UserListSerializer {
             email: row.email || null,
             isActive: Boolean(row.isActive),
             role: row.role ? { id: row.role.id, name: row.role.name } : null,
-            roleId: row.roleId || null,
         }
     }
 

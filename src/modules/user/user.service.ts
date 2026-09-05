@@ -12,6 +12,11 @@ export class UserService {
         return await this.repository.findAll(page, limit, q, filters, sortBy, order)
     }
 
+    /** Lightweight picker search — no relation population, active users only, capped result count. */
+    async searchOptions(q: string, limit: number): Promise<Pick<User, "id" | "name" | "email" | "photo">[]> {
+        return await this.repository.searchOptions(q, limit)
+    }
+
     async getById(id: number): Promise<User> {
         const user = await this.repository.findById(id)
         if (!user) {
@@ -65,7 +70,9 @@ export class UserService {
         if (data.photo !== undefined) {
             data.photo = minio.sanitizePath(data.photo) ?? undefined
         }
-        return await this.repository.save(data)
+        const saved = await this.repository.save(data)
+        // Reload with relations so the response includes the role/employee objects.
+        return await this.getById(saved.id)
     }
 
     async update(id: number, data: Partial<User>): Promise<User> {
@@ -89,7 +96,9 @@ export class UserService {
             user.employee = undefined as any
         }
         this.repository.merge(user, data)
-        return await this.repository.save(user)
+        await this.repository.save(user)
+        // Reload with relations so the response includes the role/employee objects.
+        return await this.getById(id)
     }
 
     async delete(id: number): Promise<void> {

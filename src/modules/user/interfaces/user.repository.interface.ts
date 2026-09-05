@@ -14,4 +14,9 @@ export interface IUserRepository extends IBaseRepository<User> {
     findByResetToken(token: string): Promise<User | null>
     findByEmailAndResetToken(email: string, token: string): Promise<User | null>
     saveInTransaction(data: Partial<User>): Promise<User>
+    /**
+     * Lightweight lookup for pickers/selects: only id/name/email/photo, no relation joins,
+     * active + non-deleted users only, capped at `limit`.
+     */
+    searchOptions(q: string, limit: number): Promise<Pick<User, "id" | "name" | "email" | "photo">[]>
 }

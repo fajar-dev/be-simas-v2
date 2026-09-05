@@ -1,0 +1,37 @@
+import { Context } from "hono"
+import { InventoryStockService } from "./inventory-stock.service"
+import { InventoryStockSerializer } from "./serializers/inventory-stock.serialize"
+import { ApiResponse } from "../../core/helpers/response"
+import { BadRequestException } from "../../core/exceptions/base"
+import { StockCondition } from "../../core/enums"
+
+export class InventoryStockController {
+    constructor(private readonly service: InventoryStockService) {}
+
+    async entryTemplate(c: Context) {
+        const branchId = Number(c.req.query("branchId"))
+        const inventoryId = Number(c.req.query("inventoryId"))
+        if (!branchId || !inventoryId) throw new BadRequestException("branchId and inventoryId are required")
+        const { variants, balances, unit, itemImage } = await this.service.getEntryTemplate(branchId, inventoryId)
+        return ApiResponse.success(c, await InventoryStockSerializer.entryTemplate(variants, balances, unit, itemImage))
+    }
+
+    async entry(c: Context) {
+        const user = c.get("user")
+        const data = c.req.valid("json" as never) as any
+        const balances = await this.service.entry(data, user?.id)
+        return ApiResponse.success(c, InventoryStockSerializer.balances(balances), "Stock saved successfully")
+    }
+
+    async index(c: Context) {
+        const page = Number(c.req.query("page") || 1)
+        const limit = Number(c.req.query("limit") || 20)
+        const { data, total } = await this.service.getBalances(page, limit, {
+            branchId: c.req.query("branchId") ? Number(c.req.query("branchId")) : undefined,
+            inventoryId: c.req.query("inventoryId") ? Number(c.req.query("inventoryId")) : undefined,
+            variantId: c.req.query("variantId") ? Number(c.req.query("variantId")) : undefined,
+            condition: (c.req.query("condition") as StockCondition) || undefined,
+        })
+        return ApiResponse.paginate(c, InventoryStockSerializer.balances(data), total, page, limit)
+    }
+}

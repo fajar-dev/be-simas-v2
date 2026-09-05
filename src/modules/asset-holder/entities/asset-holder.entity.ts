@@ -1,7 +1,21 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from "typeorm"
+import {
+    Entity,
+    PrimaryGeneratedColumn,
+    Column,
+    CreateDateColumn,
+    UpdateDateColumn,
+    ManyToOne,
+    JoinColumn,
+    Index,
+} from "typeorm"
+import type { Relation } from "typeorm"
+
 import { Asset } from "../../asset/entities/asset.entity"
 import { Employee } from "../../employee/entities/employee.entity"
+import { Organization } from "../../organization/entities/organization.entity"
 import { User } from "../../user/entities/user.entity"
+import { Handover } from "../../handover/entities/handover.entity"
+import type { AssetHolderKind } from "../../../core/enums"
 
 @Entity("asset_holders")
 export class AssetHolder {
@@ -14,15 +28,27 @@ export class AssetHolder {
 
     @ManyToOne(() => Asset, { onDelete: "RESTRICT" })
     @JoinColumn({ name: "asset_id" })
-    asset!: Asset
+    asset!: Relation<Asset>
+
+    /** Matches whichever of employeeId/organizationId is set. */
+    @Column({ name: "holder_kind", type: "varchar", default: "employee" })
+    holderKind!: AssetHolderKind
 
     @Index()
-    @Column({ name: "employee_id" })
-    employeeId!: number
+    @Column({ name: "employee_id", nullable: true })
+    employeeId?: number | null
 
-    @ManyToOne(() => Employee, { onDelete: "RESTRICT" })
+    @ManyToOne(() => Employee, { onDelete: "RESTRICT", nullable: true })
     @JoinColumn({ name: "employee_id" })
-    employee!: Employee
+    employee?: Relation<Employee> | null
+
+    @Index()
+    @Column({ name: "organization_id", nullable: true })
+    organizationId?: number | null
+
+    @ManyToOne(() => Organization, { onDelete: "RESTRICT", nullable: true })
+    @JoinColumn({ name: "organization_id" })
+    organization?: Relation<Organization> | null
 
     @Column({ name: "assigned_date", type: "varchar" })
     assignedDate!: string
@@ -42,14 +68,30 @@ export class AssetHolder {
 
     @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
     @JoinColumn({ name: "created_by" })
-    createdBy?: User | null
+    createdBy?: Relation<User> | null
 
     @Column({ name: "returned_by", nullable: true })
     returnedByUserId?: number | null
 
     @ManyToOne(() => User, { onDelete: "SET NULL", nullable: true })
     @JoinColumn({ name: "returned_by" })
-    returnedBy?: User | null
+    returnedBy?: Relation<User> | null
+
+    @Index()
+    @Column({ name: "assign_handover_id", nullable: true })
+    assignHandoverId?: number | null
+
+    @ManyToOne(() => Handover, { onDelete: "SET NULL", nullable: true })
+    @JoinColumn({ name: "assign_handover_id" })
+    assignHandover?: Relation<Handover> | null
+
+    @Index()
+    @Column({ name: "return_handover_id", nullable: true })
+    returnHandoverId?: number | null
+
+    @ManyToOne(() => Handover, { onDelete: "SET NULL", nullable: true })
+    @JoinColumn({ name: "return_handover_id" })
+    returnHandover?: Relation<Handover> | null
 
     @CreateDateColumn({ name: "created_at" })
     createdAt!: Date

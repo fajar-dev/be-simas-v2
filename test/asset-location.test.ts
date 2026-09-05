@@ -100,8 +100,8 @@ describe("Asset Location API Tests", () => {
 
         expect(res.status).toBe(201)
         expect(res.body.success).toBe(true)
-        expect(res.body.data.assetId).toBe(assetId)
-        expect(res.body.data.locationId).toBe(locationId)
+        expect(res.body.data.asset.id).toBe(assetId)
+        expect(res.body.data.location.id).toBe(locationId)
         expect(res.body.data.date).toBe("2026-06-19")
         expect(res.body.data.note).toBe(payload.note)
         expect(res.body.data.asset.name).toBe("Workstation Dell")

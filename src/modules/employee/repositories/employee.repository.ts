@@ -14,6 +14,7 @@ export class EmployeeRepository implements IEmployeeRepository {
         const offset = (page - 1) * limit
 
         const query = this.repository.createQueryBuilder("employee")
+            .leftJoinAndSelect("employee.organization", "organization")
             .addSelect(subQuery => {
                 return subQuery
                     .select("COUNT(ah.id)", "count")
@@ -43,6 +44,7 @@ export class EmployeeRepository implements IEmployeeRepository {
             email: "employee.email",
             phone: "employee.phone",
             assetCount: "assetCount",
+            organization: "organization.name",
         }
 
         const sortColumn = sortColumnMap[sortBy || ''] || "employee.id"
@@ -63,7 +65,7 @@ export class EmployeeRepository implements IEmployeeRepository {
     }
 
     async findById(id: number): Promise<Employee | null> {
-        return await this.repository.findOneBy({ id })
+        return await this.repository.findOne({ where: { id }, relations: ["organization"] })
     }
 
     async findList(isActive?: boolean): Promise<Employee[]> {

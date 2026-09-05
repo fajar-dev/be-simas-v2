@@ -8,7 +8,6 @@ export class AssetNoteSerializer {
     static async single(note: AssetNote, attachments: Attachment[] = []) {
         return {
             id: note.id,
-            assetId: note.assetId,
             date: note.date,
             note: note.note,
             createdAt: note.createdAt,

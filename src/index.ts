@@ -9,7 +9,7 @@ import { ApiResponse } from './core/helpers/response'
 import { BaseException, ValidationException } from './core/exceptions/base'
 import { ZodError } from 'zod'
 import { config } from './config/config'
-import { logError } from './core/helpers/logger'
+import { logError, logger } from './core/helpers/logger'
 import { requestLogger } from './core/middlewares/logger.middleware'
 
 const app = new Hono()
@@ -23,12 +23,10 @@ app.use('*', cors({
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 }))
 
-
-
 // Database Connection
 AppDataSource.initialize()
-    .then(() => console.log("Database connected successfully"))
-    .catch((err) => console.error("Database connection error", err))
+    .then(() => logger.info("Database connected", { event: "startup.db" }))
+    .catch((err) => logger.error("Database connection failed", { event: "startup.db", error: err?.message, stack: err?.stack }))
 
 // Health Check (untuk load balancer, K8s, monitoring)
 app.get('/health', async (c) => {
@@ -73,12 +71,15 @@ app.onError((err, c) => {
         return ApiResponse.error(c, err.message, err.status, err.context)
     }
 
-    // Log 500 errors to file
+    // Unhandled error → always logged in full (stdout + logs/app + logs/error),
+    // in every environment. NODE_ENV's ONLY job here is response exposure:
+    //   production  → hide detail, return a generic "Internal Server Error"
+    //   development → surface the message + stack in the response for debugging
     logError(err, { method: c.req.method, path: c.req.path })
 
-    const errors = config.app.isProduction ? null : { 
-        message: err.message, 
-        stack: err.stack 
+    const errors = config.app.isProduction ? null : {
+        message: err.message,
+        stack: err.stack,
     }
 
     return ApiResponse.error(c, "Internal Server Error", 500, errors)

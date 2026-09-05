@@ -17,19 +17,23 @@ export class AssetHolderRepository implements IAssetHolderRepository {
         sortBy?: string,
         order?: 'ASC' | 'DESC',
         assetId?: number,
-        employeeId?: number
+        employeeId?: number,
+        organizationId?: number
     ): Promise<{ data: AssetHolder[]; total: number }> {
         const offset = (page - 1) * limit
 
         const query = this.repository.createQueryBuilder("holder")
             .leftJoinAndSelect("holder.asset", "asset")
             .leftJoinAndSelect("holder.employee", "employee")
+            .leftJoinAndSelect("holder.organization", "organization")
             .leftJoinAndSelect("holder.createdBy", "createdBy")
             .leftJoinAndSelect("holder.returnedBy", "returnedBy")
+            .leftJoinAndSelect("holder.assignHandover", "assignHandover")
+            .leftJoinAndSelect("holder.returnHandover", "returnHandover")
 
         if (q) {
             query.where(
-                "(holder.assignNote LIKE :q OR holder.returnNote LIKE :q OR asset.name LIKE :q OR asset.code LIKE :q OR employee.name LIKE :q OR employee.employeeId LIKE :q)",
+                "(holder.assignNote LIKE :q OR holder.returnNote LIKE :q OR asset.name LIKE :q OR asset.code LIKE :q OR employee.name LIKE :q OR employee.employeeId LIKE :q OR organization.name LIKE :q)",
                 { q: `%${q}%` }
             )
         }
@@ -42,6 +46,10 @@ export class AssetHolderRepository implements IAssetHolderRepository {
             query.andWhere("holder.employeeId = :employeeId", { employeeId })
         }
 
+        if (organizationId) {
+            query.andWhere("holder.organizationId = :organizationId", { organizationId })
+        }
+
         const total = await query.getCount()
 
         // Allowed sorting columns
@@ -49,6 +57,7 @@ export class AssetHolderRepository implements IAssetHolderRepository {
             assignedDate: "holder.assignedDate",
             returnedDate: "holder.returnedDate",
             employee: "employee.name",
+            organization: "organization.name",
             asset: "asset.name",
             notes: "holder.assignNote",
             createdBy: "createdBy.name",
@@ -71,7 +80,7 @@ export class AssetHolderRepository implements IAssetHolderRepository {
     async findById(id: number): Promise<AssetHolder | null> {
         return await this.repository.findOne({
             where: { id },
-            relations: ["asset", "employee", "createdBy", "returnedBy"],
+            relations: ["asset", "employee", "organization", "createdBy", "returnedBy", "assignHandover", "returnHandover"],
         })
     }
 
@@ -81,12 +90,31 @@ export class AssetHolderRepository implements IAssetHolderRepository {
                 assetId,
                 returnedDate: IsNull(),
             },
-            relations: ["asset", "employee", "createdBy", "returnedBy"],
+            relations: ["asset", "employee", "organization", "createdBy", "returnedBy", "assignHandover", "returnHandover"],
+        })
+    }
+
+    async findActiveByHandoverId(handoverId: number): Promise<AssetHolder[]> {
+        return await this.repository.find({
+            where: {
+                assignHandoverId: handoverId,
+                returnedDate: IsNull(),
+            },
+            relations: ["asset", "employee", "organization", "createdBy", "returnedBy", "assignHandover", "returnHandover"],
         })
     }
 
     async save(data: Partial<AssetHolder>, manager?: EntityManager): Promise<AssetHolder> {
         const repo = manager ? manager.getRepository(AssetHolder) : this.repository
         return await repo.save(data)
+    }
+
+    merge(entity: AssetHolder, data: Partial<AssetHolder>): AssetHolder {
+        return this.repository.merge(entity, data)
+    }
+
+    async delete(id: number, manager?: EntityManager): Promise<void> {
+        const repo = manager ? manager.getRepository(AssetHolder) : this.repository
+        await repo.delete(id)
     }
 }

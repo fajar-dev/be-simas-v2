@@ -4,16 +4,17 @@ import { NotFoundException, BadRequestException } from "../../core/exceptions/ba
 import { AttachmentService } from "../attachment/attachment.service"
 import { Attachment } from "../attachment/entities/attachment.entity"
 import { assetLogService } from "../asset-log/asset-log.module"
-import type { AssetService } from "../asset/asset.service"
-import type { LocationService } from "../location/location.service"
+import { LocationService } from "../location/location.service"
 import { withTransaction } from "../../core/helpers/transaction"
 import { EntityManager } from "typeorm"
+import { AppDataSource } from "../../config/database"
+import { Asset } from "../asset/entities/asset.entity"
+import { AssetStatus } from "../asset-status/entities/asset-status.entity"
 
 export class AssetLocationService {
     constructor(
         private readonly repository: IAssetLocationRepository,
         private readonly attachmentService: AttachmentService,
-        private readonly assetService: AssetService,
         private readonly locationService: LocationService
     ) {}
 
@@ -49,8 +50,11 @@ export class AssetLocationService {
     }
 
     async create(data: Partial<AssetLocation> & { attachmentIds?: number[] }): Promise<AssetLocation> {
-        // Validate asset exists (throws NotFoundException if not found)
-        await this.assetService.getById(data.assetId!)
+        // Validate asset exists
+        const assetExists = await AppDataSource.getRepository(Asset).findOneBy({ id: data.assetId! })
+        if (!assetExists) {
+            throw new NotFoundException("Asset not found")
+        }
 
         // Validate location exists (throws NotFoundException if not found)
         const location = await this.locationService.getById(data.locationId!)
@@ -62,8 +66,10 @@ export class AssetLocationService {
         }
 
         // Block relocation if asset status is not "active"
-        const { assetStatusService } = require("../asset-status/asset-status.module")
-        const lastStatus = await assetStatusService.findLastStatus(data.assetId!)
+        const lastStatus = await AppDataSource.getRepository(AssetStatus).findOne({
+            where: { assetId: data.assetId! },
+            order: { id: "DESC" }
+        })
         if (lastStatus && lastStatus.status !== "active") {
             throw new BadRequestException(`Cannot relocate: asset status is "${lastStatus.status}", must be "active"`)
         }

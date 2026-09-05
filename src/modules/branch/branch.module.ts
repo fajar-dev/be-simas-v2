@@ -3,6 +3,6 @@ import { BranchService } from "./branch.service"
 import { BranchController } from "./branch.controller"
 
 const branchRepository = new BranchRepository()
-const branchService = new BranchService(branchRepository)
+export const branchService = new BranchService(branchRepository)
 
 export const branchController = new BranchController(branchService)

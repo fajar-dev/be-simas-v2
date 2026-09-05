@@ -11,6 +11,7 @@ export class BranchSerializer {
             email: branch.email || null,
             phone: branch.phone || null,
             assetCount: (branch as any).assetCount ?? 0,
+            inventoryCount: (branch as any).inventoryCount ?? 0,
             createdAt: branch.createdAt,
             updatedAt: branch.updatedAt,
         }

@@ -19,7 +19,28 @@ import { AssetLocation } from "../src/modules/asset-location/entities/asset-loca
 import { AssetHolder } from "../src/modules/asset-holder/entities/asset-holder.entity"
 import { AssetLog } from "../src/modules/asset-log/entities/asset-log.entity"
 import { AssetStatus } from "../src/modules/asset-status/entities/asset-status.entity"
+import { AssetSchedule } from "../src/modules/asset-schedule/entities/asset-schedule.entity"
+import { AssetScheduleAsset } from "../src/modules/asset-schedule/entities/asset-schedule-asset.entity"
+import { AssetScheduleUser } from "../src/modules/asset-schedule/entities/asset-schedule-user.entity"
+import { Handover } from "../src/modules/handover/entities/handover.entity"
+import { HandoverItem } from "../src/modules/handover/entities/handover-item.entity"
+import { HandoverStockItem } from "../src/modules/handover/entities/handover-stock-item.entity"
+import { HandoverField } from "../src/modules/handover-field/entities/handover-field.entity"
+import { Inventory } from "../src/modules/inventory/entities/inventory.entity"
+import { InventoryLabel } from "../src/modules/inventory/entities/inventory-label.entity"
+import { InventoryVariant } from "../src/modules/inventory-variant/entities/inventory-variant.entity"
+import { InventoryStockBalance } from "../src/modules/inventory-stock/entities/inventory-stock-balance.entity"
+import { InventoryStockOut } from "../src/modules/inventory-stock-out/entities/inventory-stock-out.entity"
+import { InventoryStockOutItem } from "../src/modules/inventory-stock-out/entities/inventory-stock-out-item.entity"
+import { InventoryStockTransfer } from "../src/modules/inventory-stock-transfer/entities/inventory-stock-transfer.entity"
+import { InventoryStockTransferItem } from "../src/modules/inventory-stock-transfer/entities/inventory-stock-transfer-item.entity"
+import { InventoryStockIn } from "../src/modules/inventory-stock-in/entities/inventory-stock-in.entity"
+import { InventoryStockInItem } from "../src/modules/inventory-stock-in/entities/inventory-stock-in-item.entity"
+import { InventoryStockOpname } from "../src/modules/inventory-stock-opname/entities/inventory-stock-opname.entity"
+import { InventoryStockOpnameItem } from "../src/modules/inventory-stock-opname/entities/inventory-stock-opname-item.entity"
+import { InventoryLog } from "../src/modules/inventory-log/entities/inventory-log.entity"
 import { PasswordResetToken } from "../src/modules/auth/entities/password-reset-token.entity"
+import { Organization } from "../src/modules/organization/entities/organization.entity"
 import { ApiResponse } from "../src/core/helpers/response"
 import { BaseException, ValidationException } from "../src/core/exceptions/base"
 import { ZodError } from "zod"
@@ -42,7 +63,7 @@ const TestDataSource = new DataSource({
     database: testDbName,
     synchronize: true,
     dropSchema: true,
-    entities: [User, Role, Permission, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetNote, AssetLocation, AssetHolder, AssetLog, AssetStatus, PasswordResetToken],
+    entities: [User, Role, Permission, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetNote, AssetLocation, AssetHolder, AssetLog, AssetStatus, AssetSchedule, AssetScheduleAsset, AssetScheduleUser, Handover, HandoverItem, HandoverStockItem, HandoverField, Inventory, InventoryLabel, InventoryVariant, InventoryStockBalance, InventoryStockOut, InventoryStockOutItem, InventoryStockTransfer, InventoryStockTransferItem, InventoryStockIn, InventoryStockInItem, InventoryStockOpname, InventoryStockOpnameItem, InventoryLog, PasswordResetToken, Organization],
     logging: false,
 })
 

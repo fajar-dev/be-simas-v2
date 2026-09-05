@@ -30,7 +30,9 @@ export class EmployeeService {
         if (data.photo !== undefined) {
             data.photo = minio.sanitizePath(data.photo) ?? undefined
         }
-        return await this.repository.save(data)
+        const saved = await this.repository.save(data)
+        // Reload with relations so the response includes the organization object.
+        return await this.getById(saved.id)
     }
 
     async update(id: number, data: Partial<Employee>): Promise<Employee> {
@@ -38,8 +40,15 @@ export class EmployeeService {
         if (data.photo !== undefined) {
             data.photo = minio.sanitizePath(data.photo) ?? undefined
         }
+        if (data.organizationId !== undefined) {
+            // `employee.organization` was eagerly loaded by getById() above — if it's left in place,
+            // TypeORM's save() prioritizes that stale relation object over the new scalar we just merged.
+            employee.organization = undefined as any
+        }
         this.repository.merge(employee, data)
-        return await this.repository.save(employee)
+        await this.repository.save(employee)
+        // Reload with relations so the response includes the organization object.
+        return await this.getById(id)
     }
 
     async delete(id: number): Promise<void> {

@@ -1,23 +1,24 @@
 import { AppDataSource } from "../config/database"
 import { Branch } from "../modules/branch/entities/branch.entity"
 import { nusaworkHelper } from "../core/helpers/nusawork"
+import { logger } from "../core/helpers/logger"
 
 async function sync() {
     try {
-        console.log("[Sync] Starting branch sync from Nusawork...")
+        logger.info("Starting branch sync from Nusawork...")
         const startTime = Date.now()
 
         await AppDataSource.initialize()
-        console.log("[Sync] App database connected")
+        logger.info("App database connected")
 
         const branches = await nusaworkHelper.getBranch()
         if (branches.length === 0) {
-            console.log("[Sync] No branches found from Nusawork")
+            logger.info("No branches found from Nusawork")
             await AppDataSource.destroy()
             process.exit(0)
         }
 
-        console.log(`[Sync] Fetched ${branches.length} branches from Nusawork`)
+        logger.info(`Fetched ${branches.length} branches from Nusawork`)
 
         const repo = AppDataSource.getRepository(Branch)
         const batchSize = 500
@@ -38,16 +39,16 @@ async function sync() {
 
             await repo.upsert(entities, ["id"])
             synced += entities.length
-            console.log(`[Sync] Batch ${Math.floor(i / batchSize) + 1}: upserted ${entities.length} branches`)
+            logger.info(`Batch ${Math.floor(i / batchSize) + 1}: upserted ${entities.length} branches`)
         }
 
         const duration = ((Date.now() - startTime) / 1000).toFixed(2)
-        console.log(`[Sync] Completed in ${duration}s. Synced ${synced} branches.`)
+        logger.info(`Completed in ${duration}s. Synced ${synced} branches.`)
 
         await AppDataSource.destroy()
         process.exit(0)
     } catch (error) {
-        console.error("[Sync] Failed:", error)
+        logger.error("Branch sync failed", { error: (error as any)?.message, stack: (error as any)?.stack })
         process.exit(1)
     }
 }

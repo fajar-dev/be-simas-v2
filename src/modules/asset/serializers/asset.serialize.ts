@@ -91,14 +91,20 @@ export class AssetSerializer {
             })),
             activeHolder: asset.activeHolder ? {
                 id: asset.activeHolder.id,
-                employeeId: asset.activeHolder.employeeId,
+                holderKind: asset.activeHolder.holderKind,
                 assignedDate: asset.activeHolder.assignedDate,
+                assignHandoverId: asset.activeHolder.assignHandoverId || null,
                 employee: asset.activeHolder.employee ? {
                     id: asset.activeHolder.employee.id,
                     name: asset.activeHolder.employee.name,
                     employeeId: asset.activeHolder.employee.employeeId,
                     jobPosition: asset.activeHolder.employee.jobPosition,
                     photo: await resolveFileUrl(asset.activeHolder.employee.photo),
+                } : null,
+                organization: asset.activeHolder.organization ? {
+                    id: asset.activeHolder.organization.id,
+                    name: asset.activeHolder.organization.name,
+                    type: asset.activeHolder.organization.type,
                 } : null,
             } : null,
             lastLocation: asset.lastLocation ? {

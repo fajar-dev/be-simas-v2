@@ -16,6 +16,11 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: "JWT access token. Expires in 15 minutes."
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: "Static API key sent via the x-api-key header. Used for machine-to-machine endpoints."
 
   schemas:
     # --- Base Wrapper Schemas ---
@@ -237,6 +242,7 @@ components:
         phone: { type: string, example: "081234567890" }
         photo: { type: string, nullable: true, example: "employees/abc-123.png" }
         isActive: { type: boolean, default: true, example: true }
+        organizationId: { type: integer, nullable: true, example: 3 }
 
     UpdateEmployeeRequest:
       type: object
@@ -248,6 +254,7 @@ components:
         phone: { type: string, example: "081234567890" }
         photo: { type: string, nullable: true, example: "employees/abc-123.png" }
         isActive: { type: boolean, example: true }
+        organizationId: { type: integer, nullable: true, example: 3 }
 
     EmployeeResponse:
       type: object
@@ -260,6 +267,13 @@ components:
         phone: { type: string, example: "081234567890" }
         photo: { type: string, nullable: true, example: "https://cdn.example.com/employees/abc-123.png" }
         isActive: { type: boolean, example: true }
+        organizationId: { type: integer, nullable: true, example: 3 }
+        organization:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer, example: 3 }
+            name: { type: string, example: "Networking" }
         assetCount: { type: integer, example: 3, description: "Number of assets currently held by this employee" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
@@ -288,6 +302,45 @@ components:
         name: { type: string, example: "Electronics" }
         description: { type: string, nullable: true, example: "Electronic devices and accessories" }
         assetCount: { type: integer, example: 12, description: "Total number of assets in this category" }
+        inventoryCount: { type: integer, example: 4, description: "Total number of inventory items in this category" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    # --- Organization Schemas ---
+    CreateOrganizationRequest:
+      type: object
+      required: [name, type]
+      properties:
+        name: { type: string, example: "Product Management" }
+        type: { type: string, example: "division", description: "Free text — mirrors Nusawork's org types, e.g. division/department" }
+        description: { type: string, nullable: true, example: "Handles product roadmap and delivery" }
+        parentId: { type: integer, nullable: true, example: 22, description: "Omit or null for a root-level organization" }
+        isActive: { type: boolean, default: true }
+
+    UpdateOrganizationRequest:
+      type: object
+      properties:
+        name: { type: string, example: "Product Management" }
+        type: { type: string, example: "division" }
+        description: { type: string, nullable: true, example: "Updated description" }
+        parentId: { type: integer, nullable: true, example: 22, description: "Moving under a new parent is validated against self-reference and cycles" }
+        isActive: { type: boolean }
+
+    OrganizationResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 3 }
+        parentId: { type: integer, nullable: true, example: 22 }
+        parent:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer, example: 22 }
+            name: { type: string, example: "Networking" }
+        name: { type: string, example: "Product Management" }
+        type: { type: string, example: "division" }
+        description: { type: string, nullable: true }
+        isActive: { type: boolean, example: true }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
@@ -323,6 +376,7 @@ components:
             id: { type: integer, example: 1 }
             name: { type: string, example: "Electronics" }
         assetCount: { type: integer, example: 5, description: "Total number of assets in this sub-category" }
+        inventoryCount: { type: integer, example: 3, description: "Total number of inventory items in this sub-category" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
@@ -359,6 +413,7 @@ components:
         email: { type: string, format: email, nullable: true, example: "jakarta@company.com" }
         phone: { type: string, nullable: true, example: "021-1234567" }
         assetCount: { type: integer, example: 8, description: "Number of assets at this branch (based on last location)" }
+        inventoryCount: { type: integer, example: 6, description: "Number of distinct inventory items with on-hand stock at this branch" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
@@ -419,6 +474,10 @@ components:
         hasLocation: { type: boolean, default: true, example: true }
         status: { type: string, enum: [active, idle, under_repair, damaged, lost, sold, disposed], example: "active", description: "Initial asset status" }
         statusNote: { type: string, nullable: true, example: "Asset is ready for use" }
+        employeeId: { type: integer, nullable: true, example: 1, description: "Optional initial holder — employee. At most one of employeeId/organizationId may be set; requires assignedDate." }
+        organizationId: { type: integer, nullable: true, example: 3, description: "Optional initial holder — organization. At most one of employeeId/organizationId may be set; requires assignedDate." }
+        assignedDate: { type: string, format: date, nullable: true, example: "2026-06-18", description: "Required when employeeId or organizationId is set." }
+        assignNote: { type: string, nullable: true, example: "Assigned at creation" }
 
     UpdateAssetRequest:
       type: object
@@ -510,16 +569,26 @@ components:
           nullable: true
           properties:
             id: { type: integer, example: 1 }
-            employeeId: { type: integer, example: 1 }
+            holderKind: { type: string, enum: [employee, organization], example: "employee" }
             assignedDate: { type: string, format: date, example: "2026-06-19" }
+            assignHandoverId: { type: integer, nullable: true, example: 5 }
             employee:
               type: object
               nullable: true
+              description: "Set when holderKind is employee; null when holderKind is organization."
               properties:
                 id: { type: integer, example: 1 }
                 name: { type: string, example: "Alice Smith" }
                 employeeId: { type: string, example: "EMP001" }
                 jobPosition: { type: string, example: "Software Engineer" }
+            organization:
+              type: object
+              nullable: true
+              description: "Set when holderKind is organization; null when holderKind is employee."
+              properties:
+                id: { type: integer, example: 3 }
+                name: { type: string, example: "Networking Dept" }
+                type: { type: string, example: "department" }
         lastLocation:
           type: object
           nullable: true
@@ -597,7 +666,6 @@ components:
       type: object
       properties:
         id: { type: integer, example: 1 }
-        assetId: { type: integer, example: 1 }
         date: { type: string, format: date, example: "2026-06-19" }
         note: { type: string, example: "Routine hardware checkup" }
         cost: { type: number, nullable: true, example: 500000 }
@@ -647,7 +715,6 @@ components:
       type: object
       properties:
         id: { type: integer, example: 1 }
-        assetId: { type: integer, example: 1 }
         date: { type: string, format: date, example: "2026-06-19" }
         note: { type: string, example: "General observation about the asset" }
         createdAt: { type: string, format: date-time }
@@ -678,12 +745,70 @@ components:
         date: { type: string, format: date, example: "2026-06-19" }
         note: { type: string, example: "Relocated to Main Office IT Room" }
 
+    # --- Book Schemas ---
+    BorrowBookRequest:
+      type: object
+      required: [assetId]
+      properties:
+        assetId: { type: integer, example: 1, description: "ID of the book asset to borrow" }
+        assignNote: { type: string, nullable: true, example: "Borrowing for reading club", description: "Optional note" }
+        attachmentIds:
+          type: array
+          items: { type: integer }
+          example: [1]
+          description: "Attachment IDs (e.g. borrow photo)"
+
+    ReturnBookRequest:
+      type: object
+      required: [assetHolderId, returnNote]
+      properties:
+        assetHolderId: { type: integer, example: 1, description: "ID of the asset holder record" }
+        returnNote: { type: string, format: uri, example: "https://www.goodreads.com/book/show/12345", description: "Goodreads link (required, must be a valid URL)" }
+        attachmentIds:
+          type: array
+          items: { type: integer }
+          example: [2]
+          description: "Attachment IDs (e.g. return photo)"
+
+    BookLoanGroup:
+      type: object
+      description: |
+        Loans grouped by employee. Each key is an employee ID (string) mapping to the
+        employee's name and a `bookLoans` map keyed by asset-holder record ID.
+      additionalProperties:
+        type: object
+        properties:
+          employee: { type: string, example: "Book Reader" }
+          bookLoans:
+            type: object
+            additionalProperties: { $ref: "#/components/schemas/BookLoanItem" }
+
+    BookLoanItem:
+      type: object
+      properties:
+        code: { type: string, example: "BOOK-001" }
+        name: { type: string, example: "Atomic Habits" }
+        imageUrl: { type: string, nullable: true, example: "http://cdn.test.com/stock/attachments/cover.jpg" }
+        subCategory: { type: string, nullable: true, example: "Novel" }
+        loanHistory:
+          type: object
+          properties:
+            loaning:
+              type: object
+              properties:
+                loanPeriod: { type: string, nullable: true, example: "2026-07-07T10:00" }
+                loanPhoto: { type: string, nullable: true, example: "http://cdn.test.com/stock/attachments/loan.jpg" }
+            return:
+              type: object
+              properties:
+                returnTime: { type: string, nullable: true, example: "2026-07-08T14:30" }
+                returnPhoto: { type: string, nullable: true, example: "http://cdn.test.com/stock/attachments/return.jpg" }
+                linkReview: { type: string, nullable: true, example: "https://www.goodreads.com/book/show/40121378" }
+
     AssetLocationResponse:
       type: object
       properties:
         id: { type: integer, example: 1 }
-        assetId: { type: integer, example: 1 }
-        locationId: { type: integer, example: 1 }
         date: { type: string, format: date, example: "2026-06-19" }
         note: { type: string, nullable: true, example: "Relocated to Main Office IT Room" }
         source: { type: string, example: "manual", description: "Source of the relocation: manual or ble" }
@@ -716,12 +841,602 @@ components:
             name: { type: string, example: "John Doe" }
             photo: { type: string, nullable: true, example: "users/avatar.png" }
 
-    AssignAssetRequest:
+    HandoverItemRequest:
       type: object
-      required: [assetId, employeeId, assignedDate]
+      required: [assetId]
       properties:
         assetId: { type: integer, example: 1 }
-        employeeId: { type: integer, example: 1 }
+        note: { type: string, nullable: true, example: "Charger + bag, minor scratches", description: "Keterangan/kondisi per item — shown in the generated form" }
+
+    HandoverFieldResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        transactionType: { type: string, enum: [assign, return] }
+        label: { type: string, example: "PIC Name" }
+        key: { type: string, example: "pic_name" }
+        type: { type: string, enum: [text, number, select, radio] }
+        options: { type: array, items: { type: string }, nullable: true }
+        required: { type: boolean, example: true }
+        sortOrder: { type: integer, example: 0 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    InventoryResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        code: { type: string, nullable: true, example: "PRD-001" }
+        name: { type: string, example: "Kabel UTP Cat6" }
+        description: { type: string, nullable: true }
+        image: { type: string, nullable: true }
+        unit: { type: string, example: "Roll" }
+        isActive: { type: boolean, example: true }
+        category:
+          type: object
+          nullable: true
+          properties: { id: { type: integer }, name: { type: string } }
+        subCategory:
+          type: object
+          nullable: true
+          properties: { id: { type: integer }, name: { type: string } }
+        labels:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              key: { type: string, example: "Brand" }
+              value: { type: string, example: "Belden" }
+        variantCount: { type: integer, description: "Number of variants (list only)", example: 3 }
+        newCount: { type: integer, description: "On-hand \"new\" condition stock quantity across all variants/branches (list only)", example: 30 }
+        usedCount: { type: integer, description: "On-hand \"used\" condition stock quantity across all variants/branches (list only)", example: 12 }
+        attachments:
+          type: array
+          items: { $ref: "#/components/schemas/AttachmentResponse" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        createdBy:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            photo: { type: string, nullable: true }
+
+    InventoryVariantResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        inventoryId: { type: integer, example: 1 }
+        name: { type: string, example: "305m / Roll" }
+        code: { type: string, nullable: true }
+        image: { type: string, nullable: true }
+        description: { type: string, nullable: true }
+        isActive: { type: boolean, example: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        inventory:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            code: { type: string, nullable: true }
+
+    InventoryStockBalanceResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        condition: { type: string, enum: [new, used] }
+        quantity: { type: integer, example: 12 }
+        updatedAt: { type: string, format: date-time }
+        branch:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer }
+            name: { type: string }
+        variant:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            code: { type: string, nullable: true }
+            unit: { type: string }
+            inventory:
+              type: object
+              nullable: true
+              properties:
+                id: { type: integer }
+                name: { type: string }
+                code: { type: string, nullable: true }
+
+    InventoryStockEntryTemplateResponse:
+      type: object
+      description: One row per variant with current on-hand new/used quantities for the selected branch.
+      properties:
+        variantId: { type: integer, example: 1 }
+        name: { type: string }
+        code: { type: string, nullable: true }
+        unit: { type: string }
+        image: { type: string, nullable: true, description: "Variant image, falling back to the parent item's image.", example: "http://cdn.test.com/stock/variants/cable.jpg" }
+        new: { type: integer, example: 10 }
+        used: { type: integer, example: 3 }
+
+    InventoryStockTransferResponse:
+      type: object
+      description: "A stock transfer document between two branches."
+      properties:
+        id: { type: integer, example: 1 }
+        note: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        fromBranch:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer }
+            name: { type: string }
+        toBranch:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer }
+            name: { type: string }
+        createdBy:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            photo: { type: string, nullable: true }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              condition: { type: string, enum: [new, used] }
+              quantity: { type: integer }
+              variant:
+                type: object
+                nullable: true
+                properties:
+                  id: { type: integer }
+                  name: { type: string }
+                  code: { type: string, nullable: true }
+                  inventory:
+                    type: object
+                    nullable: true
+                    properties:
+                      id: { type: integer }
+                      name: { type: string }
+        attachments:
+          type: array
+          items: { $ref: "#/components/schemas/AttachmentResponse" }
+
+    InventoryStockInResponse:
+      type: object
+      description: "A stock-in (incoming stock) document."
+      properties:
+        id: { type: integer, example: 1 }
+        note: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        createdBy:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            photo: { type: string, nullable: true }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              condition: { type: string, enum: [new, used] }
+              quantity: { type: integer, example: 5 }
+              balanceAfter: { type: integer, nullable: true, example: 9 }
+              branch:
+                type: object
+                nullable: true
+                properties:
+                  id: { type: integer }
+                  name: { type: string }
+              variant:
+                type: object
+                nullable: true
+                properties:
+                  id: { type: integer }
+                  name: { type: string }
+                  code: { type: string, nullable: true }
+                  inventory:
+                    type: object
+                    nullable: true
+                    properties:
+                      id: { type: integer }
+                      name: { type: string }
+        attachments:
+          type: array
+          items: { $ref: "#/components/schemas/AttachmentResponse" }
+
+    InventoryStockOpnameResponse:
+      type: object
+      description: "A stock opname (physical count) document — sets variants at one branch to their counted quantities."
+      properties:
+        id: { type: integer, example: 1 }
+        branch:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer }
+            name: { type: string }
+        note: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        createdBy:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            photo: { type: string, nullable: true }
+        items:
+          type: array
+          description: "Only variants/conditions whose count differed from the recorded balance are included."
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              condition: { type: string, enum: [new, used] }
+              systemQuantity: { type: integer, example: 10, description: "Recorded on-hand before this count." }
+              countedQuantity: { type: integer, example: 7, description: "Physically counted quantity." }
+              quantity: { type: integer, example: -3, description: "Signed delta applied to the balance (countedQuantity - systemQuantity)." }
+              variant:
+                type: object
+                nullable: true
+                properties:
+                  id: { type: integer }
+                  name: { type: string }
+                  code: { type: string, nullable: true }
+                  inventory:
+                    type: object
+                    nullable: true
+                    properties:
+                      id: { type: integer }
+                      name: { type: string }
+        attachments:
+          type: array
+          items: { $ref: "#/components/schemas/AttachmentResponse" }
+
+    InventoryLogResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        inventoryId: { type: integer, example: 1 }
+        module: { type: string, example: "stock" }
+        action: { type: string, example: "stock_in" }
+        description: { type: string, example: "Stock in recorded for \"UTP Cable\"." }
+        createdAt: { type: string, format: date-time }
+        createdBy:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer, example: 1 }
+            name: { type: string, example: "John Doe" }
+            photo: { type: string, nullable: true, example: "users/avatar.png" }
+            email: { type: string, example: "admin@example.com" }
+
+    InventoryStockOutResponse:
+      type: object
+      description: "A stock-out document — the header for one 'take stock out' action, grouping its line items (mirrors InventoryStockInResponse). Either goes to an employee (isEmployee: true, its items are individually returnable) or a one-way destination (isEmployee: false, e.g. consumed/disposed/sold — its items are marked fully resolved at creation)."
+      properties:
+        id: { type: integer, example: 1 }
+        isEmployee: { type: boolean }
+        assignedDate: { type: string }
+        assignNote: { type: string, nullable: true }
+        assignHandoverId: { type: integer, nullable: true }
+        employee:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            employeeId: { type: string }
+        createdAt: { type: string, format: date-time }
+        createdBy:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            photo: { type: string, nullable: true }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              conditionAssigned: { type: string, enum: [new, used] }
+              quantity: { type: integer, example: 4, description: "Total assigned." }
+              quantityReturned: { type: integer, example: 1 }
+              quantityRemaining: { type: integer, example: 3, description: "Still held (quantity - quantityReturned). Always 0 for a type: other document." }
+              returnedDate: { type: string, nullable: true }
+              returnNote: { type: string, nullable: true }
+              returnHandoverId: { type: integer, nullable: true }
+              branch:
+                type: object
+                nullable: true
+                properties:
+                  id: { type: integer }
+                  name: { type: string }
+              variant:
+                type: object
+                nullable: true
+                properties:
+                  id: { type: integer }
+                  name: { type: string }
+                  code: { type: string, nullable: true }
+                  unit: { type: string }
+                  image: { type: string, nullable: true, description: "Variant image, falling back to the parent item's image." }
+                  inventory:
+                    type: object
+                    nullable: true
+                    properties:
+                      id: { type: integer }
+                      name: { type: string }
+                      code: { type: string, nullable: true }
+        attachments:
+          type: array
+          items: { $ref: "#/components/schemas/AttachmentResponse" }
+
+    CreateAssetScheduleRequest:
+      type: object
+      required: [assetIds, title, startDate]
+      description: >-
+        A schedule pins a title/description (and optional attachments) to one or more assets from a start date.
+        Recurrence: `none` (single date), `weekly` (requires `daysOfWeek`), `monthly` (requires `dayOfMonth`),
+        `yearly` (requires `month` + `dayOfMonth`). `recurrenceEndDate` optionally caps a recurring series.
+      properties:
+        assetIds: { type: array, items: { type: integer }, minItems: 1, example: [1, 2] }
+        userIds: { type: array, items: { type: integer }, description: "Users to notify about this schedule. Optional — may be omitted or empty (assigned to nobody).", example: [3, 4] }
+        title: { type: string, example: "Quarterly maintenance" }
+        description: { type: string, nullable: true, example: "Full service and inspection" }
+        startDate: { type: string, format: date, example: "2026-08-10", description: "First occurrence / series lower bound, YYYY-MM-DD." }
+        recurrence: { type: string, enum: [none, weekly, monthly, yearly], default: none }
+        daysOfWeek: { type: array, items: { type: integer, minimum: 0, maximum: 6 }, nullable: true, description: "weekly only — 0=Sunday … 6=Saturday.", example: [1, 3, 5] }
+        dayOfMonth: { type: integer, minimum: 1, maximum: 31, nullable: true, description: "monthly & yearly only.", example: 15 }
+        month: { type: integer, minimum: 1, maximum: 12, nullable: true, description: "yearly only.", example: 8 }
+        recurrenceEndDate: { type: string, format: date, nullable: true, example: "2026-12-31", description: "Only valid when recurring; must be on/after startDate." }
+        attachmentIds:
+          type: array
+          description: "Supporting documents to attach."
+          items: { type: integer }
+          example: [1, 2]
+
+    UpdateAssetScheduleRequest:
+      type: object
+      description: "All fields optional. Setting `recurrence` renormalizes the pattern fields; reverting to `none` clears them."
+      properties:
+        assetIds: { type: array, items: { type: integer }, minItems: 1 }
+        userIds: { type: array, items: { type: integer }, description: "Replaces the full assigned-user list. Pass an empty array to unassign everyone." }
+        title: { type: string, example: "Quarterly maintenance" }
+        description: { type: string, nullable: true }
+        startDate: { type: string, format: date, example: "2026-08-10" }
+        recurrence: { type: string, enum: [none, weekly, monthly, yearly] }
+        daysOfWeek: { type: array, items: { type: integer, minimum: 0, maximum: 6 }, nullable: true }
+        dayOfMonth: { type: integer, minimum: 1, maximum: 31, nullable: true }
+        month: { type: integer, minimum: 1, maximum: 12, nullable: true }
+        recurrenceEndDate: { type: string, format: date, nullable: true }
+        attachmentIds:
+          type: array
+          items: { type: integer }
+
+    AssetScheduleResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        title: { type: string, example: "Quarterly maintenance" }
+        description: { type: string, nullable: true }
+        startDate: { type: string, format: date, example: "2026-08-10" }
+        recurrence: { type: string, enum: [none, weekly, monthly, yearly], example: "weekly" }
+        daysOfWeek: { type: array, items: { type: integer }, nullable: true, example: [1, 3, 5] }
+        dayOfMonth: { type: integer, nullable: true, example: 15 }
+        month: { type: integer, nullable: true, example: 8 }
+        recurrenceEndDate: { type: string, format: date, nullable: true, example: "2026-12-31" }
+        assets:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer, example: 1 }
+              name: { type: string, example: "Generator" }
+              code: { type: string, example: "AST-001" }
+              image: { type: string, nullable: true }
+        users:
+          type: array
+          description: "Users assigned to be notified about this schedule. May be empty."
+          items:
+            type: object
+            properties:
+              id: { type: integer, example: 3 }
+              name: { type: string, example: "Alice Smith" }
+              email: { type: string, example: "alice@example.com" }
+              photo: { type: string, nullable: true }
+        createdBy:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            photo: { type: string, nullable: true }
+        attachments:
+          type: array
+          items: { $ref: "#/components/schemas/AttachmentResponse" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    AssetScheduleOccurrenceResponse:
+      allOf:
+        - $ref: "#/components/schemas/AssetScheduleResponse"
+        - type: object
+          properties:
+            date: { type: string, format: date, example: "2026-08-17", description: "The concrete date this occurrence falls on." }
+            isRecurring: { type: boolean, example: true }
+
+    CreateHandoverRequest:
+      type: object
+      required: [receivedById, handedOverById, transactionType]
+      description: "A handover may carry asset lines (`items`), stock lines (`stockItems`), or both together — at least one of the two must be non-empty. A return may only include assets and/or stock currently held by `handedOverById`."
+      properties:
+        receivedById: { type: integer, example: 1, description: "Employee receiving (penerima)" }
+        handedOverById: { type: integer, example: 2, description: "Employee handing over (penyerah)" }
+        transactionType: { type: string, enum: [assign, return], example: "assign" }
+        note: { type: string, nullable: true, example: "Operational use" }
+        customFields:
+          type: object
+          nullable: true
+          additionalProperties: { type: string, nullable: true }
+          description: "Values for configured custom fields, keyed by field key."
+          example: { pic_name: "Budi", condition: "Good" }
+        items:
+          type: array
+          description: "Asset lines. At least one of `items`/`stockItems` is required."
+          items: { $ref: "#/components/schemas/HandoverItemRequest" }
+        stockItems:
+          type: array
+          description: "Stock lines. At least one of `items`/`stockItems` is required."
+          items:
+            type: object
+            required: [variantId, branchId, condition, quantity]
+            properties:
+              variantId: { type: integer, example: 1 }
+              branchId: { type: integer, example: 1, description: "Source branch (assign) / destination branch (return)." }
+              condition: { type: string, enum: [new, used] }
+              quantity: { type: integer, minimum: 1, example: 4 }
+              note: { type: string, nullable: true }
+        attachmentIds:
+          type: array
+          description: "Supporting documents to attach, in addition to the signing form generated on create. These keep pointing at their own files when the signed document replaces the form."
+          items: { type: integer }
+          example: [1, 2]
+
+    HandoverResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        received:
+          type: object
+          nullable: true
+          description: "Employee receiving the asset (penerima)"
+          properties:
+            id: { type: integer, example: 1 }
+            name: { type: string, example: "Alice Smith" }
+            employeeId: { type: string, example: "EMP001" }
+            jobPosition: { type: string, example: "Software Engineer" }
+            photo: { type: string, nullable: true }
+        handedOver:
+          type: object
+          nullable: true
+          description: "Employee handing over the asset (penyerah)"
+          properties:
+            id: { type: integer, example: 2 }
+            name: { type: string, example: "John Doe" }
+            employeeId: { type: string, example: "EMP002" }
+            jobPosition: { type: string, example: "IT Support" }
+            photo: { type: string, nullable: true }
+        status: { type: string, enum: [pending, approve, reject, cancel], example: "pending" }
+        transactionType: { type: string, enum: [assign, return] }
+        note: { type: string, nullable: true }
+        customFields:
+          type: array
+          description: "Snapshot of custom field definitions + values captured at creation time."
+          items:
+            type: object
+            properties:
+              key: { type: string, example: "pic_name" }
+              label: { type: string, example: "PIC Name" }
+              type: { type: string, enum: [text, number, select, radio] }
+              value: { type: string, nullable: true, example: "Budi" }
+        parentHandover:
+          type: object
+          nullable: true
+          description: "For a return handover, the origin assign handover it returns from (best-effort)."
+          properties:
+            id: { type: integer, example: 5 }
+            transactionType: { type: string, enum: [assign, return] }
+            status: { type: string, enum: [pending, approve, reject, cancel] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        createdBy:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer, example: 1 }
+            name: { type: string, example: "Admin User" }
+            photo: { type: string, nullable: true }
+        attachments:
+          type: array
+          description: "The generated signing form PDF plus any supporting documents sent as `attachmentIds`. Only the generated form is replaced with the signed document URL after the e-sign webhook completes."
+          items: { $ref: "#/components/schemas/AttachmentResponse" }
+        items:
+          type: array
+          description: "Asset lines on this handover (may coexist with stockItems)."
+          items:
+            type: object
+            properties:
+              id: { type: integer, example: 1 }
+              note: { type: string, nullable: true, example: "Lengkap dengan charger" }
+              asset:
+                type: object
+                nullable: true
+                properties:
+                  id: { type: integer, example: 1 }
+                  name: { type: string, example: "MacBook Pro M3" }
+                  code: { type: string, example: "AST-001" }
+                  image: { type: string, nullable: true, example: "http://cdn.test.com/stock/assets/laptop.jpg" }
+        stockItems:
+          type: array
+          description: "Stock lines on this handover (may coexist with items)."
+          items:
+            type: object
+            properties:
+              id: { type: integer, example: 1 }
+              condition: { type: string, enum: [new, used] }
+              quantity: { type: integer, example: 4 }
+              note: { type: string, nullable: true }
+              branch:
+                type: object
+                nullable: true
+                properties:
+                  id: { type: integer }
+                  name: { type: string }
+              variant:
+                type: object
+                nullable: true
+                properties:
+                  id: { type: integer }
+                  name: { type: string }
+                  code: { type: string, nullable: true }
+                  unit: { type: string }
+                  inventory:
+                    type: object
+                    nullable: true
+                    properties:
+                      id: { type: integer }
+                      name: { type: string }
+                      code: { type: string, nullable: true }
+
+    AssignAssetRequest:
+      type: object
+      required: [assetId, assignedDate]
+      description: "Exactly one of employeeId/organizationId must be set, matching holderKind (holderKind defaults to \"employee\" when omitted for backward compatibility)."
+      properties:
+        assetId: { type: integer, example: 1 }
+        holderKind: { type: string, enum: [employee, organization], default: employee, example: "employee" }
+        employeeId: { type: integer, nullable: true, example: 1, description: "Required when holderKind is employee; must be omitted when holderKind is organization." }
+        organizationId: { type: integer, nullable: true, example: 3, description: "Required when holderKind is organization; must be omitted when holderKind is employee." }
         assignedDate: { type: string, format: date, example: "2026-06-19" }
         assignNote: { type: string, example: "Assigned for development work" }
         attachmentIds:
@@ -740,12 +1455,29 @@ components:
           items: { type: integer }
           example: [3]
 
+    UpdateAssetHolderRequest:
+      type: object
+      description: >
+        All fields optional — only send what changed. returnedDate/returnNote are rejected with 400 unless the
+        record has already been returned. attachmentIds, when sent, replaces the full attachment set.
+      properties:
+        holderKind: { type: string, enum: [employee, organization] }
+        employeeId: { type: integer, nullable: true, example: 1 }
+        organizationId: { type: integer, nullable: true, example: 3 }
+        assignedDate: { type: string, format: date, example: "2026-06-19" }
+        assignNote: { type: string, example: "Corrected note" }
+        returnedDate: { type: string, format: date, example: "2026-06-25" }
+        returnNote: { type: string, example: "Corrected return note" }
+        attachmentIds:
+          type: array
+          items: { type: integer }
+          example: [1, 2]
+
     AssetHolderResponse:
       type: object
       properties:
         id: { type: integer, example: 1 }
-        assetId: { type: integer, example: 1 }
-        employeeId: { type: integer, example: 1 }
+        holderKind: { type: string, enum: [employee, organization], example: "employee" }
         assignedDate: { type: string, format: date, example: "2026-06-19" }
         returnedDate: { type: string, format: date, nullable: true, example: "2026-06-25" }
         assignNote: { type: string, nullable: true, example: "Assigned for development work" }
@@ -758,8 +1490,11 @@ components:
             id: { type: integer, example: 1 }
             name: { type: string, example: "MacBook Pro M3" }
             code: { type: string, example: "AST-001" }
+            image: { type: string, nullable: true, example: "http://cdn.test.com/stock/assets/laptop.jpg" }
         employee:
           type: object
+          nullable: true
+          description: "Set when holderKind is employee; null when holderKind is organization."
           properties:
             id: { type: integer, example: 1 }
             name: { type: string, example: "Alice Smith" }
@@ -768,6 +1503,14 @@ components:
             email: { type: string, example: "alice@example.com" }
             phone: { type: string, example: "08123456789" }
             photo: { type: string, nullable: true, example: "employees/photo.png" }
+        organization:
+          type: object
+          nullable: true
+          description: "Set when holderKind is organization; null when holderKind is employee."
+          properties:
+            id: { type: integer, example: 3 }
+            name: { type: string, example: "Networking Dept" }
+            type: { type: string, example: "department" }
         createdBy:
           type: object
           nullable: true
@@ -782,6 +1525,26 @@ components:
             id: { type: integer, example: 1 }
             name: { type: string, example: "John Doe" }
             photo: { type: string, nullable: true, example: "users/avatar.png" }
+        assignHandover:
+          type: object
+          nullable: true
+          description: "Origin (assign) handover if this holder was created from a handover; null otherwise."
+          properties:
+            id: { type: integer, example: 5 }
+            status: { type: string, enum: [pending, approve, reject, cancel], example: "approve" }
+            transactionType: { type: string, enum: [assign, return], example: "assign" }
+            note: { type: string, nullable: true, example: "Operational use" }
+            createdAt: { type: string, format: date-time }
+        returnHandover:
+          type: object
+          nullable: true
+          description: "Return handover that returned this holder; null while still active."
+          properties:
+            id: { type: integer, example: 8 }
+            status: { type: string, enum: [pending, approve, reject, cancel], example: "approve" }
+            transactionType: { type: string, enum: [assign, return], example: "return" }
+            note: { type: string, nullable: true }
+            createdAt: { type: string, format: date-time }
         attachments:
           type: array
           items:
@@ -919,6 +1682,30 @@ paths:
     post:
       tags: [Auth]
       summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRequest" }
+      responses:
+        "200":
+          description: Logged in successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/AuthResponse" }
+        "401": { description: Invalid credentials }
+        "422": { description: Validation error }
+
+  # ── Nusawork Login ────────────────────────────────────────────────────────
+  /auth/nusawork-login:
+    post:
+      tags: [Auth]
+      summary: Login with Nusawork credentials
       requestBody:
         required: true
         content:
@@ -1191,6 +1978,45 @@ paths:
         "401": { description: Unauthorized }
         "422": { description: Validation error }
 
+  /user/options:
+    get:
+      tags: [User]
+      summary: Lightweight user search for pickers/selects
+      description: >-
+        Not the paginated user list (which requires `user:read`) — a minimal, capped-limit lookup
+        (id/name/email/photo only, active users only) meant for search-as-you-type dropdowns such as
+        assigning users to an asset schedule. Requires only authentication, no `user:read`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+          description: Matches against name or email.
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, maximum: 50 }
+      responses:
+        "200":
+          description: Matching users
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id: { type: integer, example: 1 }
+                            name: { type: string, example: "Alice Smith" }
+                            email: { type: string, example: "alice@example.com" }
+                            photo: { type: string, nullable: true }
+        "401": { description: Unauthorized }
+
   # ── User Detail / Update / Delete ────────────────────────────────────────
   /user/{id}:
     get:
@@ -1367,7 +2193,7 @@ paths:
         - name: sortBy
           in: query
           description: Field to sort by
-          schema: { type: string, enum: [code, name, description, assetCount] }
+          schema: { type: string, enum: [code, name, description, assetCount, inventoryCount] }
         - name: order
           in: query
           description: Sort order
@@ -1489,6 +2315,182 @@ paths:
         "409":
           description: Cannot delete - has linked sub-categories
 
+  # ── Organization List / Tree / Create ───────────────────────────────────────
+  /organization/list:
+    get:
+      tags: [Organization]
+      summary: Get all organizations, flat (no pagination, for dropdowns/parent pickers)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Organizations retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id: { type: integer, example: 3 }
+                            parentId: { type: integer, nullable: true, example: 22 }
+                            name: { type: string, example: "Product Management" }
+                            type: { type: string, example: "division" }
+                            isActive: { type: boolean, example: true }
+        "401": { description: Unauthorized }
+
+  /organization:
+    get:
+      tags: [Organization]
+      summary: Get all organizations (paginated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+        - name: q
+          in: query
+          description: Search by name, type, or description
+          schema: { type: string }
+        - name: sortBy
+          in: query
+          description: Field to sort by
+          schema: { type: string, enum: [name, type, parent, isActive] }
+        - name: order
+          in: query
+          description: Sort order
+          schema: { type: string, enum: [ASC, DESC], default: DESC }
+      responses:
+        "200":
+          description: Organizations retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/OrganizationResponse" }
+                      meta: { $ref: "#/components/schemas/PaginationMeta" }
+        "401": { description: Unauthorized }
+
+    post:
+      tags: [Organization]
+      summary: Create a new organization (root, or a child via parentId)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateOrganizationRequest" }
+      responses:
+        "201":
+          description: Organization created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/OrganizationResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Parent organization not found }
+        "422": { description: Validation error }
+
+  # ── Organization Detail / Update / Delete ───────────────────────────────────
+  /organization/{id}:
+    get:
+      tags: [Organization]
+      summary: Get organization by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Organization retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/OrganizationResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Organization not found }
+
+    put:
+      tags: [Organization]
+      summary: Update an organization, optionally moving it under a new parent
+      description: >-
+        Moving to a new `parentId` is validated: an organization cannot become its own parent,
+        and cannot be moved under one of its own descendants (cycle prevention).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateOrganizationRequest" }
+      responses:
+        "200":
+          description: Organization updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/OrganizationResponse" }
+        "400": { description: "Invalid parent (self-reference or would create a cycle)" }
+        "401": { description: Unauthorized }
+        "404": { description: Organization or parent organization not found }
+        "422": { description: Validation error }
+
+    delete:
+      tags: [Organization]
+      summary: Delete an organization
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Organization deleted successfully
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BaseResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Organization not found }
+        "409":
+          description: Cannot delete - has linked sub-organizations
+
   # ── Sub-Category List / Create ──────────────────────────────────────────────
   /sub-category:
     get:
@@ -1514,7 +2516,7 @@ paths:
         - name: sortBy
           in: query
           description: Field to sort by
-          schema: { type: string, enum: [code, name, description, category, assetCount] }
+          schema: { type: string, enum: [code, name, description, category, assetCount, inventoryCount] }
         - name: order
           in: query
           description: Sort order
@@ -1745,7 +2747,7 @@ paths:
         - name: sortBy
           in: query
           description: Field to sort by
-          schema: { type: string, enum: [name, employeeId, jobPosition, email, phone, assetCount] }
+          schema: { type: string, enum: [name, employeeId, jobPosition, email, phone, assetCount, organization] }
         - name: order
           in: query
           description: Sort order
@@ -1892,7 +2894,7 @@ paths:
         - name: sortBy
           in: query
           description: Field to sort by
-          schema: { type: string, enum: [code, name, description, assetCount] }
+          schema: { type: string, enum: [code, name, description, assetCount, inventoryCount] }
         - name: order
           in: query
           description: Sort order
@@ -2207,9 +3209,13 @@ paths:
           in: query
           description: "Filter by holder type (only when holderStatus=has_holder). active_holder = currently assigned, historical_holder = any holder ever assigned"
           schema: { type: string, enum: [active_holder, historical_holder] }
+        - name: holderKind
+          in: query
+          description: "Which table holderId refers to. Defaults to employee for backward compatibility."
+          schema: { type: string, enum: [employee, organization] }
         - name: holderId
           in: query
-          description: "Filter by holder employee ID. Uses active holder by default, or historical holder if holderType=historical_holder"
+          description: "Filter by holder ID (employee or organization, per holderKind). Uses active holder by default, or historical holder if holderType=historical_holder"
           schema: { type: integer }
         - name: bleTagStatus
           in: query
@@ -2428,7 +3434,7 @@ paths:
       summary: Export assets to Excel
       description: |
         Exports assets as .xlsx file. Supports all the same filters as GET /asset.
-        The exported file includes columns: No, Image, Code, Name, Description, Category, Sub Category, Brand, Model, BLE Tag MAC, Price, Purchase Date, Status, Active Holder (Name + Employee ID), Last Location (Location + Branch), Depreciation (Useful Life, Monthly Depreciation, Accumulated Depreciation, Book Value), and dynamic label columns.
+        The exported file includes columns: No, Image, Code, Name, Description, Category, Sub Category, Brand, Model, BLE Tag MAC, Price, Purchase Date, Age (years/months/days since purchase date), Status, Active Holder (Type + Name + Employee ID — Employee ID is blank for organization holders), Last Location (Location + Branch), Depreciation (Useful Life, Monthly Depreciation, Accumulated Depreciation, Book Value), and dynamic label columns.
       security: [{ bearerAuth: [] }]
       parameters:
         - name: q
@@ -2514,6 +3520,45 @@ paths:
                                 row: { type: integer, example: 5 }
                                 message: { type: string, example: "Asset code \"AST-001\" already exists" }
         "400": { description: File is required }
+        "401": { description: Unauthorized }
+
+  /asset/options:
+    get:
+      tags: [Asset]
+      summary: Lightweight asset search for pickers/selects
+      description: >-
+        Not the paginated asset list — a minimal, capped-limit lookup (id/code/name/image only, no
+        relation joins) meant for search-as-you-type dropdowns. Safe to call on asset tables with
+        hundreds of thousands of rows, unlike `GET /asset`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+          description: Matches against name or code.
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, maximum: 50 }
+      responses:
+        "200":
+          description: Matching assets
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id: { type: integer, example: 1 }
+                            code: { type: string, example: "AST-001" }
+                            name: { type: string, example: "Generator" }
+                            image: { type: string, nullable: true }
         "401": { description: Unauthorized }
 
   /asset/label-keys:
@@ -3093,6 +4138,159 @@ paths:
                         items: { type: string }
         "401": { description: Unauthorized }
 
+  # ── Book (Borrow / Return) ───────────────────────────────────────────────
+  /book/loan:
+    get:
+      tags: [Book]
+      summary: Get book loans grouped by employee
+      description: |
+        Returns all book loans (assets in the "Buku" category) grouped by employee.
+        The response is an array containing a single object keyed by employee ID.
+        Each employee entry holds a `bookLoans` map keyed by the asset-holder record ID.
+
+        Authentication: this endpoint uses the static API key (`x-api-key` header), not a bearer token.
+      security:
+        - apiKeyAuth: []
+      parameters:
+        - in: query
+          name: search
+          schema: { type: string }
+          description: Filter by employee name, employee ID, or asset name.
+        - in: query
+          name: hasReturn
+          schema: { type: boolean }
+          description: "`true` = only returned loans, `false` = only active loans. Omit for all."
+        - in: query
+          name: startDate
+          schema: { type: string }
+          description: Filter by returned date (>= startDate). Combine with endDate for a range.
+        - in: query
+          name: endDate
+          schema: { type: string }
+          description: Filter by returned date (<= endDate). Combine with startDate for a range.
+      responses:
+        "200":
+          description: Loans retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/BookLoanGroup" }
+              example:
+                success: true
+                message: Loans retrieved successfully
+                data:
+                  - "EMP-BOOK-01":
+                      employee: "Book Reader"
+                      bookLoans:
+                        "12":
+                          code: "BOOK-001"
+                          name: "Atomic Habits"
+                          imageUrl: "http://cdn.test.com/stock/attachments/cover.jpg"
+                          subCategory: "Novel"
+                          loanHistory:
+                            loaning:
+                              loanPeriod: "2026-07-07T10:00"
+                              loanPhoto: "http://cdn.test.com/stock/attachments/loan.jpg"
+                            return:
+                              returnTime: "2026-07-08T14:30"
+                              returnPhoto: "http://cdn.test.com/stock/attachments/return.jpg"
+                              linkReview: "https://www.goodreads.com/book/show/40121378"
+        "401": { description: Unauthorized }
+
+  /book/my-books:
+    get:
+      tags: [Book]
+      summary: Get current user's borrowed books
+      description: |
+        Returns the list of books currently borrowed by the authenticated user.
+        The user must be linked to an employee. Only active (not returned) holders are returned.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Borrowed books retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/AssetHolderResponse" }
+        "400": { description: Account not linked to an employee }
+        "401": { description: Unauthorized }
+
+  /book/borrow:
+    post:
+      tags: [Book]
+      summary: Borrow a book
+      description: |
+        Borrow an asset that belongs to the "Buku" category. Validations:
+        - Asset must exist and belong to the "Buku" category
+        - Holder feature must be enabled on the asset
+        - Asset last status must be "active"
+        - Asset must not have an active holder (not currently borrowed)
+        - User must be linked to an employee
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BorrowBookRequest" }
+      responses:
+        "201":
+          description: Book borrowed successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/AssetHolderResponse" }
+        "400": { description: "Validation failed (not a book, not active, already borrowed, etc.)" }
+        "401": { description: Unauthorized }
+        "404": { description: Asset not found }
+        "422": { description: Request body validation error }
+
+  /book/return:
+    post:
+      tags: [Book]
+      summary: Return a borrowed book
+      description: |
+        Return a previously borrowed book. The returnNote field must be a valid URL (Goodreads link).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReturnBookRequest" }
+      responses:
+        "200":
+          description: Book returned successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/AssetHolderResponse" }
+        "400": { description: Already returned or invalid }
+        "401": { description: Unauthorized }
+        "404": { description: Holder record not found }
+        "422": { description: Request body validation error }
+
   # ── Asset Location ────────────────────────────────────────────────────────
   /asset-location:
     get:
@@ -3305,6 +4503,64 @@ paths:
                       data: { $ref: "#/components/schemas/AssetHolderResponse" }
         "401": { description: Unauthorized }
         "404": { description: Asset assignment record not found }
+    put:
+      tags: [Asset Holder]
+      summary: Edit an asset holder record
+      description: >
+        While the record is still active (not returned), only assign-side fields (holderKind, employeeId,
+        organizationId, assignedDate, assignNote, attachmentIds) may be changed — sending returnedDate/returnNote
+        is rejected (400). Once the record has been returned, return-side fields become editable too.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateAssetHolderRequest" }
+      responses:
+        "200":
+          description: Asset holder record updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/AssetHolderResponse" }
+        "400": { description: "Return data can only be edited after the asset has been returned, or the target employee/organization is inactive" }
+        "401": { description: Unauthorized }
+        "404": { description: Asset assignment record not found }
+        "422": { description: Validation error }
+    delete:
+      tags: [Asset Holder]
+      summary: Delete an asset holder record
+      description: "Permanently removes the record (and any attachments associated with it). If the record was the asset's active holder, the asset becomes unheld."
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Asset holder record deleted successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { type: "null" }
+        "401": { description: Unauthorized }
+        "404": { description: Asset assignment record not found }
 
   /asset-holder/{id}/return:
     post:
@@ -3337,6 +4593,1172 @@ paths:
         "401": { description: Unauthorized }
         "404": { description: Asset assignment record not found }
         "422": { description: Validation error }
+
+  /asset-schedule:
+    get:
+      tags: [Asset Schedule]
+      summary: List asset schedules (paginated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, default: 10 } }
+        - { name: q, in: query, schema: { type: string }, description: "Search by title or asset name/code." }
+        - { name: sortBy, in: query, schema: { type: string, enum: [title, startDate, recurrence, createdAt] } }
+        - { name: order, in: query, schema: { type: string, enum: [ASC, DESC] } }
+        - { name: assetId, in: query, schema: { type: integer }, description: "Filter by asset." }
+        - { name: recurrence, in: query, schema: { type: string, enum: [none, weekly, monthly, yearly] } }
+      responses:
+        "200":
+          description: Paginated list of schedules
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/AssetScheduleResponse" }
+        "401": { description: Unauthorized }
+    post:
+      tags: [Asset Schedule]
+      summary: Create a schedule
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateAssetScheduleRequest" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssetScheduleResponse" }
+        "404": { description: Asset not found }
+        "422": { description: Validation error }
+
+  /asset-schedule/calendar:
+    get:
+      tags: [Asset Schedule]
+      summary: Expanded occurrences within a date window (for the calendar view)
+      description: "Returns one entry per concrete occurrence date, expanding recurring schedules across `[from, to]`."
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date }, example: "2026-08-01" }
+        - { name: to, in: query, required: true, schema: { type: string, format: date }, example: "2026-08-31" }
+        - { name: assetId, in: query, schema: { type: integer } }
+        - { name: recurrence, in: query, schema: { type: string, enum: [none, weekly, monthly, yearly] } }
+      responses:
+        "200":
+          description: Occurrences sorted by date then time
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/AssetScheduleOccurrenceResponse" }
+        "400": { description: "Missing/invalid from or to" }
+        "401": { description: Unauthorized }
+
+  /asset-schedule/{id}:
+    get:
+      tags: [Asset Schedule]
+      summary: Get a schedule
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Schedule
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssetScheduleResponse" }
+        "404": { description: Not found }
+    put:
+      tags: [Asset Schedule]
+      summary: Update a schedule
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateAssetScheduleRequest" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssetScheduleResponse" }
+        "404": { description: Not found }
+        "422": { description: Validation error }
+    delete:
+      tags: [Asset Schedule]
+      summary: Delete a schedule (and its attachments)
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Deleted }
+        "404": { description: Not found }
+
+  /handover:
+    get:
+      tags: [Asset Handover]
+      summary: Get list of asset handovers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+        - name: q
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string, enum: [pending, approve, reject, cancel] }
+        - name: transactionType
+          in: query
+          schema: { type: string, enum: [assign, return] }
+      responses:
+        "200":
+          description: Asset handovers retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/HandoverResponse" }
+        "401": { description: Unauthorized }
+
+    post:
+      tags: [Asset Handover]
+      summary: Create an asset handover (status pending)
+      description: "Creates a handover document, generates the 'FORM SERAH TERIMA ASET/BARANG' PDF (returned as an attachment), and submits it to the e-sign provider for signing. Each item's asset must have no active holder and must not be part of another pending handover. One employee may receive multiple assets. Approval/rejection is driven by the e-sign webhook (POST /webhook/esign), not a direct endpoint."
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateHandoverRequest" }
+      responses:
+        "201":
+          description: Asset handover created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/HandoverResponse" }
+        "400": { description: "Asset already has a holder, is in another pending handover, duplicated, or employee inactive" }
+        "401": { description: Unauthorized }
+        "404": { description: Asset or Employee not found }
+        "422": { description: Validation error }
+
+  /handover/pending-assets:
+    get:
+      tags: [Asset Handover]
+      summary: Asset ids currently tied to a pending handover
+      description: "Lightweight lookup for other modules (e.g. asset holder) to gate actions — such as disallowing a new holder assignment — without paging through the full handover list."
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Pending asset ids
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          assetIds:
+                            type: array
+                            items: { type: integer }
+                            example: [1, 5, 12]
+        "401": { description: Unauthorized }
+
+  /handover/{id}:
+    get:
+      tags: [Asset Handover]
+      summary: Get asset handover details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Asset handover retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/HandoverResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Asset handover not found }
+
+  /handover/{id}/cancel:
+    post:
+      tags: [Asset Handover]
+      summary: Cancel a pending asset handover
+      description: Only handovers with status "pending" can be cancelled. Once approved, the handover is locked and cannot be cancelled.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Asset handover cancelled successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/HandoverResponse" }
+        "400": { description: Only pending handovers can be cancelled }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden - missing handover:cancel permission }
+        "404": { description: Asset handover not found }
+
+  /handover-field:
+    get:
+      tags: [Asset Handover]
+      summary: List custom fields configured for a transaction type
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: transactionType
+          in: query
+          required: true
+          schema: { type: string, enum: [assign, return] }
+      responses:
+        "200":
+          description: Handover fields retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/HandoverFieldResponse" }
+        "400": { description: Invalid transactionType }
+        "401": { description: Unauthorized }
+
+  /handover-field/{transactionType}:
+    put:
+      tags: [Asset Handover]
+      summary: Replace the custom field set for a transaction type
+      description: Bulk-replaces all fields for the given type. Editing fields never affects handovers already created (each snapshots its values).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: transactionType
+          in: path
+          required: true
+          schema: { type: string, enum: [assign, return] }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fields]
+              properties:
+                fields:
+                  type: array
+                  items:
+                    type: object
+                    required: [label, type]
+                    properties:
+                      label: { type: string, example: "PIC Name" }
+                      type: { type: string, enum: [text, number, select, radio] }
+                      options: { type: array, items: { type: string }, nullable: true, description: "Required for select/radio" }
+                      required: { type: boolean, example: true }
+      responses:
+        "200":
+          description: Handover fields saved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/HandoverFieldResponse" }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden - missing handover-field:manage permission }
+        "422": { description: Validation error (e.g. options missing for select/radio) }
+
+  /inventory:
+    get:
+      tags: [Inventory]
+      summary: List inventory items (paginated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: page, in: query, required: false, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, required: false, schema: { type: integer, default: 10 } }
+        - { name: q, in: query, required: false, schema: { type: string } }
+        - { name: sortBy, in: query, required: false, schema: { type: string, enum: [name, code, category, subCategory, unit, variantCount, newCount, usedCount, createdAt] } }
+        - { name: order, in: query, required: false, schema: { type: string, enum: [ASC, DESC] } }
+        - { name: categoryIds, in: query, required: false, description: "Filter by category IDs (comma-separated)", schema: { type: string, example: "1,2,3" } }
+        - { name: subCategoryIds, in: query, required: false, description: "Filter by sub-category IDs (comma-separated)", schema: { type: string, example: "1,2" } }
+        - { name: units, in: query, required: false, description: "Filter by unit (comma-separated)", schema: { type: string, example: "Pcs,Box" } }
+        - { name: isActive, in: query, required: false, description: "Filter by active status", schema: { type: boolean } }
+        - { name: variantStatus, in: query, required: false, description: "Filter by whether the item has any variants", schema: { type: string, enum: [has_variants, no_variants] } }
+        - { name: newStockMin, in: query, required: false, description: "Minimum total on-hand \"new\" condition stock", schema: { type: integer } }
+        - { name: newStockMax, in: query, required: false, description: "Maximum total on-hand \"new\" condition stock", schema: { type: integer } }
+        - { name: usedStockMin, in: query, required: false, description: "Minimum total on-hand \"used\" condition stock", schema: { type: integer } }
+        - { name: usedStockMax, in: query, required: false, description: "Maximum total on-hand \"used\" condition stock", schema: { type: integer } }
+        - { name: missingFields, in: query, required: false, description: "Filter items missing these fields (comma-separated)", schema: { type: string, enum: [image, description, subCategory] } }
+        - { name: "label.{key}", in: query, required: false, description: "Filter by a custom label's value, e.g. label.Brand=Belden (repeatable per key)", schema: { type: string } }
+      responses:
+        "200":
+          description: Inventory items retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/InventoryResponse" } }
+                      meta: { $ref: "#/components/schemas/PaginationMeta" }
+        "401": { description: Unauthorized }
+    post:
+      tags: [Inventory]
+      summary: Create an inventory item (optionally with variants + initial stock)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, example: "Kabel UTP Cat6" }
+                code: { type: string, nullable: true }
+                description: { type: string, nullable: true }
+                image: { type: string, nullable: true, description: "Uploaded image path" }
+                unit: { type: string, nullable: true, example: "Roll" }
+                subCategoryId: { type: integer, nullable: true }
+                labels:
+                  type: array
+                  items:
+                    type: object
+                    required: [key, value]
+                    properties: { key: { type: string }, value: { type: string } }
+                variants:
+                  type: array
+                  description: "Optional inline variants, each with optional initial stock per branch × condition."
+                  items:
+                    type: object
+                    required: [name]
+                    properties:
+                      name: { type: string }
+                      code: { type: string, nullable: true }
+                      image: { type: string, nullable: true }
+                      description: { type: string, nullable: true }
+                      initialStock:
+                        type: array
+                        items:
+                          type: object
+                          required: [branchId, new, used]
+                          properties:
+                            branchId: { type: integer }
+                            new: { type: integer, minimum: 0 }
+                            used: { type: integer, minimum: 0 }
+                attachmentIds: { type: array, items: { type: integer }, nullable: true }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/InventoryResponse" }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden - missing inventory:create }
+        "422": { description: Validation error }
+
+  /inventory/export:
+    get:
+      tags: [Inventory]
+      summary: Export inventory to Excel
+      description: |
+        Exports inventory items as .xlsx file. Supports all the same filters as GET /inventory.
+        One physical row per (item, variant, branch × condition) leaf — items with no variants, or variants with no stock, still get one row with the deeper columns left blank. Item- and variant-level columns are merged (rowspan) across their own leaf rows so the hierarchy reads visually in the spreadsheet.
+        The exported file includes columns: No, Image, Code, Name, Description, Category, Sub Category, Unit, Status, Variant Name, Variant Code, Variant Description, Branch, Condition, Quantity, and dynamic label columns.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: q, in: query, required: false, schema: { type: string } }
+        - { name: sortBy, in: query, required: false, schema: { type: string, enum: [name, code, category, subCategory, unit, variantCount, newCount, usedCount, createdAt] } }
+        - { name: order, in: query, required: false, schema: { type: string, enum: [ASC, DESC] } }
+        - { name: categoryIds, in: query, required: false, description: "Filter by category IDs (comma-separated)", schema: { type: string, example: "1,2,3" } }
+        - { name: subCategoryIds, in: query, required: false, description: "Filter by sub-category IDs (comma-separated)", schema: { type: string, example: "1,2" } }
+        - { name: units, in: query, required: false, description: "Filter by unit (comma-separated)", schema: { type: string, example: "Pcs,Box" } }
+        - { name: isActive, in: query, required: false, description: "Filter by active status", schema: { type: boolean } }
+        - { name: variantStatus, in: query, required: false, description: "Filter by whether the item has any variants", schema: { type: string, enum: [has_variants, no_variants] } }
+        - { name: newStockMin, in: query, required: false, description: "Minimum total on-hand \"new\" condition stock", schema: { type: integer } }
+        - { name: newStockMax, in: query, required: false, description: "Maximum total on-hand \"new\" condition stock", schema: { type: integer } }
+        - { name: usedStockMin, in: query, required: false, description: "Minimum total on-hand \"used\" condition stock", schema: { type: integer } }
+        - { name: usedStockMax, in: query, required: false, description: "Maximum total on-hand \"used\" condition stock", schema: { type: integer } }
+        - { name: missingFields, in: query, required: false, description: "Filter items missing these fields (comma-separated)", schema: { type: string, enum: [image, description, subCategory] } }
+        - { name: "label.{key}", in: query, required: false, description: "Filter by a custom label's value, e.g. label.Brand=Belden (repeatable per key)", schema: { type: string } }
+        - { name: labelColumns, in: query, required: false, description: "Label keys to include as columns (comma-separated)", schema: { type: string, example: "Brand,Color" } }
+      responses:
+        "200":
+          description: Excel file download
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden - missing inventory:export }
+
+  /inventory/label-keys:
+    get:
+      tags: [Inventory]
+      summary: Distinct custom-label keys across inventory items (for list columns)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Label keys retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { type: string }, example: ["Brand", "Warna"] }
+        "401": { description: Unauthorized }
+
+  /inventory/list:
+    get:
+      tags: [Inventory]
+      summary: List active inventory items (unpaginated, for dropdowns)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Inventory items retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/InventoryResponse" } }
+        "401": { description: Unauthorized }
+
+  /inventory/{id}:
+    get:
+      tags: [Inventory]
+      summary: Get an inventory item by id
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Inventory item retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/InventoryResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Not found }
+    put:
+      tags: [Inventory]
+      summary: Update an inventory item
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                code: { type: string, nullable: true }
+                description: { type: string, nullable: true }
+                isActive: { type: boolean }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/InventoryResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Not found }
+        "422": { description: Validation error }
+    delete:
+      tags: [Inventory]
+      summary: Delete an inventory item
+      description: Fails with 409 if the item still has variants.
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Deleted }
+        "401": { description: Unauthorized }
+        "404": { description: Not found }
+        "409": { description: Conflict - item still has variants }
+
+  /inventory-variant:
+    get:
+      tags: [Inventory]
+      summary: List variants of an inventory item
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: inventoryId, in: query, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Stock variants retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/InventoryVariantResponse" } }
+        "400": { description: inventoryId is required }
+        "401": { description: Unauthorized }
+    post:
+      tags: [Inventory]
+      summary: Create a stock variant
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [inventoryId, name]
+              properties:
+                inventoryId: { type: integer, example: 1 }
+                name: { type: string, example: "305m / Roll" }
+                code: { type: string, nullable: true }
+                image: { type: string, nullable: true }
+                description: { type: string, nullable: true }
+                isActive: { type: boolean }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/InventoryVariantResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Inventory item not found }
+        "422": { description: Validation error }
+
+  /inventory-variant/{id}:
+    get:
+      tags: [Inventory]
+      summary: Get a stock variant by id
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Stock variant retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/InventoryVariantResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Not found }
+    put:
+      tags: [Inventory]
+      summary: Update a stock variant
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                code: { type: string, nullable: true }
+                image: { type: string, nullable: true }
+                description: { type: string, nullable: true }
+                isActive: { type: boolean }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/InventoryVariantResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Not found }
+        "422": { description: Validation error }
+    delete:
+      tags: [Inventory]
+      summary: Delete a stock variant
+      description: Fails with 409 if the variant still has stock balances.
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Deleted }
+        "401": { description: Unauthorized }
+        "404": { description: Not found }
+        "409": { description: Conflict - variant still has stock balances }
+
+  /inventory/stock:
+    get:
+      tags: [Inventory]
+      summary: Monitor stock balances across branches (paginated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: page, in: query, required: false, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, required: false, schema: { type: integer, default: 20 } }
+        - { name: branchId, in: query, required: false, schema: { type: integer } }
+        - { name: inventoryId, in: query, required: false, schema: { type: integer } }
+        - { name: variantId, in: query, required: false, schema: { type: integer } }
+        - { name: condition, in: query, required: false, schema: { type: string, enum: [new, used] } }
+      responses:
+        "200":
+          description: Stock balances retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/InventoryStockBalanceResponse" } }
+                      meta: { $ref: "#/components/schemas/PaginationMeta" }
+        "401": { description: Unauthorized }
+
+  /inventory/stock/entry-template:
+    get:
+      tags: [Inventory]
+      summary: Get the nested-input entry template for a branch + inventory item
+      description: Returns each variant with its current on-hand new/used quantities, ready for the stock entry table.
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: branchId, in: query, required: true, schema: { type: integer } }
+        - { name: inventoryId, in: query, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Entry template retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/InventoryStockEntryTemplateResponse" } }
+        "400": { description: branchId and inventoryId are required }
+        "401": { description: Unauthorized }
+
+  /inventory/stock/entry:
+    post:
+      tags: [Inventory]
+      summary: Set stock quantities (opname) for a branch + inventory item
+      description: SET semantics — each variant's new/used values become the absolute on-hand quantity. A movement is recorded with the signed delta.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [branchId, inventoryId, items]
+              properties:
+                branchId: { type: integer, example: 1 }
+                inventoryId: { type: integer, example: 1 }
+                items:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [variantId, new, used]
+                    properties:
+                      variantId: { type: integer, example: 1 }
+                      new: { type: integer, minimum: 0, example: 10 }
+                      used: { type: integer, minimum: 0, example: 3 }
+      responses:
+        "200":
+          description: Stock saved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/InventoryStockBalanceResponse" } }
+        "400": { description: Invalid branch/item or variant not belonging to item }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden - missing inventory-stock:entry }
+        "422": { description: Validation error }
+
+  # ── Inventory Stock Out (own module, mirrors Asset Holder) ─────────────────
+  /inventory-stock-out:
+    get:
+      tags: [Inventory Stock Out]
+      summary: List stock-outs (who/where stock has gone, paginated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: page, in: query, required: false, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, required: false, schema: { type: integer, default: 20 } }
+        - { name: inventoryId, in: query, required: false, schema: { type: integer } }
+        - { name: variantId, in: query, required: false, schema: { type: integer } }
+        - { name: employeeId, in: query, required: false, schema: { type: integer } }
+        - { name: branchId, in: query, required: false, schema: { type: integer } }
+        - { name: active, in: query, required: false, schema: { type: boolean }, description: "Only documents still in play: isEmployee true with at least one item having a remaining quantity, or any isEmployee false document (always shown)." }
+      responses:
+        "200":
+          description: Stock-outs retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/InventoryStockOutResponse" } }
+                      meta: { $ref: "#/components/schemas/PaginationMeta" }
+        "401": { description: Unauthorized }
+    post:
+      tags: [Inventory Stock Out]
+      summary: Take stock out of a branch, to an employee or elsewhere (manual)
+      description: "Reduces the branch's on-hand quantity for each item's chosen condition (never negative) and records one stock-out document with a line item per input item — mirrors POST /inventory-stock-in. `isEmployee: true` requires `employeeId` and its items are individually returnable; `isEmployee: false` (consumed/disposed/sold/etc.) must omit `employeeId` and its items are one-way exits. Also reused by handover approval (always `isEmployee: true`)."
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [isEmployee, items]
+              properties:
+                isEmployee: { type: boolean }
+                employeeId: { type: integer, nullable: true, example: 1, description: "Required when isEmployee is true; must be omitted when isEmployee is false." }
+                note: { type: string, nullable: true }
+                attachmentIds:
+                  type: array
+                  items: { type: integer }
+                  description: "Uploaded attachment IDs (via POST /attachment) to attach as supporting evidence for the whole document."
+                items:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [variantId, branchId, condition, quantity]
+                    properties:
+                      variantId: { type: integer, example: 1 }
+                      branchId: { type: integer, example: 1 }
+                      condition: { type: string, enum: [new, used] }
+                      quantity: { type: integer, minimum: 1, example: 4 }
+      responses:
+        "201":
+          description: Stock assigned successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/InventoryStockOutResponse" }
+        "400": { description: Inactive employee, invalid branch/variant, or insufficient stock }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden - missing inventory-stock:assign }
+        "422": { description: Validation error }
+
+  /inventory-stock-out/return:
+    post:
+      tags: [Inventory Stock Out]
+      summary: Return stock an employee holds (manual)
+      description: Returned stock always comes back as `used` at the given branch. Cannot exceed what the employee still holds; holdings are consumed oldest-first.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [employeeId, items]
+              properties:
+                employeeId: { type: integer, example: 1 }
+                note: { type: string, nullable: true }
+                items:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [variantId, branchId, quantity]
+                    properties:
+                      variantId: { type: integer, example: 1 }
+                      branchId: { type: integer, example: 1, description: "Branch to receive the returned (used) stock." }
+                      quantity: { type: integer, minimum: 1, example: 3 }
+      responses:
+        "200": { description: Stock returned successfully }
+        "400": { description: Invalid branch/variant, or return exceeds what the employee holds }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden - missing inventory-stock:return }
+        "422": { description: Validation error }
+
+  # ── Inventory Stock Transfer (own module, mirrors Asset Holder) ────────────
+  /inventory-stock-transfer:
+    get:
+      tags: [Inventory Stock Transfer]
+      summary: List stock transfer history for an inventory item (paginated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: inventoryId, in: query, required: true, schema: { type: integer } }
+        - { name: page, in: query, required: false, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, required: false, schema: { type: integer, default: 20 } }
+      responses:
+        "200":
+          description: Transfer history retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/InventoryStockTransferResponse" } }
+                      meta: { $ref: "#/components/schemas/PaginationMeta" }
+        "400": { description: inventoryId is required }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden - missing inventory-stock:read }
+        "404": { description: Inventory item not found }
+    post:
+      tags: [Inventory Stock Transfer]
+      summary: Transfer stock between branches
+      description: Moves the given quantity per variant+condition from source to destination branch atomically. Condition is preserved; stock cannot go negative. Persists a transfer record (history + attachments).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fromBranchId, toBranchId, items]
+              properties:
+                fromBranchId: { type: integer, example: 1 }
+                toBranchId: { type: integer, example: 2 }
+                note: { type: string, nullable: true }
+                attachmentIds: { type: array, items: { type: integer }, nullable: true }
+                items:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [variantId, condition, quantity]
+                    properties:
+                      variantId: { type: integer, example: 1 }
+                      condition: { type: string, enum: [new, used] }
+                      quantity: { type: integer, minimum: 1, example: 3 }
+      responses:
+        "200":
+          description: Stock transferred successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          referenceId: { type: string, example: "TRF-1720000000000" }
+                          transferId: { type: integer, example: 1 }
+        "400": { description: Same branch, insufficient stock, or duplicate variant+condition }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden - missing inventory-stock:transfer }
+        "422": { description: Validation error }
+
+  # ── Inventory Stock In (own module, mirrors Asset Holder) ──────────────────
+  /inventory-stock-in:
+    get:
+      tags: [Inventory Stock In]
+      summary: List stock-in (incoming stock) history for an inventory item (paginated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: inventoryId, in: query, required: true, schema: { type: integer } }
+        - { name: page, in: query, required: false, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, required: false, schema: { type: integer, default: 20 } }
+      responses:
+        "200":
+          description: Stock-in history retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/InventoryStockInResponse" } }
+                      meta: { $ref: "#/components/schemas/PaginationMeta" }
+        "400": { description: inventoryId is required }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden - missing inventory-stock:read }
+        "404": { description: Inventory item not found }
+    post:
+      tags: [Inventory Stock In]
+      summary: Add (stock-in) quantities to variants across one or more branches
+      description: ADD semantics — quantities are added to each variant's current on-hand at its branch (increment, not opname). Multi-branch × multi-variant. Optional note + attachments. Persists a stock-in record (history + line items + attachments), mirroring the transfer document.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [inventoryId, items]
+              properties:
+                inventoryId: { type: integer, example: 1 }
+                note: { type: string, nullable: true }
+                attachmentIds: { type: array, items: { type: integer }, nullable: true }
+                items:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [branchId, variantId, new, used]
+                    properties:
+                      branchId: { type: integer, example: 1 }
+                      variantId: { type: integer, example: 1 }
+                      new: { type: integer, minimum: 0, example: 5 }
+                      used: { type: integer, minimum: 0, example: 0 }
+      responses:
+        "201":
+          description: Stock added successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/InventoryStockInResponse" }
+        "400": { description: Invalid branch/item or variant not belonging to item }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden - missing inventory-stock:entry }
+        "404": { description: Inventory item not found }
+        "422": { description: Validation error }
+
+  # ── Inventory Stock Opname (own module, mirrors Inventory Stock In) ────────
+  /inventory-stock-opname:
+    get:
+      tags: [Inventory Stock Opname]
+      summary: List stock opname (physical count) history for an inventory item (paginated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: inventoryId, in: query, required: true, schema: { type: integer } }
+        - { name: page, in: query, required: false, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, required: false, schema: { type: integer, default: 20 } }
+      responses:
+        "200":
+          description: Stock opname history retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/InventoryStockOpnameResponse" } }
+                      meta: { $ref: "#/components/schemas/PaginationMeta" }
+        "400": { description: inventoryId is required }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden - missing inventory-stock:read }
+        "404": { description: Inventory item not found }
+    post:
+      tags: [Inventory Stock Opname]
+      summary: Record a physical stock count for variants at one branch
+      description: "SET semantics — each variant/condition's balance at the given branch is set to the counted quantity (opname, not an increment like stock-in). Only variants/conditions whose count differs from the recorded balance produce a line item. Optional note + attachments. Persists a stock opname record (history + line items + attachments), mirroring the stock-in document."
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [inventoryId, branchId, items]
+              properties:
+                inventoryId: { type: integer, example: 1 }
+                branchId: { type: integer, example: 1 }
+                note: { type: string, nullable: true }
+                attachmentIds: { type: array, items: { type: integer }, nullable: true }
+                items:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [variantId, new, used]
+                    properties:
+                      variantId: { type: integer, example: 1 }
+                      new: { type: integer, minimum: 0, example: 7, description: "Physically counted quantity in new condition." }
+                      used: { type: integer, minimum: 0, example: 2, description: "Physically counted quantity in used condition." }
+      responses:
+        "201":
+          description: Stock opname saved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/InventoryStockOpnameResponse" }
+        "400": { description: Invalid branch or variant not belonging to item }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden - missing inventory-stock:opname }
+        "404": { description: Inventory item or branch not found }
+        "422": { description: Validation error }
+
+  # ── Inventory Log (activity audit trail, mirrors Asset Log) ────────────────
+  /inventory-log:
+    get:
+      tags: [Inventory Log]
+      summary: Get inventory activity logs (audit trail)
+      description: One entry per action on an inventory item — create/update on the item itself, and entry/stock_in/transfer/assign/return on its stock (module `stock`).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, default: 10 }
+        - name: q
+          in: query
+          required: false
+          schema: { type: string }
+        - name: sortBy
+          in: query
+          required: false
+          schema: { type: string }
+        - name: order
+          in: query
+          required: false
+          schema: { type: string, enum: [ASC, DESC] }
+        - name: inventoryId
+          in: query
+          required: false
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Inventory activity logs retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/InventoryLogResponse" }
+        "401": { description: Unauthorized }
 
   /asset-log:
     get:
@@ -3555,6 +5977,49 @@ paths:
                                 locationId: { type: integer, example: 1 }
         "401": { description: "Invalid webhook secret" }
 
+  /webhook/esign:
+    post:
+      tags: [Webhook]
+      summary: E-sign signing callback (public)
+      description: >
+        Called by the e-sign provider when a handover document reaches a final state.
+        `status = COMPLETED` approves the handover referenced by `external_reference_id`
+        (auto-assigns a holder per item, swaps the handover attachment to the signed
+        `file_url`, and attaches the signed document to each holder). Any other status
+        rejects the handover. No JWT required.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [external_reference_id, status]
+              properties:
+                external_reference_id: { type: string, example: "42", description: "The handover ID passed at submission time" }
+                status: { type: string, example: "COMPLETED", description: "COMPLETED approves; any other value rejects" }
+                file_url: { type: string, nullable: true, example: "https://esign.example/documents/signed.pdf", description: "URL of the signed document (present on COMPLETED)" }
+                document_id: { type: string, nullable: true, example: "01kx0sv40tzgcc80vm89tn3mjy" }
+                completed_at: { type: string, nullable: true, example: "2026-07-08T19:05:48+07:00" }
+                uploader_name: { type: string, nullable: true, example: "Oskar Hutasoit" }
+      responses:
+        "200":
+          description: Esign webhook handled successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          handover: { $ref: "#/components/schemas/HandoverResponse" }
+                          attachments:
+                            type: array
+                            items: { $ref: "#/components/schemas/AttachmentResponse" }
+        "400": { description: "Invalid external reference ID, or handover cannot transition (e.g. not pending)" }
+
   # ── AI ──────────────────────────────────────────────────────────────────────
   /ai/decode-barcode:
     post:
@@ -3678,6 +6143,7 @@ paths:
                         items:
                           type: object
                           properties:
+                            id: { type: integer, example: 3, description: "Category id — usable as GET /asset?categoryIds=" }
                             name: { type: string, example: "Electronics" }
                             count: { type: integer, example: 45 }
                             totalPrice: { type: number, example: 2000000000 }
@@ -3710,6 +6176,7 @@ paths:
                         items:
                           type: object
                           properties:
+                            id: { type: integer, example: 7, description: "Location id — usable as GET /asset?locationIds=" }
                             name: { type: string, example: "Server Room" }
                             count: { type: integer, example: 30 }
                             totalPrice: { type: number, example: 1500000000 }
@@ -3742,6 +6209,7 @@ paths:
                         items:
                           type: object
                           properties:
+                            id: { type: integer, example: 12, description: "Sub-category id — usable as GET /asset?subCategoryIds=" }
                             name: { type: string, example: "Laptops" }
                             count: { type: integer, example: 20 }
                             totalPrice: { type: number, example: 800000000 }

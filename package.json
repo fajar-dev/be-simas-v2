@@ -2,13 +2,15 @@
   "name": "simas-be",
   "scripts": {
     "dev": "bun run --hot src/index.ts",
-    "build": "bun build --minify --outfile dist/index.js --target bun src/index.ts",
-    "start": "bun run src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target=bun --packages=external",
+    "start": "bun dist/index.js",
     "test": "bun test --timeout 30000",
     "seed:permissions": "bun run src/seeds/seed-permissions.ts",
-    "sync:employee": "bun run src/jobs/sync-employees.job.ts",
+    "sync:employee": "bun run src/jobs/sync-employee.job.ts",
     "sync:user": "bun run src/jobs/sync-user.job.ts",
-    "sync:branch": "bun run src/jobs/sync-branch.job.ts"
+    "sync:branch": "bun run src/jobs/sync-branch.job.ts",
+    "sync:organization": "bun run src/jobs/sync-organization.job.ts",
+    "job:asset-schedule-reminder": "bun run src/jobs/asset-schedule-reminder.job.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -23,6 +25,7 @@
     "minio": "^8.0.7",
     "mysql2": "^3.20.0",
     "nodemailer": "^8.0.3",
+    "pdf-lib": "^1.17.1",
     "pg": "^8.16.0",
     "qrcode": "^1.5.4",
     "reflect-metadata": "^0.2.2",

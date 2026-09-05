@@ -2,9 +2,30 @@ import { Context } from "hono"
 import { UserService } from "./user.service"
 import { UserSerializer } from "./serializers/user.serialize"
 import { ApiResponse } from "../../core/helpers/response"
+import { resolveFileUrl } from "../../core/helpers/serializer-utils"
+
+const MAX_OPTIONS_LIMIT = 50
 
 export class UserController {
     constructor(private readonly service: UserService) {}
+
+    /** Lightweight picker/select search — not the full paginated list, so non-admin roles can still use it. */
+    async options(c: Context) {
+        const q = c.req.query("q") || ""
+        const requestedLimit = Number(c.req.query("limit")) || 20
+        const limit = Math.min(Math.max(requestedLimit, 1), MAX_OPTIONS_LIMIT)
+
+        const users = await this.service.searchOptions(q, limit)
+        const data = await Promise.all(
+            users.map(async (user) => ({
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                photo: await resolveFileUrl(user.photo),
+            }))
+        )
+        return ApiResponse.success(c, data, "User options retrieved successfully")
+    }
 
     async index(c: Context) {
         const page = Number(c.req.query("page") || 1)

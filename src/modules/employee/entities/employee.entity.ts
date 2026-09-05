@@ -1,4 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index } from "typeorm"
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn, Index } from "typeorm"
+import type { Relation } from "typeorm"
+import { Organization } from "../../organization/entities/organization.entity"
 
 @Entity("employees")
 export class Employee {
@@ -23,6 +25,14 @@ export class Employee {
 
     @Column({ nullable: true })
     photo?: string
+
+    @Index()
+    @Column({ name: "organization_id", nullable: true })
+    organizationId!: number | null
+
+    @ManyToOne(() => Organization, { onDelete: "SET NULL", nullable: true })
+    @JoinColumn({ name: "organization_id" })
+    organization?: Relation<Organization> | null
 
     @Index()
     @Column({ name: "is_active", default: true })

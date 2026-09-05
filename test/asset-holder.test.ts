@@ -25,6 +25,7 @@ let app: Hono
 let authHeaders: Record<string, string>
 let assetId: number
 let employeeId: number
+let organizationId: number
 
 beforeAll(async () => {
     await initTestDatabase()
@@ -53,6 +54,14 @@ beforeEach(async () => {
         }
     })
     employeeId = empRes.body.data.id
+
+    // Setup: Create Organization
+    const orgRes = await request(app, "/api/organization", {
+        method: "POST",
+        headers: authHeaders,
+        body: { name: "Networking Dept", type: "department" },
+    })
+    organizationId = orgRes.body.data.id
 
     // Setup: Create Category and SubCategory
     const catRes = await request(app, "/api/category", {
@@ -92,8 +101,8 @@ describe("Asset Holder API Tests", () => {
 
         expect(res.status).toBe(201)
         expect(res.body.success).toBe(true)
-        expect(res.body.data.assetId).toBe(assetId)
-        expect(res.body.data.employeeId).toBe(employeeId)
+        expect(res.body.data.asset.id).toBe(assetId)
+        expect(res.body.data.employee.id).toBe(employeeId)
         expect(res.body.data.assignedDate).toBe("2026-06-19")
         expect(res.body.data.returnedDate).toBeNull()
         expect(res.body.data.assignNote).toBe("Given to Alice")
@@ -241,5 +250,266 @@ describe("Asset Holder API Tests", () => {
 
         expect(res.status).toBe(201)
         expect(res.body.success).toBe(true)
+    })
+})
+
+describe("Asset Holder API Tests - organization holder", () => {
+    test("POST /api/asset-holder - assign to organization successfully", async () => {
+        const res = await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, holderKind: "organization", organizationId, assignedDate: "2026-06-19", assignNote: "Shared equipment" },
+        })
+
+        expect(res.status).toBe(201)
+        expect(res.body.success).toBe(true)
+        expect(res.body.data.holderKind).toBe("organization")
+        expect(res.body.data.organization.id).toBe(organizationId)
+        expect(res.body.data.organization.name).toBe("Networking Dept")
+        expect(res.body.data.employee).toBeNull()
+    })
+
+    test("POST /api/asset-holder - prevent double assignment to organization", async () => {
+        await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, holderKind: "organization", organizationId, assignedDate: "2026-06-19" },
+        })
+
+        const res = await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, holderKind: "organization", organizationId, assignedDate: "2026-06-20" },
+        })
+
+        expect(res.status).toBe(400)
+        expect(res.body.message).toContain("assigned")
+    })
+
+    test("POST /api/asset-holder/:id/return - return an organization holder successfully", async () => {
+        const assignRes = await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, holderKind: "organization", organizationId, assignedDate: "2026-06-19" },
+        })
+        const logId = assignRes.body.data.id
+
+        const returnRes = await request(app, `/api/asset-holder/${logId}/return`, {
+            method: "POST",
+            headers: authHeaders,
+            body: { returnedDate: "2026-06-21" },
+        })
+
+        expect(returnRes.status).toBe(200)
+        expect(returnRes.body.data.returnedDate).toBe("2026-06-21")
+
+        // Asset should be free to assign again
+        const reassignRes = await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, holderKind: "organization", organizationId, assignedDate: "2026-06-22" },
+        })
+        expect(reassignRes.status).toBe(201)
+    })
+
+    test("GET /api/asset-holder/active/:assetId - retrieve active organization holder", async () => {
+        await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, holderKind: "organization", organizationId, assignedDate: "2026-06-19" },
+        })
+
+        const res = await request(app, `/api/asset-holder/active/${assetId}`, { headers: authHeaders })
+        expect(res.status).toBe(200)
+        expect(res.body.data.holderKind).toBe("organization")
+        expect(res.body.data.organization.name).toBe("Networking Dept")
+    })
+
+    test("POST /api/asset-holder - rejects assigning to an inactive organization", async () => {
+        const inactiveOrg = await request(app, "/api/organization", {
+            method: "POST",
+            headers: authHeaders,
+            body: { name: "Retired Dept", type: "department", isActive: false },
+        })
+
+        const res = await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, holderKind: "organization", organizationId: inactiveOrg.body.data.id, assignedDate: "2026-06-19" },
+        })
+
+        expect(res.status).toBe(400)
+        expect(res.body.message).toContain("inactive organization")
+    })
+
+    test("POST /api/asset-holder - rejects both employeeId and organizationId set", async () => {
+        const res = await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, holderKind: "employee", employeeId, organizationId, assignedDate: "2026-06-19" },
+        })
+
+        expect(res.status).toBe(422)
+    })
+
+    test("POST /api/asset-holder - rejects organization holderKind with no organizationId", async () => {
+        const res = await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, holderKind: "organization", assignedDate: "2026-06-19" },
+        })
+
+        expect(res.status).toBe(422)
+    })
+})
+
+describe("Asset Holder API Tests - update & delete", () => {
+    async function assign(): Promise<number> {
+        const res = await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, employeeId, assignedDate: "2026-06-19", assignNote: "Original note" },
+        })
+        return res.body.data.id
+    }
+
+    test("PUT /api/asset-holder/:id - edits assign data while still active", async () => {
+        const id = await assign()
+
+        const res = await request(app, `/api/asset-holder/${id}`, {
+            method: "PUT",
+            headers: authHeaders,
+            body: { assignedDate: "2026-06-20", assignNote: "Corrected note" },
+        })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.assignedDate).toBe("2026-06-20")
+        expect(res.body.data.assignNote).toBe("Corrected note")
+    })
+
+    test("PUT /api/asset-holder/:id - switches holder from employee to organization while active", async () => {
+        const id = await assign()
+
+        // employeeId: null mirrors what the FE actually sends when toggling the holder kind radio —
+        // exercising an explicit null (not just an omitted field) here is what catches a stale-relation regression.
+        const res = await request(app, `/api/asset-holder/${id}`, {
+            method: "PUT",
+            headers: authHeaders,
+            body: { holderKind: "organization", employeeId: null, organizationId },
+        })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.holderKind).toBe("organization")
+        expect(res.body.data.organization.id).toBe(organizationId)
+        expect(res.body.data.employee).toBeNull()
+
+        // Re-fetch independently to rule out any in-memory staleness in the update response itself.
+        const show = await request(app, `/api/asset-holder/${id}`, { headers: authHeaders })
+        expect(show.body.data.employee).toBeNull()
+        expect(show.body.data.organization.id).toBe(organizationId)
+    })
+
+    test("PUT /api/asset-holder/:id - rejects editing return data while still active", async () => {
+        const id = await assign()
+
+        const res = await request(app, `/api/asset-holder/${id}`, {
+            method: "PUT",
+            headers: authHeaders,
+            body: { returnedDate: "2026-06-21" },
+        })
+
+        expect(res.status).toBe(400)
+        expect(res.body.message).toContain("Return data")
+    })
+
+    test("PUT /api/asset-holder/:id - rejects assigning to an inactive employee", async () => {
+        const id = await assign()
+        const inactiveEmp = await request(app, "/api/employee", {
+            method: "POST",
+            headers: authHeaders,
+            body: { employeeId: "EMP-INACTIVE", name: "Retired", jobPosition: "N/A", email: "retired@test.com", phone: "081", isActive: false },
+        })
+
+        const res = await request(app, `/api/asset-holder/${id}`, {
+            method: "PUT",
+            headers: authHeaders,
+            body: { employeeId: inactiveEmp.body.data.id },
+        })
+
+        expect(res.status).toBe(400)
+        expect(res.body.message).toContain("inactive employee")
+    })
+
+    test("PUT /api/asset-holder/:id - rejects both employeeId and organizationId set", async () => {
+        const id = await assign()
+
+        const res = await request(app, `/api/asset-holder/${id}`, {
+            method: "PUT",
+            headers: authHeaders,
+            body: { employeeId, organizationId },
+        })
+
+        expect(res.status).toBe(422)
+    })
+
+    test("PUT /api/asset-holder/:id - after return, edits both assign and return data", async () => {
+        const id = await assign()
+        await request(app, `/api/asset-holder/${id}/return`, {
+            method: "POST",
+            headers: authHeaders,
+            body: { returnedDate: "2026-06-21", returnNote: "Original return note" },
+        })
+
+        const res = await request(app, `/api/asset-holder/${id}`, {
+            method: "PUT",
+            headers: authHeaders,
+            body: { assignNote: "Corrected assign note", returnedDate: "2026-06-22", returnNote: "Corrected return note" },
+        })
+
+        expect(res.status).toBe(200)
+        expect(res.body.data.assignNote).toBe("Corrected assign note")
+        expect(res.body.data.returnedDate).toBe("2026-06-22")
+        expect(res.body.data.returnNote).toBe("Corrected return note")
+    })
+
+    test("PUT /api/asset-holder/:id - returns 404 for a non-existent record", async () => {
+        const res = await request(app, "/api/asset-holder/999999", {
+            method: "PUT",
+            headers: authHeaders,
+            body: { assignNote: "x" },
+        })
+
+        expect(res.status).toBe(404)
+    })
+
+    test("DELETE /api/asset-holder/:id - deletes the record", async () => {
+        const id = await assign()
+
+        const res = await request(app, `/api/asset-holder/${id}`, { method: "DELETE", headers: authHeaders })
+        expect(res.status).toBe(200)
+
+        const show = await request(app, `/api/asset-holder/${id}`, { headers: authHeaders })
+        expect(show.status).toBe(404)
+    })
+
+    test("DELETE /api/asset-holder/:id - deleting the active holder frees the asset", async () => {
+        const id = await assign()
+        await request(app, `/api/asset-holder/${id}`, { method: "DELETE", headers: authHeaders })
+
+        const active = await request(app, `/api/asset-holder/active/${assetId}`, { headers: authHeaders })
+        expect(active.body.data).toBeNull()
+
+        // Asset should be assignable again
+        const reassign = await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, employeeId, assignedDate: "2026-06-23" },
+        })
+        expect(reassign.status).toBe(201)
+    })
+
+    test("DELETE /api/asset-holder/:id - returns 404 for a non-existent record", async () => {
+        const res = await request(app, "/api/asset-holder/999999", { method: "DELETE", headers: authHeaders })
+        expect(res.status).toBe(404)
     })
 })

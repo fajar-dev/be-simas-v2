@@ -4,6 +4,9 @@ import { AssetUtilService } from "./asset-util.service"
 import { AssetSerializer } from "./serializers/asset.serialize"
 import { ApiResponse } from "../../core/helpers/response"
 import { AssetFilter } from "./interfaces/asset.repository.interface"
+import { resolveFileUrl } from "../../core/helpers/serializer-utils"
+
+const MAX_OPTIONS_LIMIT = 50
 
 export class AssetController {
     constructor(
@@ -11,7 +14,7 @@ export class AssetController {
         private readonly utilService: AssetUtilService,
     ) {}
 
-        private parseFilters(c: Context): AssetFilter {
+    private parseFilters(c: Context): AssetFilter {
         const parseIds = (val: string | undefined) => val ? val.split(',').map(Number).filter(n => !isNaN(n)) : undefined
 
         const filters: AssetFilter = {}
@@ -34,6 +37,8 @@ export class AssetController {
         const bleTagStatus = c.req.query("bleTagStatus")
         if (bleTagStatus === 'has_ble_tag' || bleTagStatus === 'no_ble_tag') filters.bleTagStatus = bleTagStatus
         if (c.req.query("holderId")) filters.holderId = Number(c.req.query("holderId"))
+        const holderKind = c.req.query("holderKind")
+        if (holderKind === 'employee' || holderKind === 'organization') filters.holderKind = holderKind
         if (c.req.query("priceMin")) filters.priceMin = Number(c.req.query("priceMin"))
         if (c.req.query("priceMax")) filters.priceMax = Number(c.req.query("priceMax"))
         if (c.req.query("purchaseDateFrom")) filters.purchaseDateFrom = c.req.query("purchaseDateFrom")!
@@ -86,6 +91,24 @@ export class AssetController {
         const asset = await this.service.getById(id)
         const serialized = await AssetSerializer.single(asset)
         return ApiResponse.success(c, serialized, "Asset retrieved successfully")
+    }
+
+    /** Lightweight picker/select search — not the full paginated list, so it stays fast on very large asset tables. */
+    async options(c: Context) {
+        const q = c.req.query("q") || ""
+        const requestedLimit = Number(c.req.query("limit")) || 20
+        const limit = Math.min(Math.max(requestedLimit, 1), MAX_OPTIONS_LIMIT)
+
+        const assets = await this.service.searchOptions(q, limit)
+        const data = await Promise.all(
+            assets.map(async (asset) => ({
+                id: asset.id,
+                code: asset.code,
+                name: asset.name,
+                image: await resolveFileUrl(asset.image),
+            }))
+        )
+        return ApiResponse.success(c, data, "Asset options retrieved successfully")
     }
 
     async checkCode(c: Context) {

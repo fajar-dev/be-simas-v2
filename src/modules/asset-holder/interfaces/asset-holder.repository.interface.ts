@@ -9,9 +9,13 @@ export interface IAssetHolderRepository {
         sortBy?: string,
         order?: 'ASC' | 'DESC',
         assetId?: number,
-        employeeId?: number
+        employeeId?: number,
+        organizationId?: number
     ): Promise<{ data: AssetHolder[]; total: number }>
     findById(id: number): Promise<AssetHolder | null>
     findActiveByAssetId(assetId: number): Promise<AssetHolder | null>
+    findActiveByHandoverId(handoverId: number): Promise<AssetHolder[]>
     save(data: Partial<AssetHolder>, manager?: EntityManager): Promise<AssetHolder>
+    merge(entity: AssetHolder, data: Partial<AssetHolder>): AssetHolder
+    delete(id: number, manager?: EntityManager): Promise<void>
 }

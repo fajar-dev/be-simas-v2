@@ -8,7 +8,6 @@ export class AssetMaintenanceSerializer {
     static async single(maintenance: AssetMaintenance, attachments: Attachment[] = []) {
         return {
             id: maintenance.id,
-            assetId: maintenance.assetId,
             date: maintenance.date,
             note: maintenance.note,
             cost: Number(maintenance.cost ?? 0),

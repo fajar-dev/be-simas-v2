@@ -8,8 +8,7 @@ export class AssetHolderSerializer {
     static async single(log: AssetHolder, attachments: Attachment[] = []) {
         return {
             id: log.id,
-            assetId: log.assetId,
-            employeeId: log.employeeId,
+            holderKind: log.holderKind,
             assignedDate: log.assignedDate,
             returnedDate: log.returnedDate || null,
             assignNote: log.assignNote || null,
@@ -20,6 +19,7 @@ export class AssetHolderSerializer {
                 id: log.asset.id,
                 name: log.asset.name,
                 code: log.asset.code,
+                image: await resolveFileUrl(log.asset.image),
             } : null,
             employee: log.employee ? {
                 id: log.employee.id,
@@ -30,6 +30,11 @@ export class AssetHolderSerializer {
                 phone: log.employee.phone,
                 photo: await resolveFileUrl(log.employee.photo),
             } : null,
+            organization: log.organization ? {
+                id: log.organization.id,
+                name: log.organization.name,
+                type: log.organization.type,
+            } : null,
             createdBy: log.createdBy ? {
                 id: log.createdBy.id,
                 name: log.createdBy.name,
@@ -39,6 +44,20 @@ export class AssetHolderSerializer {
                 id: log.returnedBy.id,
                 name: log.returnedBy.name,
                 photo: await resolveFileUrl(log.returnedBy.photo),
+            } : null,
+            assignHandover: log.assignHandover ? {
+                id: log.assignHandover.id,
+                status: log.assignHandover.status,
+                transactionType: log.assignHandover.transactionType,
+                note: log.assignHandover.note || null,
+                createdAt: log.assignHandover.createdAt,
+            } : null,
+            returnHandover: log.returnHandover ? {
+                id: log.returnHandover.id,
+                status: log.returnHandover.status,
+                transactionType: log.returnHandover.transactionType,
+                note: log.returnHandover.note || null,
+                createdAt: log.returnHandover.createdAt,
             } : null,
             attachments: await AttachmentSerializer.collection(attachments),
         }

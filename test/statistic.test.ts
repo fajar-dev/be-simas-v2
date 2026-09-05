@@ -203,7 +203,8 @@ describe("GET /api/statistic/assets-by-category", () => {
 
         expect(status).toBe(200)
         expect(body.data.length).toBeGreaterThan(0)
-        const item = body.data[0]
+        const item = body.data.find((d: any) => d.id === catRes.body.data.id)
+        expect(item).toBeDefined()
         expect(typeof item.name).toBe("string")
         expect(typeof item.count).toBe("number")
         expect(typeof item.totalPrice).toBe("number")
@@ -265,7 +266,8 @@ describe("GET /api/statistic/assets-by-location", () => {
 
         expect(status).toBe(200)
         expect(body.data.length).toBeGreaterThan(0)
-        const item = body.data[0]
+        const item = body.data.find((d: any) => d.id === locRes.body.data.id)
+        expect(item).toBeDefined()
         expect(typeof item.name).toBe("string")
         expect(typeof item.count).toBe("number")
         expect(typeof item.totalPrice).toBe("number")
@@ -327,7 +329,8 @@ describe("GET /api/statistic/assets-by-sub-category", () => {
 
         expect(status).toBe(200)
         expect(body.data.length).toBeGreaterThan(0)
-        const item = body.data[0]
+        const item = body.data.find((d: any) => d.id === subCatRes.body.data.id)
+        expect(item).toBeDefined()
         expect(typeof item.name).toBe("string")
         expect(typeof item.count).toBe("number")
         expect(typeof item.totalPrice).toBe("number")

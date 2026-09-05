@@ -16,6 +16,37 @@ export function createUserData(overrides: Record<string, any> = {}) {
     }
 }
 
+// ── Asset Handover Test Data ────────────────────────────────────────────────
+
+export function createHandoverData(
+    items: { assetId: number; note?: string }[],
+    receivedById: number,
+    overrides: Record<string, any> = {}
+) {
+    return {
+        receivedById,
+        handedOverById: receivedById,
+        location: "HQ Jakarta",
+        transactionType: "assign",
+        note: "Operational use",
+        items,
+        ...overrides,
+    }
+}
+
+// ── Asset Schedule Test Data ────────────────────────────────────────────────
+
+export function createAssetScheduleData(assetIds: number[], overrides: Record<string, any> = {}) {
+    return {
+        assetIds,
+        title: "Maintenance check",
+        description: "Routine servicing",
+        startDate: "2026-08-10",
+        recurrence: "none",
+        ...overrides,
+    }
+}
+
 // ── Response Assertions ─────────────────────────────────────────────────────
 
 export function expectSuccess(body: any, statusCode: number = 200) {

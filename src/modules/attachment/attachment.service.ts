@@ -52,6 +52,41 @@ export class AttachmentService {
         await this.repository.delete(id, manager)
     }
 
+    /**
+     * Create an attachment record that points to an external URL (e.g. a signed
+     * document served by the e-sign provider). No MinIO upload is performed.
+     */
+    async createExternal(
+        params: {
+            url: string
+            originalName: string
+            mimeType?: string
+            size?: number
+            entityType?: string
+            entityId?: number
+        },
+        manager?: EntityManager
+    ): Promise<Attachment> {
+        return await this.repository.save(
+            {
+                originalName: params.originalName,
+                filename: params.url,
+                mimeType: params.mimeType ?? "application/pdf",
+                size: params.size ?? 0,
+                entityType: params.entityType,
+                entityId: params.entityId,
+            },
+            manager
+        )
+    }
+
+    /** Replace the stored filename/path of an attachment (e.g. swap for a signed-document URL). */
+    async updateFilename(id: number, filename: string, manager?: EntityManager): Promise<Attachment> {
+        const attachment = await this.getById(id)
+        attachment.filename = filename
+        return await this.repository.save(attachment, manager)
+    }
+
     async associate(ids: number[], entityType: string, entityId: number, manager?: EntityManager): Promise<void> {
         if (!ids || ids.length === 0) return
 

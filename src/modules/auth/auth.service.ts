@@ -85,6 +85,31 @@ export class AuthService {
         return { user, accessToken, refreshToken }
     }
 
+
+    async nusaworklogin(data: LoginValidator) {
+        const user = await this.userService.getByEmailWithPassword(data.email)
+        if (!user) {
+            throw new UnauthorizedException("User not registered")
+        }
+
+        if (!user.isActive) {
+            throw new UnauthorizedException("Account is inactive")
+        }
+
+        if (!user.password) {
+            throw new UnauthorizedException("Invalid credentials")
+        }
+
+        const isValid = await comparePassword(data.password, user.password)
+        if (!isValid) {
+            throw new UnauthorizedException("Invalid credentials")
+        }
+
+        const { accessToken, refreshToken } = await AuthHelper.generateTokens(user)
+        // Biarkan controller+serializer yang strip sensitive data
+        return { user, accessToken, refreshToken }
+    }
+
     async refreshToken(data: RefreshTokenValidator) {
         try {
             const decoded = await verify(data.refreshToken, config.app.jwtRefreshSecret, "HS256") as { sub: number }

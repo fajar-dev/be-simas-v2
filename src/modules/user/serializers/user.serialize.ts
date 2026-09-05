@@ -11,7 +11,6 @@ export class UserSerializer {
             email: user.email,
             isActive: Boolean(user.isActive),
             role: user.role ? { id: user.role.id, name: user.role.name } : null,
-            roleId: user.roleId || null,
             employee: user.employee ? {
                 id: user.employee.id,
                 name: user.employee.name,
@@ -19,7 +18,6 @@ export class UserSerializer {
                 jobPosition: user.employee.jobPosition,
                 photo: await resolveFileUrl(user.employee.photo),
             } : null,
-            employeeId: user.employeeId || null,
             createdAt: user.createdAt,
             updatedAt: user.updatedAt
         }
