@@ -336,6 +336,7 @@ export class HandoverService {
     private async applyAssign(handover: Handover): Promise<AssetHolder[]> {
         const items = handover.items || []
         const createdHolders: AssetHolder[] = []
+        const assignedDate = new Date().toISOString()
 
         await withTransaction(async (manager) => {
             for (const item of items) {
@@ -350,7 +351,7 @@ export class HandoverService {
                     holderKind: "employee",
                     employeeId: handover.receivedById,
                     assignHandoverId: handover.id,
-                    assignedDate: new Date().toISOString(),
+                    assignedDate,
                     assignNote: item.note ?? null,
                     createdByUserId: handover.createdByUserId ?? null,
                 }, manager)
@@ -366,6 +367,16 @@ export class HandoverService {
                 }, manager)
             }
         })
+
+        // Notify Nusawork once the transaction has actually committed.
+        if (handover.receivedBy) {
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i]
+                if (item.asset) {
+                    await this.assetHolderService.notifyNusaworkAssignment(handover.receivedBy, item.asset.code, item.asset.name, assignedDate, item.note, createdHolders[i].id)
+                }
+            }
+        }
 
         return createdHolders
     }
@@ -402,6 +413,13 @@ export class HandoverService {
                 }, manager)
             }
         })
+
+        // Notify Nusawork once the transaction has actually committed.
+        if (handover.handedOverBy) {
+            for (const holder of returnedHolders) {
+                await this.assetHolderService.notifyNusaworkReturn(handover.handedOverBy, holder.id, holder.returnedDate!, holder.returnNote)
+            }
+        }
 
         return returnedHolders
     }

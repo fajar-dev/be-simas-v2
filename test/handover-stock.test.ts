@@ -28,6 +28,15 @@ mock.module("../src/core/helpers/esign", () => {
     return { esignHelper: helper, EsignHelper: class {}, default: helper }
 })
 
+// ── Mock Nusawork Helper to prevent real connections ────────────────────────
+mock.module("../src/core/helpers/nusawork", () => ({
+    nusaworkHelper: {
+        createAssetSync: async () => ({ success: true }),
+        getAssetSyncGroups: async () => [],
+        returnAssetSync: async () => ({ success: true }),
+    },
+}))
+
 let app: Hono
 let authHeaders: Record<string, string>
 let branchA: number

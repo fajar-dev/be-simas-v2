@@ -23,6 +23,15 @@ mock.module("../src/core/helpers/minio", () => {
     return { minio: helper, default: helper }
 })
 
+// ── Mock Nusawork Helper to prevent real connections ────────────────────────
+mock.module("../src/core/helpers/nusawork", () => ({
+    nusaworkHelper: {
+        createAssetSync: async () => ({ success: true }),
+        getAssetSyncGroups: async () => [],
+        returnAssetSync: async () => ({ success: true }),
+    },
+}))
+
 // GET /book/loan is protected by the API key middleware (x-api-key), not bearer auth.
 // In tests, config falls back to the dev key when API_KEY env is empty.
 const apiKeyHeaders = { "x-api-key": "dev-api-key-change-me" }

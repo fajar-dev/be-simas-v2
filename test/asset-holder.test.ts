@@ -21,6 +21,27 @@ mock.module("../src/core/helpers/minio", () => {
     return { minio: helper, default: helper }
 })
 
+// ── Mock Nusawork Helper to prevent real connections and record sync calls ──
+export const nusaworkSyncCalls: any[] = []
+export const nusaworkReturnCalls: any[] = []
+export let nusaworkSyncShouldFail = false
+export let nusaworkGroupsResponse: { id_group: number; items: { key: string; input: { value: string } }[] }[] = []
+mock.module("../src/core/helpers/nusawork", () => ({
+    nusaworkHelper: {
+        createAssetSync: async (payload: any) => {
+            nusaworkSyncCalls.push(payload)
+            if (nusaworkSyncShouldFail) throw new Error("Nusawork unavailable")
+            return { success: true }
+        },
+        getAssetSyncGroups: async () => nusaworkGroupsResponse,
+        returnAssetSync: async (payload: any) => {
+            nusaworkReturnCalls.push(payload)
+            if (nusaworkSyncShouldFail) throw new Error("Nusawork unavailable")
+            return { success: true }
+        },
+    },
+}))
+
 let app: Hono
 let authHeaders: Record<string, string>
 let assetId: number
@@ -38,6 +59,10 @@ afterAll(async () => {
 
 beforeEach(async () => {
     await cleanTestDatabase()
+    nusaworkSyncCalls.length = 0
+    nusaworkReturnCalls.length = 0
+    nusaworkSyncShouldFail = false
+    nusaworkGroupsResponse = []
     const login = await registerAndLogin(app)
     authHeaders = login.headers
 
@@ -109,6 +134,33 @@ describe("Asset Holder API Tests", () => {
         expect(res.body.data.asset.name).toBe("Dell Precision")
         expect(res.body.data.employee.name).toBe("Alice Assignment")
         expect(res.body.data.createdBy.name).toBe("Test User")
+
+        // Assigning to an employee notifies Nusawork.
+        expect(nusaworkSyncCalls.length).toBe(1)
+        expect(nusaworkSyncCalls[0]).toEqual({
+            employee_id: "EMP-777",
+            fields: {
+                asset_code: "AST-H01",
+                asset_name: "Dell Precision",
+                assign_date: "2026-06-19 00:00:00",
+                assign_note: "Given to Alice",
+                id_holder: res.body.data.id,
+            },
+        })
+    })
+
+    test("POST /api/asset-holder - assignment still succeeds when Nusawork sync fails", async () => {
+        nusaworkSyncShouldFail = true
+
+        const res = await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, employeeId, assignedDate: "2026-06-19" },
+        })
+
+        expect(res.status).toBe(201)
+        expect(res.body.success).toBe(true)
+        expect(nusaworkSyncCalls.length).toBe(1) // it was attempted, just failed
     })
 
     test("POST /api/asset-holder - prevent double assignment", async () => {
@@ -160,6 +212,78 @@ describe("Asset Holder API Tests", () => {
             body: { assetId, employeeId, assignedDate: "2026-06-22" },
         })
         expect(reassignRes.status).toBe(201)
+    })
+
+    test("POST /api/asset-holder/:id/return - notifies Nusawork using the id_group matching this holder", async () => {
+        const assignRes = await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, employeeId, assignedDate: "2026-06-19" },
+        })
+        const logId = assignRes.body.data.id
+        nusaworkSyncCalls.length = 0 // discard the assign-time call
+
+        // Simulate Nusawork's note-group listing containing this holder's id.
+        nusaworkGroupsResponse = [
+            { id_group: 1111, items: [{ key: "id_holder", input: { value: "999999" } }] },
+            { id_group: 2877, items: [{ key: "id_holder", input: { value: String(logId) } }] },
+        ]
+
+        const returnRes = await request(app, `/api/asset-holder/${logId}/return`, {
+            method: "POST",
+            headers: authHeaders,
+            body: { returnedDate: "2026-08-20 12:00:00", returnNote: "mantap" },
+        })
+
+        expect(returnRes.status).toBe(200)
+        expect(nusaworkReturnCalls.length).toBe(1)
+        expect(nusaworkReturnCalls[0]).toEqual({
+            employee_id: "EMP-777",
+            id_group: 2877,
+            fields: {
+                return_date: "2026-08-20 12:00:00",
+                return_note: "mantap",
+            },
+        })
+    })
+
+    test("POST /api/asset-holder/:id/return - return still succeeds when no matching Nusawork group is found", async () => {
+        const assignRes = await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, employeeId, assignedDate: "2026-06-19" },
+        })
+        const logId = assignRes.body.data.id
+        nusaworkGroupsResponse = [] // nothing matches
+
+        const returnRes = await request(app, `/api/asset-holder/${logId}/return`, {
+            method: "POST",
+            headers: authHeaders,
+            body: { returnedDate: "2026-06-21" },
+        })
+
+        expect(returnRes.status).toBe(200)
+        expect(nusaworkReturnCalls.length).toBe(0)
+    })
+
+    test("POST /api/asset-holder/:id/return - return still succeeds when Nusawork sync fails", async () => {
+        const assignRes = await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, employeeId, assignedDate: "2026-06-19" },
+        })
+        const logId = assignRes.body.data.id
+        nusaworkGroupsResponse = [{ id_group: 2877, items: [{ key: "id_holder", input: { value: String(logId) } }] }]
+        nusaworkSyncShouldFail = true
+
+        const returnRes = await request(app, `/api/asset-holder/${logId}/return`, {
+            method: "POST",
+            headers: authHeaders,
+            body: { returnedDate: "2026-06-21" },
+        })
+
+        expect(returnRes.status).toBe(200)
+        expect(nusaworkReturnCalls.length).toBe(1)
     })
 
     test("POST /api/asset-holder/:id/return - prevent double return", async () => {
@@ -267,6 +391,9 @@ describe("Asset Holder API Tests - organization holder", () => {
         expect(res.body.data.organization.id).toBe(organizationId)
         expect(res.body.data.organization.name).toBe("Networking Dept")
         expect(res.body.data.employee).toBeNull()
+
+        // Organization holders never trigger a Nusawork employee sync.
+        expect(nusaworkSyncCalls.length).toBe(0)
     })
 
     test("POST /api/asset-holder - prevent double assignment to organization", async () => {
@@ -302,6 +429,9 @@ describe("Asset Holder API Tests - organization holder", () => {
 
         expect(returnRes.status).toBe(200)
         expect(returnRes.body.data.returnedDate).toBe("2026-06-21")
+
+        // Organization holders never trigger a Nusawork employee sync.
+        expect(nusaworkReturnCalls.length).toBe(0)
 
         // Asset should be free to assign again
         const reassignRes = await request(app, "/api/asset-holder", {

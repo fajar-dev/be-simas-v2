@@ -13,6 +13,8 @@ import { Asset } from "../asset/entities/asset.entity"
 import { HandoverItem } from "../handover/entities/handover-item.entity"
 import { AssetStatus } from "../asset-status/entities/asset-status.entity"
 import type { AssetHolderKind } from "../../core/enums"
+import type { Employee } from "../employee/entities/employee.entity"
+import { nusaworkHelper } from "../../core/helpers/nusawork"
 
 export class AssetHolderService {
     constructor(
@@ -71,8 +73,9 @@ export class AssetHolderService {
 
         // Validate the holder exists and is active.
         let holderName: string
+        let employee: Employee | null = null
         if (data.holderKind === "employee") {
-            const employee = await this.employeeService.getById(data.employeeId!)
+            employee = await this.employeeService.getById(data.employeeId!)
             if (!employee.isActive) {
                 throw new BadRequestException("Cannot assign asset to inactive employee")
             }
@@ -127,8 +130,6 @@ export class AssetHolderService {
                 await this.attachmentService.associate(data.attachmentIds, "AssetHolder", log.id, manager)
             }
 
-
-
             // Log Asset assignment
             await assetLogService.log({
                 assetId: data.assetId!,
@@ -142,10 +143,96 @@ export class AssetHolderService {
             return log
         })
 
+        // Notify Nusawork regardless of which flow reached this method (direct
+        // assign, book borrow — book.service.ts also calls create()).
+        if (employee) {
+            await this.notifyNusaworkAssignment(employee, assetExists.code, assetExists.name, data.assignedDate!, data.assignNote, log.id)
+        }
+
         // Reload and return
         const reloaded = await this.repository.findById(log.id)
         if (!reloaded) throw new NotFoundException("Created assignment could not be loaded")
         return reloaded
+    }
+
+    /**
+     * Best-effort notification to Nusawork whenever an asset is assigned to an
+     * employee, no matter which flow created the assignment (direct assign,
+     * book borrow, initial holder at asset creation, or an approved handover).
+     * Never throws — a Nusawork outage must not block the actual assignment.
+     */
+    async notifyNusaworkAssignment(employee: Employee, assetCode: string, assetName: string, assignedDate: string, note: string | null | undefined, holderId: number): Promise<void> {
+        const formattedAssignDate = this.formatNusaworkDateTime(assignedDate)
+        try {
+            await nusaworkHelper.createAssetSync({
+                employee_id: employee.employeeId,
+                fields: {
+                    asset_code: assetCode,
+                    asset_name: assetName,
+                    assign_date: formattedAssignDate,
+                    assign_note: note || undefined,
+                    id_holder: holderId,
+                },
+            })
+        } catch (err) {
+            console.error(`[AssetHolderService] Failed to sync asset assignment to Nusawork (employee ${employee.employeeId}, asset ${assetCode}):`, err)
+        }
+    }
+
+    /**
+     * Best-effort notification to Nusawork whenever an asset is returned by an
+     * employee, no matter which flow closed out the assignment (direct return,
+     * book return, or an approved return handover). Never throws.
+     *
+     * Nusawork's return endpoint needs the `id_group` of the note record that
+     * was created at assign time — it isn't something we store locally, so we
+     * look it up by scanning the employee's note groups for the one whose
+     * `id_holder` item matches this AssetHolder's id. The note created at
+     * assign time can take a moment to become visible on Nusawork's read side,
+     * so the lookup is retried a few times before giving up.
+     */
+    async notifyNusaworkReturn(employee: Employee, holderId: number, returnedDate: string, note?: string | null): Promise<void> {
+        try {
+            const findGroup = (groups: { id_group: number; items: { key: string; input: { value: string } }[] }[]) =>
+                groups.find((g) => g.items?.some((item) => item.key === "id_holder" && item.input?.value === String(holderId)))
+
+            let groups = await nusaworkHelper.getAssetSyncGroups(employee.employeeId)
+            let group = findGroup(groups)
+            const maxAttempts = 3
+            for (let attempt = 2; attempt <= maxAttempts && !group; attempt++) {
+                await new Promise((resolve) => setTimeout(resolve, 1000))
+                groups = await nusaworkHelper.getAssetSyncGroups(employee.employeeId)
+                group = findGroup(groups)
+            }
+
+            if (!group) {
+                const seenHolderIds = groups.flatMap((g) => g.items?.filter((item) => item.key === "id_holder").map((item) => item.input?.value) ?? [])
+                console.error(`[AssetHolderService] Could not find Nusawork note group for holder ${holderId} (employee ${employee.employeeId}) after ${maxAttempts} attempts; skipping return sync. Seen id_holder values: [${seenHolderIds.join(", ")}]`)
+                return
+            }
+
+            await nusaworkHelper.returnAssetSync({
+                employee_id: employee.employeeId,
+                id_group: group.id_group,
+                fields: {
+                    return_date: this.formatNusaworkDateTime(returnedDate),
+                    return_note: note || undefined,
+                },
+            })
+        } catch (err) {
+            console.error(`[AssetHolderService] Failed to sync asset return to Nusawork (employee ${employee.employeeId}, holder ${holderId}):`, err)
+        }
+    }
+
+    /** Nusawork expects date fields as a full "YYYY-MM-DD HH:mm:ss" datetime, not a bare date. */
+    private formatNusaworkDateTime(input: string): string {
+        const dateOnlyMatch = input.match(/^(\d{4}-\d{2}-\d{2})$/)
+        if (dateOnlyMatch) {
+            return `${dateOnlyMatch[1]} 00:00:00`
+        }
+        const date = new Date(input)
+        const pad = (n: number) => String(n).padStart(2, "0")
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
     }
 
     async returnAsset(
@@ -180,6 +267,12 @@ export class AssetHolderService {
                 newValue: data,
             }, manager)
         })
+
+        // Notify Nusawork regardless of which flow reached this method (direct
+        // return, book return — book.service.ts also calls returnAsset()).
+        if (log.holderKind === "employee" && log.employee) {
+            await this.notifyNusaworkReturn(log.employee, log.id, data.returnedDate, data.returnNote)
+        }
 
         // Reload and return
         const reloaded = await this.repository.findById(log.id)

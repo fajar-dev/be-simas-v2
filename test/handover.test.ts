@@ -30,6 +30,18 @@ mock.module("../src/core/helpers/esign", () => {
     return { esignHelper: helper, EsignHelper: class {}, default: helper }
 })
 
+// ── Mock Nusawork Helper to prevent real connections and record sync calls ──
+export const nusaworkSyncCalls: any[] = []
+export const nusaworkReturnCalls: any[] = []
+export let nusaworkGroupsResponse: { id_group: number; items: { key: string; input: { value: string } }[] }[] = []
+mock.module("../src/core/helpers/nusawork", () => ({
+    nusaworkHelper: {
+        createAssetSync: async (payload: any) => { nusaworkSyncCalls.push(payload); return { success: true } },
+        getAssetSyncGroups: async () => nusaworkGroupsResponse,
+        returnAssetSync: async (payload: any) => { nusaworkReturnCalls.push(payload); return { success: true } },
+    },
+}))
+
 let app: Hono
 let authHeaders: Record<string, string>
 let employeeId: number
@@ -57,6 +69,9 @@ afterAll(async () => {
 
 beforeEach(async () => {
     await cleanTestDatabase()
+    nusaworkSyncCalls.length = 0
+    nusaworkReturnCalls.length = 0
+    nusaworkGroupsResponse = []
     const login = await registerAndLogin(app)
     authHeaders = login.headers
 
@@ -333,6 +348,11 @@ describe("Asset Handover API", () => {
         const holder2 = await request(app, `/api/asset-holder/active/${assetId2}`, { headers: authHeaders })
         expect(holder2.body.data.employee.id).toBe(employeeId)
         expect(holder2.body.data.attachments.some((a: any) => a.url === SIGNED_URL)).toBe(true)
+
+        // Nusawork is notified once per assigned item, all to the receiving employee.
+        expect(nusaworkSyncCalls.length).toBe(2)
+        expect(nusaworkSyncCalls.every((c: any) => c.employee_id === "EMP-001")).toBe(true)
+        expect(nusaworkSyncCalls.map((c: any) => c.fields.asset_code).sort()).toEqual(["AST-HO01", "AST-HO02"])
     })
 
     test("POST /api/webhook/esign - COMPLETED fails when handover not pending", async () => {
@@ -498,6 +518,9 @@ describe("Asset Handover API", () => {
 
     test("POST /api/webhook/esign - approving a return handover releases the holder", async () => {
         await assignToAlice([assetId])
+        const holderBefore = await request(app, `/api/asset-holder/active/${assetId}`, { headers: authHeaders })
+        nusaworkGroupsResponse = [{ id_group: 3001, items: [{ key: "id_holder", input: { value: String(holderBefore.body.data.id) } }] }]
+
         const ret = await request(app, "/api/handover", { method: "POST", headers: authHeaders, body: returnPayload([assetId]) })
         const retId = ret.body.data.id
 
@@ -508,6 +531,11 @@ describe("Asset Handover API", () => {
         // Asset is now free (no active holder).
         const holder = await request(app, `/api/asset-holder/active/${assetId}`, { headers: authHeaders })
         expect(holder.body.data).toBeNull()
+
+        // The returning employee (handedOverBy = Alice) is notified to Nusawork.
+        expect(nusaworkReturnCalls.length).toBe(1)
+        expect(nusaworkReturnCalls[0].employee_id).toBe("EMP-001")
+        expect(nusaworkReturnCalls[0].id_group).toBe(3001)
     })
 
     test("POST /api/handover - partial return (assign 2, return 1)", async () => {
