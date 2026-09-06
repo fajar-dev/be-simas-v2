@@ -87,6 +87,64 @@ export class NusaworkHelper {
             return false
         }
     }
+
+    async createAssetSync(payload: {
+        employee_id: string
+        fields: {
+            asset_code: string
+            asset_name: string
+            assign_date: string
+            assign_note?: string
+            id_holder: number
+        }
+    }): Promise<any> {
+        const token = await this.getToken()
+        const res = await this.http.post<any>('/emp/api/client/v4/note/web/202/employee', payload, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            validateStatus: () => true,
+        })
+        return res.data
+    }
+
+    /** Fetches the employee's existing asset-note groups/items — used to locate the `id_group` matching a given `id_holder` before submitting a return. Same note-type id (202) as `createAssetSync`/`returnAssetSync`. */
+    async getAssetSyncGroups(employeeId: string): Promise<{ id_group: number; items: { key: string; input: { value: string } }[] }[]> {
+        const token = await this.getToken()
+        const res = await this.http.get<any>('/emp/api/client/v4/note/web/202/employee', {
+            params: { employee_id: employeeId },
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            validateStatus: () => true,
+        })
+        if (!Array.isArray(res.data?.data)) {
+            console.error(`[NusaworkHelper] Unexpected response fetching note groups for employee ${employeeId} (status ${res.status}):`, JSON.stringify(res.data))
+            return []
+        }
+        return res.data.data
+    }
+
+    async returnAssetSync(payload: {
+        employee_id: string
+        id_group: number
+        fields: {
+            return_date: string
+            return_note?: string
+        }
+    }): Promise<any> {
+        const token = await this.getToken()
+        const res = await this.http.put<any>('/emp/api/client/v4/note/web/202/employee', payload, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            validateStatus: () => true,
+        })
+        return res.data
+    }
 }
 
 export const nusaworkHelper = new NusaworkHelper()

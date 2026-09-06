@@ -48,6 +48,16 @@ mock.module("../src/core/helpers/minio", () => {
     return { minio: helper, default: helper }
 })
 
+// ── Mock Nusawork Helper to prevent real connections and record sync calls ──
+export const nusaworkSyncCalls: any[] = []
+mock.module("../src/core/helpers/nusawork", () => ({
+    nusaworkHelper: {
+        createAssetSync: async (payload: any) => { nusaworkSyncCalls.push(payload); return { success: true } },
+        getAssetSyncGroups: async () => [],
+        returnAssetSync: async () => ({ success: true }),
+    },
+}))
+
 // ── Setup ───────────────────────────────────────────────────────────────────
 
 let app: Hono
@@ -64,6 +74,7 @@ afterAll(async () => {
 beforeEach(async () => {
     await cleanTestDatabase()
     resetCounters()
+    nusaworkSyncCalls.length = 0
 })
 
 // ── Test Data Helper ────────────────────────────────────────────────────────
@@ -947,6 +958,34 @@ describe("Asset - organization holder", () => {
         expect(res.body.data.activeHolder.organization.id).toBe(org.body.data.id)
         expect(res.body.data.activeHolder.organization.name).toBe("Shared Equipment Dept")
         expect(res.body.data.activeHolder.employee).toBeNull()
+
+        // Organization holders never trigger a Nusawork employee sync.
+        expect(nusaworkSyncCalls.length).toBe(0)
+    })
+
+    test("creates an asset with an inline employee holder notifies Nusawork", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+        const emp = await request(app, "/api/employee", { method: "POST", headers, body: { employeeId: "EMP-NW-01", name: "Nusa Worker", jobPosition: "Staff", email: "nw01@test.com", phone: "081" } })
+
+        const res = await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, { code: "AST-NW-01", name: "Company Laptop", employeeId: emp.body.data.id, assignedDate: "2026-01-01" }),
+        })
+
+        expect(res.status).toBe(201)
+        expect(nusaworkSyncCalls.length).toBe(1)
+        expect(nusaworkSyncCalls[0]).toEqual({
+            employee_id: "EMP-NW-01",
+            fields: {
+                asset_code: "AST-NW-01",
+                asset_name: "Company Laptop",
+                assign_date: "2026-01-01 00:00:00",
+                assign_note: undefined,
+                id_holder: res.body.data.activeHolder.id,
+            },
+        })
     })
 
     test("rejects an asset creation payload with both employeeId and organizationId", async () => {

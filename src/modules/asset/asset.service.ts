@@ -15,6 +15,7 @@ import { AssetHolderService } from "../asset-holder/asset-holder.service"
 import { AssetLocationService } from "../asset-location/asset-location.service"
 import { AssetStatusService } from "../asset-status/asset-status.service"
 import { EmployeeService } from "../employee/employee.service"
+import type { Employee } from "../employee/entities/employee.entity"
 import { OrganizationService } from "../organization/organization.service"
 import { LocationService } from "../location/location.service"
 
@@ -109,8 +110,9 @@ export class AssetService {
 
         // Validate the initial holder before starting the transaction
         let holderName: string | null = null
+        let employeeExists: Employee | null = null
         if (employeeId) {
-            const employeeExists = await this.employeeService.getById(employeeId)
+            employeeExists = await this.employeeService.getById(employeeId)
             if (!employeeExists.isActive) {
                 throw new BadRequestException("Cannot assign asset to inactive employee")
             }
@@ -128,6 +130,10 @@ export class AssetService {
         if (locationId) {
             locationExists = await this.locationService.getById(locationId)
         }
+
+        const resolvedAssignedDate = assignedDate || new Date().toISOString().split('T')[0]
+
+        let holderId: number | undefined
 
         try {
             const asset = await withTransaction(async (manager) => {
@@ -151,10 +157,11 @@ export class AssetService {
                         holderKind,
                         employeeId: employeeId || null,
                         organizationId: organizationId || null,
-                        assignedDate: assignedDate || new Date().toISOString().split('T')[0],
+                        assignedDate: resolvedAssignedDate,
                         assignNote: assignNote || null,
                         createdByUserId: assetData.createdByUserId,
                     }, manager)
+                    holderId = log.id
 
                     if (assignAttachmentIds && assignAttachmentIds.length > 0) {
                         await attachmentService.associate(assignAttachmentIds, "AssetHolder", log.id, manager)
@@ -224,6 +231,10 @@ export class AssetService {
 
                 return asset
             })
+
+            if (employeeExists && holderId) {
+                await this.assetHolderService.notifyNusaworkAssignment(employeeExists, asset.code, asset.name, resolvedAssignedDate, assignNote, holderId)
+            }
 
             // Fetch the fully loaded asset (with category, branch, etc.)
             return await this.getById(asset.id)
