@@ -145,6 +145,44 @@ export class NusaworkHelper {
         })
         return res.data
     }
+
+    /** Re-submits every field of an existing note — used when the asset itself is edited (code/name) so historical Nusawork notes don't go stale. */
+    async updateAssetSync(payload: {
+        employee_id: string
+        id_group: number
+        fields: {
+            asset_code: string
+            asset_name: string
+            assign_date: string
+            assign_note?: string
+            return_date?: string
+            return_note?: string
+        }
+    }): Promise<any> {
+        const token = await this.getToken()
+        const res = await this.http.put<any>('/emp/api/client/v4/note/web/202/employee', payload, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            validateStatus: () => true,
+        })
+        return res.data
+    }
+
+    /** Deletes a note entirely — used when the underlying AssetHolder record itself is deleted. */
+    async deleteAssetSync(payload: { employee_id: string; id_group: number }): Promise<any> {
+        const token = await this.getToken()
+        const res = await this.http.delete<any>('/emp/api/client/v4/note/web/202/employee', {
+            params: { employee_id: payload.employee_id, id_group: payload.id_group },
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            validateStatus: () => true,
+        })
+        return res.data
+    }
 }
 
 export const nusaworkHelper = new NusaworkHelper()

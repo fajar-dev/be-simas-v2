@@ -104,6 +104,13 @@ export class AssetHolderRepository implements IAssetHolderRepository {
         })
     }
 
+    async findEmployeeHeldByAssetId(assetId: number): Promise<AssetHolder[]> {
+        return await this.repository.find({
+            where: { assetId, holderKind: "employee" },
+            relations: ["asset", "employee"],
+        })
+    }
+
     async save(data: Partial<AssetHolder>, manager?: EntityManager): Promise<AssetHolder> {
         const repo = manager ? manager.getRepository(AssetHolder) : this.repository
         return await repo.save(data)

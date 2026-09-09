@@ -24,6 +24,8 @@ mock.module("../src/core/helpers/minio", () => {
 // ── Mock Nusawork Helper to prevent real connections and record sync calls ──
 export const nusaworkSyncCalls: any[] = []
 export const nusaworkReturnCalls: any[] = []
+export const nusaworkUpdateCalls: any[] = []
+export const nusaworkDeleteCalls: any[] = []
 export let nusaworkSyncShouldFail = false
 export let nusaworkGroupsResponse: { id_group: number; items: { key: string; input: { value: string } }[] }[] = []
 mock.module("../src/core/helpers/nusawork", () => ({
@@ -36,6 +38,16 @@ mock.module("../src/core/helpers/nusawork", () => ({
         getAssetSyncGroups: async () => nusaworkGroupsResponse,
         returnAssetSync: async (payload: any) => {
             nusaworkReturnCalls.push(payload)
+            if (nusaworkSyncShouldFail) throw new Error("Nusawork unavailable")
+            return { success: true }
+        },
+        updateAssetSync: async (payload: any) => {
+            nusaworkUpdateCalls.push(payload)
+            if (nusaworkSyncShouldFail) throw new Error("Nusawork unavailable")
+            return { success: true }
+        },
+        deleteAssetSync: async (payload: any) => {
+            nusaworkDeleteCalls.push(payload)
             if (nusaworkSyncShouldFail) throw new Error("Nusawork unavailable")
             return { success: true }
         },
@@ -61,6 +73,8 @@ beforeEach(async () => {
     await cleanTestDatabase()
     nusaworkSyncCalls.length = 0
     nusaworkReturnCalls.length = 0
+    nusaworkUpdateCalls.length = 0
+    nusaworkDeleteCalls.length = 0
     nusaworkSyncShouldFail = false
     nusaworkGroupsResponse = []
     const login = await registerAndLogin(app)
@@ -505,6 +519,7 @@ describe("Asset Holder API Tests - update & delete", () => {
 
     test("PUT /api/asset-holder/:id - edits assign data while still active", async () => {
         const id = await assign()
+        nusaworkGroupsResponse = [{ id_group: 4001, items: [{ key: "id_holder", input: { value: String(id) } }] }]
 
         const res = await request(app, `/api/asset-holder/${id}`, {
             method: "PUT",
@@ -515,6 +530,21 @@ describe("Asset Holder API Tests - update & delete", () => {
         expect(res.status).toBe(200)
         expect(res.body.data.assignedDate).toBe("2026-06-20")
         expect(res.body.data.assignNote).toBe("Corrected note")
+
+        // Editing an active employee holder re-syncs its Nusawork note.
+        expect(nusaworkUpdateCalls.length).toBe(1)
+        expect(nusaworkUpdateCalls[0]).toEqual({
+            employee_id: "EMP-777",
+            id_group: 4001,
+            fields: {
+                asset_code: "AST-H01",
+                asset_name: "Dell Precision",
+                assign_date: "2026-06-20 00:00:00",
+                assign_note: "Corrected note",
+                return_date: undefined,
+                return_note: undefined,
+            },
+        })
     })
 
     test("PUT /api/asset-holder/:id - switches holder from employee to organization while active", async () => {
@@ -537,6 +567,9 @@ describe("Asset Holder API Tests - update & delete", () => {
         const show = await request(app, `/api/asset-holder/${id}`, { headers: authHeaders })
         expect(show.body.data.employee).toBeNull()
         expect(show.body.data.organization.id).toBe(organizationId)
+
+        // The resulting holder is an organization, so no Nusawork sync fires.
+        expect(nusaworkUpdateCalls.length).toBe(0)
     })
 
     test("PUT /api/asset-holder/:id - rejects editing return data while still active", async () => {
@@ -584,11 +617,13 @@ describe("Asset Holder API Tests - update & delete", () => {
 
     test("PUT /api/asset-holder/:id - after return, edits both assign and return data", async () => {
         const id = await assign()
+        nusaworkGroupsResponse = [{ id_group: 4002, items: [{ key: "id_holder", input: { value: String(id) } }] }]
         await request(app, `/api/asset-holder/${id}/return`, {
             method: "POST",
             headers: authHeaders,
             body: { returnedDate: "2026-06-21", returnNote: "Original return note" },
         })
+        nusaworkUpdateCalls.length = 0
 
         const res = await request(app, `/api/asset-holder/${id}`, {
             method: "PUT",
@@ -600,6 +635,20 @@ describe("Asset Holder API Tests - update & delete", () => {
         expect(res.body.data.assignNote).toBe("Corrected assign note")
         expect(res.body.data.returnedDate).toBe("2026-06-22")
         expect(res.body.data.returnNote).toBe("Corrected return note")
+
+        expect(nusaworkUpdateCalls.length).toBe(1)
+        expect(nusaworkUpdateCalls[0]).toEqual({
+            employee_id: "EMP-777",
+            id_group: 4002,
+            fields: {
+                asset_code: "AST-H01",
+                asset_name: "Dell Precision",
+                assign_date: "2026-06-19 00:00:00",
+                assign_note: "Corrected assign note",
+                return_date: "2026-06-22 00:00:00",
+                return_note: "Corrected return note",
+            },
+        })
     })
 
     test("PUT /api/asset-holder/:id - returns 404 for a non-existent record", async () => {
@@ -614,12 +663,27 @@ describe("Asset Holder API Tests - update & delete", () => {
 
     test("DELETE /api/asset-holder/:id - deletes the record", async () => {
         const id = await assign()
+        nusaworkGroupsResponse = [{ id_group: 2976, items: [{ key: "id_holder", input: { value: String(id) } }] }]
 
         const res = await request(app, `/api/asset-holder/${id}`, { method: "DELETE", headers: authHeaders })
         expect(res.status).toBe(200)
 
         const show = await request(app, `/api/asset-holder/${id}`, { headers: authHeaders })
         expect(show.status).toBe(404)
+
+        // Deleting the record also removes its Nusawork note.
+        expect(nusaworkDeleteCalls.length).toBe(1)
+        expect(nusaworkDeleteCalls[0]).toEqual({ employee_id: "EMP-777", id_group: 2976 })
+    })
+
+    test("DELETE /api/asset-holder/:id - deletion still succeeds when Nusawork sync fails", async () => {
+        const id = await assign()
+        nusaworkGroupsResponse = [{ id_group: 2976, items: [{ key: "id_holder", input: { value: String(id) } }] }]
+        nusaworkSyncShouldFail = true
+
+        const res = await request(app, `/api/asset-holder/${id}`, { method: "DELETE", headers: authHeaders })
+        expect(res.status).toBe(200)
+        expect(nusaworkDeleteCalls.length).toBe(1)
     })
 
     test("DELETE /api/asset-holder/:id - deleting the active holder frees the asset", async () => {
@@ -641,5 +705,18 @@ describe("Asset Holder API Tests - update & delete", () => {
     test("DELETE /api/asset-holder/:id - returns 404 for a non-existent record", async () => {
         const res = await request(app, "/api/asset-holder/999999", { method: "DELETE", headers: authHeaders })
         expect(res.status).toBe(404)
+    })
+
+    test("DELETE /api/asset-holder/:id - deleting an organization holder never triggers a Nusawork sync", async () => {
+        const assignRes = await request(app, "/api/asset-holder", {
+            method: "POST",
+            headers: authHeaders,
+            body: { assetId, holderKind: "organization", organizationId, assignedDate: "2026-06-19" },
+        })
+        const id = assignRes.body.data.id
+
+        const res = await request(app, `/api/asset-holder/${id}`, { method: "DELETE", headers: authHeaders })
+        expect(res.status).toBe(200)
+        expect(nusaworkDeleteCalls.length).toBe(0)
     })
 })

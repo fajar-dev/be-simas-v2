@@ -50,11 +50,15 @@ mock.module("../src/core/helpers/minio", () => {
 
 // ── Mock Nusawork Helper to prevent real connections and record sync calls ──
 export const nusaworkSyncCalls: any[] = []
+export const nusaworkUpdateCalls: any[] = []
+export let nusaworkGroupsResponse: { id_group: number; items: { key: string; input: { value: string } }[] }[] = []
 mock.module("../src/core/helpers/nusawork", () => ({
     nusaworkHelper: {
         createAssetSync: async (payload: any) => { nusaworkSyncCalls.push(payload); return { success: true } },
-        getAssetSyncGroups: async () => [],
+        getAssetSyncGroups: async () => nusaworkGroupsResponse,
         returnAssetSync: async () => ({ success: true }),
+        updateAssetSync: async (payload: any) => { nusaworkUpdateCalls.push(payload); return { success: true } },
+        deleteAssetSync: async () => ({ success: true }),
     },
 }))
 
@@ -75,6 +79,8 @@ beforeEach(async () => {
     await cleanTestDatabase()
     resetCounters()
     nusaworkSyncCalls.length = 0
+    nusaworkUpdateCalls.length = 0
+    nusaworkGroupsResponse = []
 })
 
 // ── Test Data Helper ────────────────────────────────────────────────────────
@@ -564,6 +570,90 @@ describe("PUT /api/asset/:id", () => {
         expect(body.success).toBe(true)
         expect(body.data.name).toBe("Updated Asset Name")
         expect(body.data.price).toBe(18000000)
+    })
+
+    test("re-syncs every employee holder's Nusawork note when the asset's code/name changes", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+        const emp = await request(app, "/api/employee", { method: "POST", headers, body: { employeeId: "EMP-EDIT-01", name: "Edit Worker", jobPosition: "Staff", email: "edit01@test.com", phone: "081" } })
+        const employeeId = emp.body.data.id
+
+        const createRes = await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, { code: "AST-EDIT-01", name: "Old Laptop", employeeId, assignedDate: "2026-01-01" }),
+        })
+        const assetId = createRes.body.data.id
+        const holderId = createRes.body.data.activeHolder.id
+
+        // Return it, then assign again, so this asset has one historical + one active employee holder.
+        nusaworkGroupsResponse = [{ id_group: 5001, items: [{ key: "id_holder", input: { value: String(holderId) } }] }]
+        await request(app, `/api/asset-holder/${holderId}/return`, { method: "POST", headers, body: { returnedDate: "2026-01-05" } })
+        const reassign = await request(app, "/api/asset-holder", { method: "POST", headers, body: { assetId, employeeId, assignedDate: "2026-01-06", assignNote: "second round" } })
+        const holderId2 = reassign.body.data.id
+        nusaworkUpdateCalls.length = 0
+
+        nusaworkGroupsResponse = [
+            { id_group: 5001, items: [{ key: "id_holder", input: { value: String(holderId) } }] },
+            { id_group: 5002, items: [{ key: "id_holder", input: { value: String(holderId2) } }] },
+        ]
+
+        const res = await request(app, `/api/asset/${assetId}`, {
+            method: "PUT",
+            headers,
+            body: { code: "AST-EDIT-02", name: "New Laptop" },
+        })
+
+        expect(res.status).toBe(200)
+        expect(nusaworkUpdateCalls.length).toBe(2)
+        const byGroup = Object.fromEntries(nusaworkUpdateCalls.map((c: any) => [c.id_group, c]))
+
+        expect(byGroup[5001]).toEqual({
+            employee_id: "EMP-EDIT-01",
+            id_group: 5001,
+            fields: {
+                asset_code: "AST-EDIT-02",
+                asset_name: "New Laptop",
+                assign_date: "2026-01-01 00:00:00",
+                assign_note: undefined,
+                return_date: "2026-01-05 00:00:00",
+                return_note: undefined,
+            },
+        })
+        expect(byGroup[5002]).toEqual({
+            employee_id: "EMP-EDIT-01",
+            id_group: 5002,
+            fields: {
+                asset_code: "AST-EDIT-02",
+                asset_name: "New Laptop",
+                assign_date: "2026-01-06 00:00:00",
+                assign_note: "second round",
+                return_date: undefined,
+                return_note: undefined,
+            },
+        })
+    })
+
+    test("does not sync to Nusawork when an unrelated field changes", async () => {
+        const { headers } = await registerAndLogin(app)
+        const subCategory = await createTestSubCategory(app, headers)
+        const emp = await request(app, "/api/employee", { method: "POST", headers, body: { employeeId: "EMP-EDIT-02", name: "Edit Worker 2", jobPosition: "Staff", email: "edit02@test.com", phone: "082" } })
+
+        const createRes = await request(app, "/api/asset", {
+            method: "POST",
+            headers,
+            body: createAssetData(subCategory.id, { code: "AST-EDIT-03", name: "Some Laptop", employeeId: emp.body.data.id, assignedDate: "2026-01-01" }),
+        })
+        nusaworkUpdateCalls.length = 0
+
+        const res = await request(app, `/api/asset/${createRes.body.data.id}`, {
+            method: "PUT",
+            headers,
+            body: { price: 5000000 },
+        })
+
+        expect(res.status).toBe(200)
+        expect(nusaworkUpdateCalls.length).toBe(0)
     })
 })
 
