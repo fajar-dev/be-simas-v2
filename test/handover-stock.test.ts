@@ -34,6 +34,8 @@ mock.module("../src/core/helpers/nusawork", () => ({
         createAssetSync: async () => ({ success: true }),
         getAssetSyncGroups: async () => [],
         returnAssetSync: async () => ({ success: true }),
+        updateAssetSync: async () => ({ success: true }),
+        deleteAssetSync: async () => ({ success: true }),
     },
 }))
 

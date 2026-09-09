@@ -295,7 +295,14 @@ export class AssetService {
                 }, manager)
             })
 
-            return await this.getById(id)
+            const updated = await this.getById(id)
+
+            // Keep every historical Nusawork note for this asset's code/name in sync.
+            if (oldValue.code !== updated.code || oldValue.name !== updated.name) {
+                await this.assetHolderService.syncAssetEditToNusawork(id)
+            }
+
+            return updated
         } catch (error: any) {
             if (error?.message?.includes("UNIQUE") || error?.message?.includes("Duplicate entry")) {
                 throw new BadRequestException("Asset code must be unique")
