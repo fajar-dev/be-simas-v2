@@ -10,7 +10,8 @@
     "sync:user": "bun run src/jobs/sync-user.job.ts",
     "sync:branch": "bun run src/jobs/sync-branch.job.ts",
     "sync:organization": "bun run src/jobs/sync-organization.job.ts",
-    "job:asset-schedule-reminder": "bun run src/jobs/asset-schedule-reminder.job.ts"
+    "job:asset-schedule-reminder": "bun run src/jobs/asset-schedule-reminder.job.ts",
+    "queue:work": "bun run src/jobs/queue-worker.job.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

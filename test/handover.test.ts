@@ -43,6 +43,15 @@ mock.module("../src/core/helpers/nusawork", () => ({
     },
 }))
 
+// Nusawork sync runs through the job queue now — drain it after actions that
+// used to sync inline. Imported dynamically so the queue repository binds to
+// the test DataSource (only swapped in by initTestDatabase() at runtime).
+async function drainQueue(): Promise<void> {
+    const { queueService } = await import("../src/modules/queue/queue.module")
+    await import("../src/modules/queue/handlers/nusawork.handlers")
+    while (await queueService.processNext()) { /* keep draining */ }
+}
+
 let app: Hono
 let authHeaders: Record<string, string>
 let employeeId: number
@@ -351,6 +360,7 @@ describe("Asset Handover API", () => {
         expect(holder2.body.data.attachments.some((a: any) => a.url === SIGNED_URL)).toBe(true)
 
         // Nusawork is notified once per assigned item, all to the receiving employee.
+        await drainQueue()
         expect(nusaworkSyncCalls.length).toBe(2)
         expect(nusaworkSyncCalls.every((c: any) => c.employee_id === "EMP-001")).toBe(true)
         expect(nusaworkSyncCalls.map((c: any) => c.fields.asset_code).sort()).toEqual(["AST-HO01", "AST-HO02"])
@@ -534,6 +544,7 @@ describe("Asset Handover API", () => {
         expect(holder.body.data).toBeNull()
 
         // The returning employee (handedOverBy = Alice) is notified to Nusawork.
+        await drainQueue()
         expect(nusaworkReturnCalls.length).toBe(1)
         expect(nusaworkReturnCalls[0].employee_id).toBe("EMP-001")
         expect(nusaworkReturnCalls[0].id_group).toBe(3001)

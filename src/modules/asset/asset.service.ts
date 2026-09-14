@@ -233,7 +233,7 @@ export class AssetService {
             })
 
             if (employeeExists && holderId) {
-                await this.assetHolderService.notifyNusaworkAssignment(employeeExists, asset.code, asset.name, resolvedAssignedDate, assignNote, holderId)
+                await this.assetHolderService.notifyNusaworkAssignment(holderId)
             }
 
             // Fetch the fully loaded asset (with category, branch, etc.)

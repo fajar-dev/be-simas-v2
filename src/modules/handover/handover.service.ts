@@ -373,7 +373,7 @@ export class HandoverService {
             for (let i = 0; i < items.length; i++) {
                 const item = items[i]
                 if (item.asset) {
-                    await this.assetHolderService.notifyNusaworkAssignment(handover.receivedBy, item.asset.code, item.asset.name, assignedDate, item.note, createdHolders[i].id)
+                    await this.assetHolderService.notifyNusaworkAssignment(createdHolders[i].id)
                 }
             }
         }
@@ -417,7 +417,7 @@ export class HandoverService {
         // Notify Nusawork once the transaction has actually committed.
         if (handover.handedOverBy) {
             for (const holder of returnedHolders) {
-                await this.assetHolderService.notifyNusaworkReturn(handover.handedOverBy, holder.id, holder.returnedDate!, holder.returnNote)
+                await this.assetHolderService.notifyNusaworkReturn(holder.id)
             }
         }
 

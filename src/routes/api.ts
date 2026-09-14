@@ -72,6 +72,7 @@ import { inventoryStockInController } from "../modules/inventory-stock-in/invent
 import { inventoryStockOpnameController } from "../modules/inventory-stock-opname/inventory-stock-opname.module"
 import { inventoryLogController } from "../modules/inventory-log/inventory-log.module"
 import { organizationController } from "../modules/organization/organization.module"
+import { queueController } from "../modules/queue/queue.module"
 import { apiKeyMiddleware } from "../core/middlewares/api-key.middleware"
 
 // ── Routes ───────────────────────────────────────────────────────────────────
@@ -334,5 +335,11 @@ routes.get("/book/loan", apiKeyMiddleware, (c) => bookController.loans(c))
 routes.get("/book/my-books", authMiddleware, (c) => bookController.myBooks(c))
 routes.post("/book/borrow", authMiddleware, zValidator("json", BorrowBookValidator, validationHook), (c) => bookController.borrow(c))
 routes.post("/book/return", authMiddleware, zValidator("json", ReturnBookValidator, validationHook), (c) => bookController.returnBook(c))
+
+// Queue (failed jobs admin view)
+routes.get("/queue/pending", authMiddleware, requirePermission("queue:read"), (c) => queueController.pending(c))
+routes.get("/queue/failed", authMiddleware, requirePermission("queue:read"), (c) => queueController.index(c))
+routes.post("/queue/failed/:id/retry", authMiddleware, requirePermission("queue:retry"), (c) => queueController.retry(c))
+routes.delete("/queue/failed/:id", authMiddleware, requirePermission("queue:retry"), (c) => queueController.destroy(c))
 
 export default routes

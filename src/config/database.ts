@@ -40,6 +40,8 @@ import { Permission } from "../modules/role/entities/permission.entity"
 import { Organization } from "../modules/organization/entities/organization.entity"
 import { config } from "./config"
 import { PasswordResetToken } from "../modules/auth/entities/password-reset-token.entity"
+import { Job } from "../modules/queue/entities/job.entity"
+import { FailedJob } from "../modules/queue/entities/failed-job.entity"
 
 /**
  * TypeORM Database Configuration
@@ -56,7 +58,7 @@ const defaultDataSource = new DataSource({
     password: config.database.pass,
     database: config.database.name,
     synchronize: config.database.sync,
-    entities: [User, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetNote, AssetLocation, AssetHolder, AssetLog, AssetStatus, AssetSchedule, AssetScheduleAsset, AssetScheduleUser, Handover, HandoverItem, HandoverStockItem, HandoverField, Inventory, InventoryLabel, InventoryVariant, InventoryStockBalance, InventoryStockOut, InventoryStockOutItem, InventoryStockTransfer, InventoryStockTransferItem, InventoryStockIn, InventoryStockInItem, InventoryStockOpname, InventoryStockOpnameItem, InventoryLog, Role, Permission, PasswordResetToken, Organization],
+    entities: [User, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetNote, AssetLocation, AssetHolder, AssetLog, AssetStatus, AssetSchedule, AssetScheduleAsset, AssetScheduleUser, Handover, HandoverItem, HandoverStockItem, HandoverField, Inventory, InventoryLabel, InventoryVariant, InventoryStockBalance, InventoryStockOut, InventoryStockOutItem, InventoryStockTransfer, InventoryStockTransferItem, InventoryStockIn, InventoryStockInItem, InventoryStockOpname, InventoryStockOpnameItem, InventoryLog, Role, Permission, PasswordResetToken, Organization, Job, FailedJob],
     migrations: [],
     subscribers: [],
 })

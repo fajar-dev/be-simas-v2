@@ -62,6 +62,15 @@ mock.module("../src/core/helpers/nusawork", () => ({
     },
 }))
 
+// Nusawork sync runs through the job queue now — drain it after actions that
+// used to sync inline. Imported dynamically so the queue repository binds to
+// the test DataSource (only swapped in by initTestDatabase() at runtime).
+async function drainQueue(): Promise<void> {
+    const { queueService } = await import("../src/modules/queue/queue.module")
+    await import("../src/modules/queue/handlers/nusawork.handlers")
+    while (await queueService.processNext()) { /* keep draining */ }
+}
+
 // ── Setup ───────────────────────────────────────────────────────────────────
 
 let app: Hono
@@ -605,6 +614,7 @@ describe("PUT /api/asset/:id", () => {
         })
 
         expect(res.status).toBe(200)
+        await drainQueue()
         expect(nusaworkUpdateCalls.length).toBe(2)
         const byGroup = Object.fromEntries(nusaworkUpdateCalls.map((c: any) => [c.id_group, c]))
 
@@ -653,6 +663,7 @@ describe("PUT /api/asset/:id", () => {
         })
 
         expect(res.status).toBe(200)
+        await drainQueue()
         expect(nusaworkUpdateCalls.length).toBe(0)
     })
 })
@@ -1050,6 +1061,7 @@ describe("Asset - organization holder", () => {
         expect(res.body.data.activeHolder.employee).toBeNull()
 
         // Organization holders never trigger a Nusawork employee sync.
+        await drainQueue()
         expect(nusaworkSyncCalls.length).toBe(0)
     })
 
@@ -1065,6 +1077,7 @@ describe("Asset - organization holder", () => {
         })
 
         expect(res.status).toBe(201)
+        await drainQueue()
         expect(nusaworkSyncCalls.length).toBe(1)
         expect(nusaworkSyncCalls[0]).toEqual({
             employee_id: "EMP-NW-01",

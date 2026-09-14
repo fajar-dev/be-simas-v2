@@ -344,6 +344,21 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
+    # --- Queue Schemas ---
+    QueueFailedJobResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 7 }
+        uuid: { type: string, example: "9f1c8a2e-6b3d-4a1f-9c2e-1a2b3c4d5e6f" }
+        queue: { type: string, example: "default" }
+        jobType: { type: string, example: "nusawork.assign" }
+        payload:
+          type: object
+          description: The job's original payload — shape depends on jobType.
+          example: { holderId: 42 }
+        exception: { type: string, description: Error message/stack from the last failed attempt }
+        failedAt: { type: string, format: date-time }
+
     # --- SubCategory Schemas ---
     CreateSubCategoryRequest:
       type: object
@@ -2490,6 +2505,109 @@ paths:
         "404": { description: Organization not found }
         "409":
           description: Cannot delete - has linked sub-organizations
+
+  # ── Queue: pending count / failed jobs ──────────────────────────────────────
+  /queue/pending:
+    get:
+      tags: [Queue]
+      summary: Get the number of pending (not yet processed) jobs
+      description: >-
+        Jobs are processed by a separate worker process (`bun run queue:work`), not the API
+        server — this endpoint is for operational visibility only.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: queue
+          in: query
+          description: Filter by queue name. Omit to count across all queues.
+          schema: { type: string }
+      responses:
+        "200":
+          description: Pending job count retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          count: { type: integer, example: 3 }
+        "401": { description: Unauthorized }
+
+  /queue/failed:
+    get:
+      tags: [Queue]
+      summary: List failed jobs (paginated)
+      description: Jobs that exhausted all retry attempts land here instead of retrying forever.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+      responses:
+        "200":
+          description: Failed jobs retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/BaseResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/QueueFailedJobResponse" }
+                      meta: { $ref: "#/components/schemas/PaginationMeta" }
+        "401": { description: Unauthorized }
+
+  # ── Queue: retry / delete a failed job ──────────────────────────────────────
+  /queue/failed/{id}/retry:
+    post:
+      tags: [Queue]
+      summary: Re-queue a failed job for another attempt
+      description: Moves the job back into the `jobs` table with a fresh attempts counter, available immediately.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Job re-queued successfully
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BaseResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Failed job not found }
+
+  /queue/failed/{id}:
+    delete:
+      tags: [Queue]
+      summary: Permanently delete a failed job
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Failed job deleted successfully
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BaseResponse" }
+        "401": { description: Unauthorized }
+        "404": { description: Failed job not found }
 
   # ── Sub-Category List / Create ──────────────────────────────────────────────
   /sub-category:

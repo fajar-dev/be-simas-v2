@@ -54,6 +54,15 @@ mock.module("../src/core/helpers/nusawork", () => ({
     },
 }))
 
+// Nusawork sync runs through the job queue now — drain it after actions that
+// used to sync inline. Imported dynamically so the queue repository binds to
+// the test DataSource (only swapped in by initTestDatabase() at runtime).
+async function drainQueue(): Promise<void> {
+    const { queueService } = await import("../src/modules/queue/queue.module")
+    await import("../src/modules/queue/handlers/nusawork.handlers")
+    while (await queueService.processNext()) { /* keep draining */ }
+}
+
 let app: Hono
 let authHeaders: Record<string, string>
 let assetId: number
@@ -150,6 +159,7 @@ describe("Asset Holder API Tests", () => {
         expect(res.body.data.createdBy.name).toBe("Test User")
 
         // Assigning to an employee notifies Nusawork.
+        await drainQueue()
         expect(nusaworkSyncCalls.length).toBe(1)
         expect(nusaworkSyncCalls[0]).toEqual({
             employee_id: "EMP-777",
@@ -174,6 +184,7 @@ describe("Asset Holder API Tests", () => {
 
         expect(res.status).toBe(201)
         expect(res.body.success).toBe(true)
+        await drainQueue()
         expect(nusaworkSyncCalls.length).toBe(1) // it was attempted, just failed
     })
 
@@ -250,6 +261,7 @@ describe("Asset Holder API Tests", () => {
         })
 
         expect(returnRes.status).toBe(200)
+        await drainQueue()
         expect(nusaworkReturnCalls.length).toBe(1)
         expect(nusaworkReturnCalls[0]).toEqual({
             employee_id: "EMP-777",
@@ -277,6 +289,7 @@ describe("Asset Holder API Tests", () => {
         })
 
         expect(returnRes.status).toBe(200)
+        await drainQueue()
         expect(nusaworkReturnCalls.length).toBe(0)
     })
 
@@ -297,6 +310,7 @@ describe("Asset Holder API Tests", () => {
         })
 
         expect(returnRes.status).toBe(200)
+        await drainQueue()
         expect(nusaworkReturnCalls.length).toBe(1)
     })
 
@@ -532,6 +546,7 @@ describe("Asset Holder API Tests - update & delete", () => {
         expect(res.body.data.assignNote).toBe("Corrected note")
 
         // Editing an active employee holder re-syncs its Nusawork note.
+        await drainQueue()
         expect(nusaworkUpdateCalls.length).toBe(1)
         expect(nusaworkUpdateCalls[0]).toEqual({
             employee_id: "EMP-777",
@@ -569,6 +584,7 @@ describe("Asset Holder API Tests - update & delete", () => {
         expect(show.body.data.organization.id).toBe(organizationId)
 
         // The resulting holder is an organization, so no Nusawork sync fires.
+        await drainQueue()
         expect(nusaworkUpdateCalls.length).toBe(0)
     })
 
@@ -636,6 +652,7 @@ describe("Asset Holder API Tests - update & delete", () => {
         expect(res.body.data.returnedDate).toBe("2026-06-22")
         expect(res.body.data.returnNote).toBe("Corrected return note")
 
+        await drainQueue()
         expect(nusaworkUpdateCalls.length).toBe(1)
         expect(nusaworkUpdateCalls[0]).toEqual({
             employee_id: "EMP-777",
@@ -672,6 +689,7 @@ describe("Asset Holder API Tests - update & delete", () => {
         expect(show.status).toBe(404)
 
         // Deleting the record also removes its Nusawork note.
+        await drainQueue()
         expect(nusaworkDeleteCalls.length).toBe(1)
         expect(nusaworkDeleteCalls[0]).toEqual({ employee_id: "EMP-777", id_group: 2976 })
     })
@@ -683,6 +701,7 @@ describe("Asset Holder API Tests - update & delete", () => {
 
         const res = await request(app, `/api/asset-holder/${id}`, { method: "DELETE", headers: authHeaders })
         expect(res.status).toBe(200)
+        await drainQueue()
         expect(nusaworkDeleteCalls.length).toBe(1)
     })
 
