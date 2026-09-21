@@ -1308,6 +1308,7 @@ components:
         receivedById: { type: integer, example: 1, description: "Employee receiving (penerima)" }
         handedOverById: { type: integer, example: 2, description: "Employee handing over (penyerah)" }
         transactionType: { type: string, enum: [assign, return], example: "assign" }
+        date: { type: string, nullable: true, example: "2026-09-21T09:30", description: "Date/time of the handover itself, set by the requester (defaults to now client-side). Used as the resulting AssetHolder's assignedDate/returnedDate once approved; falls back to the approval time when omitted." }
         note: { type: string, nullable: true, example: "Operational use" }
         customFields:
           type: object
@@ -1363,6 +1364,7 @@ components:
             photo: { type: string, nullable: true }
         status: { type: string, enum: [pending, approve, reject, cancel], example: "pending" }
         transactionType: { type: string, enum: [assign, return] }
+        date: { type: string, nullable: true, example: "2026-09-21T09:30" }
         note: { type: string, nullable: true }
         customFields:
           type: array

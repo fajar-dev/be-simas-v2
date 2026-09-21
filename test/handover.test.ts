@@ -366,6 +366,34 @@ describe("Asset Handover API", () => {
         expect(nusaworkSyncCalls.map((c: any) => c.fields.asset_code).sort()).toEqual(["AST-HO01", "AST-HO02"])
     })
 
+    test("POST /api/webhook/esign - COMPLETED assign uses the handover's own date, not approval time", async () => {
+        const created = await request(app, "/api/handover", {
+            method: "POST",
+            headers: authHeaders,
+            body: createHandoverData([{ assetId }], employeeId, { date: "2026-07-15T09:30" }),
+        })
+        const id = created.body.data.id
+        expect(created.body.data.date).toBe("2026-07-15T09:30")
+
+        await request(app, "/api/webhook/esign", { method: "POST", body: { external_reference_id: String(id), status: "COMPLETED", file_url: SIGNED_URL } })
+
+        const holder = await request(app, `/api/asset-holder/active/${assetId}`, { headers: authHeaders })
+        expect(holder.body.data.assignedDate).toBe("2026-07-15T09:30")
+    })
+
+    test("POST /api/webhook/esign - COMPLETED falls back to approval time when no date was given", async () => {
+        const created = await request(app, "/api/handover", { method: "POST", headers: authHeaders, body: createHandoverData([{ assetId }], employeeId) })
+        expect(created.body.data.date).toBeNull()
+        const id = created.body.data.id
+
+        const before = Date.now()
+        await request(app, "/api/webhook/esign", { method: "POST", body: { external_reference_id: String(id), status: "COMPLETED", file_url: SIGNED_URL } })
+
+        const holder = await request(app, `/api/asset-holder/active/${assetId}`, { headers: authHeaders })
+        const assignedAt = new Date(holder.body.data.assignedDate).getTime()
+        expect(assignedAt).toBeGreaterThanOrEqual(before)
+    })
+
     test("POST /api/webhook/esign - COMPLETED fails when handover not pending", async () => {
         const created = await request(app, "/api/handover", { method: "POST", headers: authHeaders, body: createHandoverData([{ assetId }], employeeId) })
         const id = created.body.data.id
@@ -548,6 +576,21 @@ describe("Asset Handover API", () => {
         expect(nusaworkReturnCalls.length).toBe(1)
         expect(nusaworkReturnCalls[0].employee_id).toBe("EMP-001")
         expect(nusaworkReturnCalls[0].id_group).toBe(3001)
+    })
+
+    test("POST /api/webhook/esign - COMPLETED return uses the handover's own date, not approval time", async () => {
+        await assignToAlice([assetId])
+        const holderBefore = await request(app, `/api/asset-holder/active/${assetId}`, { headers: authHeaders })
+        const holderId = holderBefore.body.data.id
+
+        const ret = await request(app, "/api/handover", {
+            method: "POST", headers: authHeaders,
+            body: { ...returnPayload([assetId]), date: "2026-07-20T14:00" },
+        })
+        await request(app, "/api/webhook/esign", { method: "POST", body: { external_reference_id: String(ret.body.data.id), status: "COMPLETED", file_url: SIGNED_URL } })
+
+        const holder = await request(app, `/api/asset-holder/${holderId}`, { headers: authHeaders })
+        expect(holder.body.data.returnedDate).toBe("2026-07-20T14:00")
     })
 
     test("POST /api/handover - partial return (assign 2, return 1)", async () => {

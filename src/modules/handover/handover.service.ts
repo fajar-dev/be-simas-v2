@@ -181,6 +181,7 @@ export class HandoverService {
                 receivedById: data.receivedById,
                 handedOverById: data.handedOverById,
                 transactionType: data.transactionType,
+                date: data.date ?? null,
                 note: data.note ?? null,
                 customFields: customFields.length ? customFields : null,
                 status: "pending",
@@ -336,7 +337,7 @@ export class HandoverService {
     private async applyAssign(handover: Handover): Promise<AssetHolder[]> {
         const items = handover.items || []
         const createdHolders: AssetHolder[] = []
-        const assignedDate = new Date().toISOString()
+        const assignedDate = handover.date || new Date().toISOString()
 
         await withTransaction(async (manager) => {
             for (const item of items) {
@@ -396,7 +397,7 @@ export class HandoverService {
                     throw new BadRequestException(`Asset "${item.asset?.name || item.assetId}" is not held by the returning employee`)
                 }
 
-                activeHolder.returnedDate = new Date().toISOString()
+                activeHolder.returnedDate = handover.date || new Date().toISOString()
                 activeHolder.returnNote = item.note ?? handover.note ?? null
                 activeHolder.returnedByUserId = handover.createdByUserId ?? null
                 activeHolder.returnHandoverId = handover.id
