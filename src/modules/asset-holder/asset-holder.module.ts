@@ -4,7 +4,8 @@ import { AssetHolderController } from "./asset-holder.controller"
 import { attachmentService } from "../attachment/attachment.module"
 import { employeeService } from "../employee/employee.module"
 import { organizationService } from "../organization/organization.module"
+import { queueService } from "../queue/queue.module"
 
 const assetHolderRepository = new AssetHolderRepository()
-export const assetHolderService = new AssetHolderService(assetHolderRepository, attachmentService, employeeService, organizationService)
+export const assetHolderService = new AssetHolderService(assetHolderRepository, attachmentService, employeeService, organizationService, queueService)
 export const assetHolderController = new AssetHolderController(assetHolderService)

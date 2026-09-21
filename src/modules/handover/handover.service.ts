@@ -181,6 +181,7 @@ export class HandoverService {
                 receivedById: data.receivedById,
                 handedOverById: data.handedOverById,
                 transactionType: data.transactionType,
+                date: data.date ?? null,
                 note: data.note ?? null,
                 customFields: customFields.length ? customFields : null,
                 status: "pending",
@@ -336,7 +337,7 @@ export class HandoverService {
     private async applyAssign(handover: Handover): Promise<AssetHolder[]> {
         const items = handover.items || []
         const createdHolders: AssetHolder[] = []
-        const assignedDate = new Date().toISOString()
+        const assignedDate = handover.date || new Date().toISOString()
 
         await withTransaction(async (manager) => {
             for (const item of items) {
@@ -373,7 +374,7 @@ export class HandoverService {
             for (let i = 0; i < items.length; i++) {
                 const item = items[i]
                 if (item.asset) {
-                    await this.assetHolderService.notifyNusaworkAssignment(handover.receivedBy, item.asset.code, item.asset.name, assignedDate, item.note, createdHolders[i].id)
+                    await this.assetHolderService.notifyNusaworkAssignment(createdHolders[i].id)
                 }
             }
         }
@@ -396,7 +397,7 @@ export class HandoverService {
                     throw new BadRequestException(`Asset "${item.asset?.name || item.assetId}" is not held by the returning employee`)
                 }
 
-                activeHolder.returnedDate = new Date().toISOString()
+                activeHolder.returnedDate = handover.date || new Date().toISOString()
                 activeHolder.returnNote = item.note ?? handover.note ?? null
                 activeHolder.returnedByUserId = handover.createdByUserId ?? null
                 activeHolder.returnHandoverId = handover.id
@@ -417,7 +418,7 @@ export class HandoverService {
         // Notify Nusawork once the transaction has actually committed.
         if (handover.handedOverBy) {
             for (const holder of returnedHolders) {
-                await this.assetHolderService.notifyNusaworkReturn(handover.handedOverBy, holder.id, holder.returnedDate!, holder.returnNote)
+                await this.assetHolderService.notifyNusaworkReturn(holder.id)
             }
         }
 

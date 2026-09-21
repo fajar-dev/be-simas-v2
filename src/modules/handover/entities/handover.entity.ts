@@ -43,6 +43,11 @@ export class Handover {
     @Column({ name: "note", type: "text", nullable: true })
     note?: string | null
 
+    // Date/time of the handover itself, set by the requester — used as the
+    // resulting AssetHolder's assignedDate/returnedDate once approved.
+    @Column({ type: "varchar", nullable: true })
+    date?: string | null
+
     /**
      * Snapshot of the custom fields (definition + value) captured at creation time.
      * Self-contained so later edits to HandoverField definitions never affect this handover.

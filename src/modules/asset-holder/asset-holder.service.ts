@@ -14,14 +14,15 @@ import { HandoverItem } from "../handover/entities/handover-item.entity"
 import { AssetStatus } from "../asset-status/entities/asset-status.entity"
 import type { AssetHolderKind } from "../../core/enums"
 import type { Employee } from "../employee/entities/employee.entity"
-import { nusaworkHelper } from "../../core/helpers/nusawork"
+import { QueueService } from "../queue/queue.service"
 
 export class AssetHolderService {
     constructor(
         private readonly repository: IAssetHolderRepository,
         private readonly attachmentService: AttachmentService,
         private readonly employeeService: EmployeeService,
-        private readonly organizationService: OrganizationService
+        private readonly organizationService: OrganizationService,
+        private readonly queueService: QueueService
     ) {}
 
     async getAll(
@@ -146,7 +147,7 @@ export class AssetHolderService {
         // Notify Nusawork regardless of which flow reached this method (direct
         // assign, book borrow — book.service.ts also calls create()).
         if (employee) {
-            await this.notifyNusaworkAssignment(employee, assetExists.code, assetExists.name, data.assignedDate!, data.assignNote, log.id)
+            await this.notifyNusaworkAssignment(log.id)
         }
 
         // Reload and return
@@ -155,134 +156,25 @@ export class AssetHolderService {
         return reloaded
     }
 
-    /**
-     * Best-effort notification to Nusawork whenever an asset is assigned to an
-     * employee, no matter which flow created the assignment (direct assign,
-     * book borrow, initial holder at asset creation, or an approved handover).
-     * Never throws — a Nusawork outage must not block the actual assignment.
-     */
-    async notifyNusaworkAssignment(employee: Employee, assetCode: string, assetName: string, assignedDate: string, note: string | null | undefined, holderId: number): Promise<void> {
-        const formattedAssignDate = this.formatNusaworkDateTime(assignedDate)
-        try {
-            await nusaworkHelper.createAssetSync({
-                employee_id: employee.employeeId,
-                fields: {
-                    asset_code: assetCode,
-                    asset_name: assetName,
-                    assign_date: formattedAssignDate,
-                    assign_note: note || undefined,
-                    id_holder: holderId,
-                },
-            })
-        } catch (err) {
-            console.error(`[AssetHolderService] Failed to sync asset assignment to Nusawork (employee ${employee.employeeId}, asset ${assetCode}):`, err)
-        }
+    /** Queues a Nusawork sync job; the actual HTTP call runs in the queue worker, never inline here. */
+    async notifyNusaworkAssignment(holderId: number): Promise<void> {
+        await this.queueService.push("nusawork.assign", { holderId })
     }
 
-    /**
-     * Best-effort notification to Nusawork whenever an asset is returned by an
-     * employee, no matter which flow closed out the assignment (direct return,
-     * book return, or an approved return handover). Never throws.
-     */
-    async notifyNusaworkReturn(employee: Employee, holderId: number, returnedDate: string, note?: string | null): Promise<void> {
-        try {
-            const groupId = await this.findNusaworkGroupId(employee, holderId)
-            if (groupId === null) return
-
-            await nusaworkHelper.returnAssetSync({
-                employee_id: employee.employeeId,
-                id_group: groupId,
-                fields: {
-                    return_date: this.formatNusaworkDateTime(returnedDate),
-                    return_note: note || undefined,
-                },
-            })
-        } catch (err) {
-            console.error(`[AssetHolderService] Failed to sync asset return to Nusawork (employee ${employee.employeeId}, holder ${holderId}):`, err)
-        }
+    async notifyNusaworkReturn(holderId: number): Promise<void> {
+        await this.queueService.push("nusawork.return", { holderId })
     }
 
-    /**
-     * Re-syncs every field of a single holder's Nusawork note from our own
-     * data — used whenever an already-synced holder record (or its asset)
-     * is edited, so the note doesn't go stale. No-op for organization holders.
-     */
-    private async syncHolderToNusawork(holder: AssetHolder): Promise<void> {
-        if (holder.holderKind !== "employee" || !holder.employee || !holder.asset) return
-        try {
-            const groupId = await this.findNusaworkGroupId(holder.employee, holder.id)
-            if (groupId === null) return
-
-            await nusaworkHelper.updateAssetSync({
-                employee_id: holder.employee.employeeId,
-                id_group: groupId,
-                fields: {
-                    asset_code: holder.asset.code,
-                    asset_name: holder.asset.name,
-                    assign_date: this.formatNusaworkDateTime(holder.assignedDate),
-                    assign_note: holder.assignNote || undefined,
-                    return_date: holder.returnedDate ? this.formatNusaworkDateTime(holder.returnedDate) : undefined,
-                    return_note: holder.returnNote || undefined,
-                },
-            })
-        } catch (err) {
-            console.error(`[AssetHolderService] Failed to sync holder update to Nusawork (employee ${holder.employee.employeeId}, holder ${holder.id}):`, err)
-        }
+    private async syncHolderToNusawork(holderId: number): Promise<void> {
+        await this.queueService.push("nusawork.update", { holderId })
     }
 
-    /**
-     * Re-syncs every employee-held holder record (active and historical) of
-     * an asset to Nusawork — called when the asset itself is edited (e.g.
-     * code/name change) so past and present notes reflect the new values.
-     * Best-effort per holder: one failure doesn't stop the rest.
-     */
+    /** One job per holder — a failure on one doesn't affect the others. */
     async syncAssetEditToNusawork(assetId: number): Promise<void> {
         const holders = await this.repository.findEmployeeHeldByAssetId(assetId)
         for (const holder of holders) {
-            await this.syncHolderToNusawork(holder)
+            await this.syncHolderToNusawork(holder.id)
         }
-    }
-
-    /**
-     * Nusawork's return/update endpoints need the `id_group` of the note
-     * record that was created at assign time — it isn't something we store
-     * locally, so we look it up by scanning the employee's note groups for
-     * the one whose `id_holder` item matches this AssetHolder's id. The note
-     * created at assign time can take a moment to become visible on
-     * Nusawork's read side, so the lookup is retried a few times before
-     * giving up.
-     */
-    private async findNusaworkGroupId(employee: Employee, holderId: number): Promise<number | null> {
-        const findGroup = (groups: { id_group: number; items: { key: string; input: { value: string } }[] }[]) =>
-            groups.find((g) => g.items?.some((item) => item.key === "id_holder" && item.input?.value === String(holderId)))
-
-        let groups = await nusaworkHelper.getAssetSyncGroups(employee.employeeId)
-        let group = findGroup(groups)
-        const maxAttempts = 3
-        for (let attempt = 2; attempt <= maxAttempts && !group; attempt++) {
-            await new Promise((resolve) => setTimeout(resolve, 1000))
-            groups = await nusaworkHelper.getAssetSyncGroups(employee.employeeId)
-            group = findGroup(groups)
-        }
-
-        if (!group) {
-            const seenHolderIds = groups.flatMap((g) => g.items?.filter((item) => item.key === "id_holder").map((item) => item.input?.value) ?? [])
-            console.error(`[AssetHolderService] Could not find Nusawork note group for holder ${holderId} (employee ${employee.employeeId}) after ${maxAttempts} attempts. Seen id_holder values: [${seenHolderIds.join(", ")}]`)
-            return null
-        }
-
-        return group.id_group
-    }
-
-    /** Nusawork expects date fields as a full "YYYY-MM-DD HH:mm:ss" datetime, not a bare date. */
-    private formatNusaworkDateTime(input: string): string {
-        const dateOnlyMatch = input.match(/^(\d{4}-\d{2}-\d{2})$/)
-        if (dateOnlyMatch) {
-            return `${dateOnlyMatch[1]} 00:00:00`
-        }
-        const date = new Date(input)
-        const pad = (n: number) => String(n).padStart(2, "0")
-        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
     }
 
     async returnAsset(
@@ -321,7 +213,7 @@ export class AssetHolderService {
         // Notify Nusawork regardless of which flow reached this method (direct
         // return, book return — book.service.ts also calls returnAsset()).
         if (log.holderKind === "employee" && log.employee) {
-            await this.notifyNusaworkReturn(log.employee, log.id, data.returnedDate, data.returnNote)
+            await this.notifyNusaworkReturn(log.id)
         }
 
         // Reload and return
@@ -408,7 +300,7 @@ export class AssetHolderService {
         if (!reloaded) throw new NotFoundException("Updated assignment could not be loaded")
 
         // Keep the Nusawork note in sync with whatever just changed (dates, notes, etc).
-        await this.syncHolderToNusawork(reloaded)
+        await this.syncHolderToNusawork(reloaded.id)
 
         return reloaded
     }
@@ -431,25 +323,9 @@ export class AssetHolderService {
             }, manager)
         })
 
-        // Remove the corresponding Nusawork note once the record is actually gone.
+        // Record is already gone, so the employee's external id travels in the payload.
         if (log.holderKind === "employee" && log.employee) {
-            await this.notifyNusaworkDelete(log.employee, log.id)
-        }
-    }
-
-    /**
-     * Best-effort notification to Nusawork whenever an AssetHolder record
-     * itself is deleted (not just returned) — removes its note entirely.
-     * Never throws.
-     */
-    private async notifyNusaworkDelete(employee: Employee, holderId: number): Promise<void> {
-        try {
-            const groupId = await this.findNusaworkGroupId(employee, holderId)
-            if (groupId === null) return
-
-            await nusaworkHelper.deleteAssetSync({ employee_id: employee.employeeId, id_group: groupId })
-        } catch (err) {
-            console.error(`[AssetHolderService] Failed to sync holder delete to Nusawork (employee ${employee.employeeId}, holder ${holderId}):`, err)
+            await this.queueService.push("nusawork.delete", { holderId: log.id, employeeExternalId: log.employee.employeeId })
         }
     }
 

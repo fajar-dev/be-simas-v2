@@ -90,6 +90,8 @@ const PERMISSIONS = [
     { module: 'role', action: 'create' },
     { module: 'role', action: 'update' },
     { module: 'role', action: 'delete' },
+    { module: 'queue', action: 'read' },
+    { module: 'queue', action: 'retry' },
 ]
 
 async function seed() {
