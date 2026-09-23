@@ -19,6 +19,6 @@ export const assetService = new AssetService(
     organizationService,
     locationService
 )
-const assetUtilService = new AssetUtilService(assetService)
+const assetUtilService = new AssetUtilService(assetService, assetRepository)
 
 export const assetController = new AssetController(assetService, assetUtilService)

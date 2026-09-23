@@ -40,7 +40,6 @@ export class AssetNoteRepository implements IAssetNoteRepository {
         query.distinct(true)
         const total = await query.getCount()
 
-        // Allowed sorting columns
         const sortColumnMap: Record<string, string> = {
             date: "note.date",
             asset: "asset.name",

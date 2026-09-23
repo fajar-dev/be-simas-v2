@@ -1300,6 +1300,51 @@ components:
             date: { type: string, format: date, example: "2026-08-17", description: "The concrete date this occurrence falls on." }
             isRecurring: { type: boolean, example: true }
 
+    CreateTransferIntakeRequest:
+      type: object
+      required: [name]
+      description: >-
+        Sent by an external system via the static API key, not a logged-in user. Always creates
+        exactly ONE row holding `quantity` and/or `code` together — it's the Asset create form
+        (at merge time) that expands this into that many actual Assets, one per code entry.
+      properties:
+        name: { type: string, example: "Laptop Dell Latitude" }
+        price: { type: integer, nullable: true, example: 15000000 }
+        quantity: { type: integer, minimum: 1, default: 1, example: 4, description: "Expected unit count — may exceed `code.length` (remaining units get no serial yet)." }
+        code: { type: array, items: { type: string }, example: ["SN-00123", "SN-00124"], description: "Serial numbers, if the sender has them. Optional, may be fewer or more than `quantity`." }
+        purchaseDate: { type: string, nullable: true, example: "2026-09-01" }
+        createdBy: { type: string, nullable: true, example: "warehouse-system", description: "Free-text identifier for who/what submitted this intake — there's no authenticated user on this route." }
+
+    MergeTransferRequest:
+      type: object
+      required: [assetIds]
+      description: "Links this row to the Asset(s) a user already created (via the Asset create form, pre-filled from GET /transfer/{id} — one code entry per unit) and marks the row merged."
+      properties:
+        assetIds: { type: array, items: { type: integer }, minItems: 1, example: [42, 43, 44] }
+
+    TransferResponse:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        name: { type: string, example: "Laptop Dell Latitude" }
+        price: { type: integer, nullable: true, example: 15000000 }
+        code: { type: array, items: { type: string }, example: ["SN-00123"], description: "Serial numbers provided at intake — may be fewer than `quantity` or empty." }
+        quantity: { type: integer, example: 1 }
+        purchaseDate: { type: string, nullable: true, example: "2026-09-01" }
+        createdBy: { type: string, nullable: true, example: "warehouse-system" }
+        status: { type: string, enum: [pending, merged], example: "pending" }
+        mergedAssets:
+          type: array
+          description: "Populated once this row has been merged — one entry per Asset created from it."
+          items:
+            type: object
+            properties:
+              id: { type: integer, example: 42 }
+              code: { type: string, example: "SN-00123" }
+              name: { type: string, example: "Laptop Dell Latitude" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
     CreateHandoverRequest:
       type: object
       required: [receivedById, handedOverById, transactionType]
@@ -4830,6 +4875,99 @@ paths:
       responses:
         "200": { description: Deleted }
         "404": { description: Not found }
+
+  /transfer:
+    post:
+      tags: [Transfer]
+      summary: Intake an item from an external system
+      description: "Machine-to-machine endpoint (static API key, not a bearer token). Always creates exactly one row — see `CreateTransferIntakeRequest`."
+      security:
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateTransferIntakeRequest" }
+      responses:
+        "201":
+          description: The created transfer row
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/TransferResponse" }
+        "401": { description: Missing or invalid API key }
+        "422": { description: Validation error }
+    get:
+      tags: [Transfer]
+      summary: List transfer intake rows (paginated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, default: 10 } }
+        - { name: q, in: query, schema: { type: string }, description: "Search by name or code." }
+        - { name: sortBy, in: query, schema: { type: string, enum: [name, price, quantity, purchaseDate, status, createdAt] } }
+        - { name: order, in: query, schema: { type: string, enum: [ASC, DESC] } }
+        - { name: status, in: query, schema: { type: string, enum: [pending, merged] } }
+      responses:
+        "200":
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/TransferResponse" }
+        "401": { description: Unauthorized }
+
+  /transfer/{id}:
+    get:
+      tags: [Transfer]
+      summary: Get a transfer item
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Transfer item
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TransferResponse" }
+        "404": { description: Not found }
+
+  /transfer/{id}/merge:
+    post:
+      tags: [Transfer]
+      summary: Link a transfer item to the Asset(s) the user just created
+      description: >-
+        The frontend doesn't complete this row inline — clicking "Merge to Asset" opens the
+        normal Asset create form pre-filled from `GET /transfer/{id}` (name/code(s)/price/purchaseDate,
+        one code entry per unit), letting the user pick category/sub category and everything else.
+        A `quantity` > 1 row can produce several Assets at once. Once created, this endpoint
+        links them back to the row and marks the row merged.
+      security:
+        - bearerAuth: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MergeTransferRequest" }
+      responses:
+        "200":
+          description: "Merged — `status` is now `merged` and `mergedAssets` is populated"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TransferResponse" }
+        "404": { description: "Transfer item or one of the assets not found" }
+        "409": { description: Already merged }
+        "422": { description: Validation error }
 
   /handover:
     get:

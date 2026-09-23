@@ -22,24 +22,21 @@ export const CreateAssetValidator = z.object({
     hasLocation: z.boolean().default(true).optional(),
     usefulLife: z.preprocess((v) => (v === '' || v === undefined ? null : Number(v)), z.number().int().positive().optional().nullable()),
 
-    // Optional immediate assign fields — at most one of employeeId/organizationId
+    // At most one of employeeId/organizationId — enforced in AssetService.create()
     employeeId: z.number().int().positive().optional().nullable(),
     organizationId: z.number().int().positive().optional().nullable(),
     assignedDate: z.string().trim().optional().nullable(),
     assignNote: z.string().trim().optional().nullable(),
     assignAttachmentIds: z.array(z.number()).optional().nullable(),
 
-    // Optional immediate location fields
     locationId: z.number().int().positive().optional().nullable(),
     locationDate: z.string().trim().optional().nullable(),
     locationNote: z.string().trim().optional().nullable(),
     locationAttachmentIds: z.array(z.number()).optional().nullable(),
 
-    // Optional initial status
     status: z.string().trim().optional().nullable(),
     statusNote: z.string().trim().optional().nullable(),
 
-    // Optional asset attachments
     attachmentIds: z.array(z.number()).optional().nullable(),
 }).superRefine((data, ctx) => {
     if (data.usefulLife) {

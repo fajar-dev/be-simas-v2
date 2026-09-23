@@ -14,21 +14,17 @@ import { requestLogger } from './core/middlewares/logger.middleware'
 
 const app = new Hono()
 
-// Request Logger
 app.use('*', requestLogger)
 
-// CORS
 app.use('*', cors({
     origin: '*',
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 }))
 
-// Database Connection
 AppDataSource.initialize()
     .then(() => logger.info("Database connected", { event: "startup.db" }))
     .catch((err) => logger.error("Database connection failed", { event: "startup.db", error: err?.message, stack: err?.stack }))
 
-// Health Check (untuk load balancer, K8s, monitoring)
 app.get('/health', async (c) => {
     const dbConnected = AppDataSource.isInitialized
     const status = dbConnected ? 'healthy' : 'degraded'
@@ -45,14 +41,11 @@ app.get('/health', async (c) => {
     }, statusCode)
 })
 
-// Application Routes
 app.route('/api', api)
 
-// Swagger UI
 app.get('/api/swagger.yaml', serveStatic({ path: './swagger.yaml' }))
 app.get('/api/docs', swaggerUI({ url: '/api/swagger.yaml' }))
 
-// Static Files
 app.get('/api/uploads/*', (c, next) => {
     return serveStatic({ 
         root: './public', 
@@ -60,7 +53,6 @@ app.get('/api/uploads/*', (c, next) => {
     })(c, next)
 })
 
-// Global Error Handler
 app.onError((err, c) => {
     if (err instanceof ZodError) {
         const valErr = new ValidationException(err)
@@ -71,10 +63,7 @@ app.onError((err, c) => {
         return ApiResponse.error(c, err.message, err.status, err.context)
     }
 
-    // Unhandled error → always logged in full (stdout + logs/app + logs/error),
-    // in every environment. NODE_ENV's ONLY job here is response exposure:
-    //   production  → hide detail, return a generic "Internal Server Error"
-    //   development → surface the message + stack in the response for debugging
+    // Always logged in full regardless of env; NODE_ENV only controls response exposure below.
     logError(err, { method: c.req.method, path: c.req.path })
 
     const errors = config.app.isProduction ? null : {

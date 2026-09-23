@@ -12,6 +12,7 @@ export interface InventoryStockBalanceFilter {
 export interface IInventoryStockRepository {
     findBalances(page: number, limit: number, filters: InventoryStockBalanceFilter): Promise<{ data: InventoryStockBalance[]; total: number }>
     findBalancesByBranchAndVariants(branchId: number, variantIds: number[]): Promise<InventoryStockBalance[]>
+    findBalancesByVariants(variantIds: number[]): Promise<InventoryStockBalance[]>
     findBalance(branchId: number, variantId: number, condition: StockCondition, manager?: EntityManager, lock?: boolean): Promise<InventoryStockBalance | null>
     saveBalance(data: Partial<InventoryStockBalance>, manager?: EntityManager): Promise<InventoryStockBalance>
 }

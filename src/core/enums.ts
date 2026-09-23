@@ -44,3 +44,6 @@ export type InventoryUnit = (typeof INVENTORY_UNITS)[number]
 export const ASSET_HOLDER_KINDS = ["employee", "organization"] as const
 export type AssetHolderKind = (typeof ASSET_HOLDER_KINDS)[number]
 
+export const TRANSFER_STATUSES = ["pending", "merged"] as const
+export type TransferStatus = (typeof TRANSFER_STATUSES)[number]
+

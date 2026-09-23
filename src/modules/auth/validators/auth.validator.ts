@@ -54,3 +54,9 @@ export const UpdatePasswordValidator = z.object({
 })
 
 export type UpdatePasswordValidator = z.infer<typeof UpdatePasswordValidator>
+
+export const QrCodeLoginValidator = z.object({
+  panelToken: z.string().trim().min(1, "Panel token is required"),
+})
+
+export type QrCodeLoginValidator = z.infer<typeof QrCodeLoginValidator>

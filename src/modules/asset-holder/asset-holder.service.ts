@@ -8,10 +8,6 @@ import { EmployeeService } from "../employee/employee.service"
 import { OrganizationService } from "../organization/organization.service"
 import { withTransaction } from "../../core/helpers/transaction"
 import { EntityManager } from "typeorm"
-import { AppDataSource } from "../../config/database"
-import { Asset } from "../asset/entities/asset.entity"
-import { HandoverItem } from "../handover/entities/handover-item.entity"
-import { AssetStatus } from "../asset-status/entities/asset-status.entity"
 import type { AssetHolderKind } from "../../core/enums"
 import type { Employee } from "../employee/entities/employee.entity"
 import { QueueService } from "../queue/queue.service"
@@ -66,13 +62,11 @@ export class AssetHolderService {
     }
 
     async create(data: Partial<AssetHolder> & { holderKind: AssetHolderKind; attachmentIds?: number[] }): Promise<AssetHolder> {
-        // Validate asset exists
-        const assetExists = await AppDataSource.getRepository(Asset).findOneBy({ id: data.assetId! })
+        const assetExists = await this.repository.assetExists(data.assetId!)
         if (!assetExists) {
             throw new NotFoundException("Asset not found")
         }
 
-        // Validate the holder exists and is active.
         let holderName: string
         let employee: Employee | null = null
         if (data.holderKind === "employee") {
@@ -89,31 +83,19 @@ export class AssetHolderService {
             holderName = organization.name
         }
 
-        // Check if there is an active holder for this asset
         const activeLog = await this.repository.findActiveByAssetId(data.assetId!)
         if (activeLog) {
             throw new BadRequestException("Asset is currently assigned and must be returned first")
         }
 
-        // Block manual assignment while the asset is part of a pending handover
-        const pendingItems = await AppDataSource.getRepository(HandoverItem)
-            .createQueryBuilder("item")
-            .innerJoin("item.handover", "handover")
-            .where("handover.status = :status", { status: "pending" })
-            .select("item.assetId", "assetId")
-            .getRawMany()
-        const pendingAssetIds = pendingItems.map(item => item.assetId)
+        const pendingAssetIds = await this.repository.findPendingHandoverAssetIds()
         if (pendingAssetIds.includes(data.assetId!)) {
             throw new BadRequestException("Asset is awaiting handover approval and cannot be assigned")
         }
 
-        // Block assignment if asset status is not "active"
-        const lastStatus = await AppDataSource.getRepository(AssetStatus).findOne({
-            where: { assetId: data.assetId! },
-            order: { id: "DESC" }
-        })
-        if (lastStatus && lastStatus.status !== "active") {
-            throw new BadRequestException(`Cannot assign holder: asset status is "${lastStatus.status}", must be "active"`)
+        const lastStatus = await this.repository.findLastAssetStatus(data.assetId!)
+        if (lastStatus && lastStatus !== "active") {
+            throw new BadRequestException(`Cannot assign holder: asset status is "${lastStatus}", must be "active"`)
         }
 
         const log = await withTransaction(async (manager) => {
@@ -131,7 +113,6 @@ export class AssetHolderService {
                 await this.attachmentService.associate(data.attachmentIds, "AssetHolder", log.id, manager)
             }
 
-            // Log Asset assignment
             await assetLogService.log({
                 assetId: data.assetId!,
                 module: "holder",
@@ -144,13 +125,11 @@ export class AssetHolderService {
             return log
         })
 
-        // Notify Nusawork regardless of which flow reached this method (direct
-        // assign, book borrow — book.service.ts also calls create()).
+        // book.service.ts also reaches this via create(), so notify regardless of caller.
         if (employee) {
             await this.notifyNusaworkAssignment(log.id)
         }
 
-        // Reload and return
         const reloaded = await this.repository.findById(log.id)
         if (!reloaded) throw new NotFoundException("Created assignment could not be loaded")
         return reloaded
@@ -197,7 +176,6 @@ export class AssetHolderService {
                 await this.attachmentService.associate(data.attachmentIds, "AssetHolder", log.id, manager)
             }
 
-            // Log Asset return
             const holderName = log.holderKind === "employee" ? log.employee?.name : log.organization?.name
             await assetLogService.log({
                 assetId: log.assetId,
@@ -210,13 +188,11 @@ export class AssetHolderService {
             }, manager)
         })
 
-        // Notify Nusawork regardless of which flow reached this method (direct
-        // return, book return — book.service.ts also calls returnAsset()).
+        // book.service.ts also reaches this via returnAsset(), so notify regardless of caller.
         if (log.holderKind === "employee" && log.employee) {
             await this.notifyNusaworkReturn(log.id)
         }
 
-        // Reload and return
         const reloaded = await this.repository.findById(log.id)
         if (!reloaded) throw new NotFoundException("Updated assignment could not be loaded")
         return reloaded
@@ -262,8 +238,7 @@ export class AssetHolderService {
         }
 
         await withTransaction(async (manager) => {
-            // Clear the eagerly-loaded relation objects first — save() otherwise prioritizes
-            // the stale relation over the scalar employeeId/organizationId we just merged.
+            // Clear eagerly-loaded relations first — save() otherwise prioritizes the stale relation over the merged scalar id.
             log.employee = undefined as any
             log.organization = undefined as any
             this.repository.merge(log, {

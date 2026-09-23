@@ -43,8 +43,7 @@ export class Handover {
     @Column({ name: "note", type: "text", nullable: true })
     note?: string | null
 
-    // Date/time of the handover itself, set by the requester — used as the
-    // resulting AssetHolder's assignedDate/returnedDate once approved.
+    // Set by the requester — becomes the resulting AssetHolder's assignedDate/returnedDate once approved.
     @Column({ type: "varchar", nullable: true })
     date?: string | null
 
@@ -59,8 +58,7 @@ export class Handover {
     @Column({ type: "varchar", default: "pending" })
     status!: HandoverStatus
 
-    // For a `return` handover: the origin `assign` handover it returns from
-    // (best-effort — set only when all returned assets share one origin).
+    // For a `return`: the origin `assign` handover, best-effort (only when all returned assets share one).
     @Index()
     @Column({ name: "parent_handover_id", nullable: true })
     parentHandoverId?: number | null

@@ -39,6 +39,11 @@ export class TypeOrmInventoryStockRepository implements IInventoryStockRepositor
         return await this.balanceRepo.find({ where: { branchId, variantId: In(variantIds) } })
     }
 
+    async findBalancesByVariants(variantIds: number[]): Promise<InventoryStockBalance[]> {
+        if (variantIds.length === 0) return []
+        return await this.balanceRepo.find({ where: { variantId: In(variantIds) }, relations: ["branch"], order: { branchId: "ASC", condition: "ASC" } })
+    }
+
     async findBalance(branchId: number, variantId: number, condition: StockCondition, manager?: EntityManager, lock = false): Promise<InventoryStockBalance | null> {
         const repo = manager ? manager.getRepository(InventoryStockBalance) : this.balanceRepo
         const query = repo.createQueryBuilder("balance")

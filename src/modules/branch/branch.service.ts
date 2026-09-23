@@ -1,8 +1,6 @@
 import { Branch } from "./entities/branch.entity"
 import { NotFoundException, ConflictException } from "../../core/exceptions/base"
 import { EntityManager } from "typeorm"
-import { AppDataSource } from "../../config/database"
-import { Location } from "../location/entities/location.entity"
 import { IBranchRepository } from "./interfaces/branch.repository.interface"
 
 export class BranchService {
@@ -41,7 +39,7 @@ export class BranchService {
 
     async delete(id: number): Promise<void> {
         await this.getById(id)
-        const locationCount = await AppDataSource.getRepository(Location).count({ where: { branchId: id } })
+        const locationCount = await this.repository.countLocations(id)
         if (locationCount > 0) {
             throw new ConflictException(`Cannot delete branch, ${locationCount} location(s) are still linked to this branch`)
         }

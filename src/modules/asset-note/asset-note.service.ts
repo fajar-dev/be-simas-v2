@@ -47,7 +47,6 @@ export class AssetNoteService {
     }
 
     async create(data: Partial<AssetNote> & { attachmentIds?: number[] }): Promise<AssetNote> {
-        // Validate asset exists (throws NotFoundException if not found)
         await this.assetService.getById(data.assetId!)
 
         const note = await withTransaction(async (manager) => {
@@ -66,7 +65,6 @@ export class AssetNoteService {
                 await this.repository.saveLabels("AssetNote", note.id, (data as any).labels, manager)
             }
 
-            // Log Asset note creation
             await assetLogService.log({
                 assetId: data.assetId!,
                 module: "note",
@@ -79,7 +77,6 @@ export class AssetNoteService {
             return note
         })
 
-        // Reload with relations (including labels)
         const { note: reloaded } = await this.getById(note.id)
         return reloaded
     }
@@ -88,7 +85,6 @@ export class AssetNoteService {
         const { note } = await this.getById(id)
 
         if (data.assetId && data.assetId !== note.assetId) {
-            // Validate new asset exists (throws NotFoundException if not found)
             await this.assetService.getById(data.assetId)
         }
 
@@ -98,13 +94,11 @@ export class AssetNoteService {
                 date: data.date,
                 note: data.note,
             })
-            
+
             await this.repository.save(note, manager)
 
             if (data.attachmentIds !== undefined) {
-                // Delete orphaned attachments (those not in the list anymore)
                 await this.attachmentService.disassociateOrphans("AssetNote", id, data.attachmentIds, manager)
-                // Associate new attachments
                 await this.attachmentService.associate(data.attachmentIds, "AssetNote", id, manager)
             }
 
@@ -115,7 +109,6 @@ export class AssetNoteService {
                 }
             }
 
-            // Log Asset note update
             await assetLogService.log({
                 assetId: note.assetId,
                 module: "note",
@@ -127,7 +120,6 @@ export class AssetNoteService {
             }, manager)
         })
 
-        // Reload with relations
         const reloaded = await this.repository.findById(id)
         if (!reloaded) throw new NotFoundException("Updated record could not be loaded")
         return reloaded
@@ -137,14 +129,10 @@ export class AssetNoteService {
         const { note } = await this.getById(id)
 
         await withTransaction(async (manager) => {
-            // Delete all associated files & db entries
             await this.attachmentService.disassociateOrphans("AssetNote", id, [], manager)
-            // Delete associated labels
             await this.repository.deleteLabels("AssetNote", id, manager)
-            // Delete record
             await this.repository.delete(id, manager)
 
-            // Log Asset note deletion
             await assetLogService.log({
                 assetId: note.assetId,
                 module: "note",

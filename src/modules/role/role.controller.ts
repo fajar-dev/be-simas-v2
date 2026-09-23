@@ -14,8 +14,10 @@ export class RoleController {
         const page = Number(c.req.query("page") || 1)
         const limit = Number(c.req.query("limit") || 10)
         const q = c.req.query("q") || ""
+        const sortBy = c.req.query("sortBy")
+        const order = c.req.query("order") as 'ASC' | 'DESC' | undefined
 
-        const { data, total } = await this.service.getAll(page, limit, q)
+        const { data, total } = await this.service.getAll(page, limit, q, sortBy, order)
         return ApiResponse.paginate(c, data, total, page, limit, "Roles retrieved successfully")
     }
 

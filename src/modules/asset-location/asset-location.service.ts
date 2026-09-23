@@ -7,9 +7,6 @@ import { assetLogService } from "../asset-log/asset-log.module"
 import { LocationService } from "../location/location.service"
 import { withTransaction } from "../../core/helpers/transaction"
 import { EntityManager } from "typeorm"
-import { AppDataSource } from "../../config/database"
-import { Asset } from "../asset/entities/asset.entity"
-import { AssetStatus } from "../asset-status/entities/asset-status.entity"
 
 export class AssetLocationService {
     constructor(
@@ -50,28 +47,21 @@ export class AssetLocationService {
     }
 
     async create(data: Partial<AssetLocation> & { attachmentIds?: number[] }): Promise<AssetLocation> {
-        // Validate asset exists
-        const assetExists = await AppDataSource.getRepository(Asset).findOneBy({ id: data.assetId! })
+        const assetExists = await this.repository.assetExists(data.assetId!)
         if (!assetExists) {
             throw new NotFoundException("Asset not found")
         }
 
-        // Validate location exists (throws NotFoundException if not found)
         const location = await this.locationService.getById(data.locationId!)
 
-        // Prevent relocating to the same current location
         const currentLocation = await this.repository.findLatestByAssetId(data.assetId!)
         if (currentLocation && currentLocation.locationId === data.locationId) {
             throw new BadRequestException("Asset is already at this location")
         }
 
-        // Block relocation if asset status is not "active"
-        const lastStatus = await AppDataSource.getRepository(AssetStatus).findOne({
-            where: { assetId: data.assetId! },
-            order: { id: "DESC" }
-        })
-        if (lastStatus && lastStatus.status !== "active") {
-            throw new BadRequestException(`Cannot relocate: asset status is "${lastStatus.status}", must be "active"`)
+        const lastStatus = await this.repository.findLastAssetStatus(data.assetId!)
+        if (lastStatus && lastStatus !== "active") {
+            throw new BadRequestException(`Cannot relocate: asset status is "${lastStatus}", must be "active"`)
         }
 
         const log = await withTransaction(async (manager) => {
@@ -88,7 +78,6 @@ export class AssetLocationService {
                 await this.attachmentService.associate(data.attachmentIds, "AssetLocation", log.id, manager)
             }
 
-            // Log Asset relocation
             await assetLogService.log({
                 assetId: data.assetId!,
                 module: "location",
@@ -101,7 +90,6 @@ export class AssetLocationService {
             return log
         })
 
-        // Reload with relations
         const reloaded = await this.repository.findById(log.id)
         if (!reloaded) throw new NotFoundException("Created record could not be loaded")
         return reloaded

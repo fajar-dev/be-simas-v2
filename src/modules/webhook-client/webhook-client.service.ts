@@ -3,6 +3,7 @@ import { LocationService } from "../location/location.service"
 import { AssetLocationService } from "../asset-location/asset-location.service"
 import { HandoverService } from "../handover/handover.service"
 import { config } from "../../config/config"
+import { BadRequestException } from "../../core/exceptions/base"
 
 interface MistZoneEvent {
     site_id: string
@@ -21,10 +22,9 @@ export class WebhookClientService {
         private readonly handoverService: HandoverService
     ) {}
 
-    // Mist Logic
     verifyMistSecret(secret: string): boolean {
-        const expected = process.env.MIST_WEBHOOK_SECRET || config.mist.webhookSecret
-        if (!expected) return true // No secret configured = allow all (dev mode)
+        const expected = config.mist.webhookSecret
+        if (!expected) return true // no secret configured — allow all (dev mode)
         return secret === expected
     }
 
@@ -82,11 +82,10 @@ export class WebhookClientService {
         return { status: 'relocated', assetId: asset.id, locationId: location.id }
     }
 
-    // Esign Logic
     async handleEsignEvent(body: any): Promise<any> {
         const externalReferenceId = Number(body.external_reference_id)
         if (isNaN(externalReferenceId)) {
-            throw new Error("Invalid external reference ID")
+            throw new BadRequestException("Invalid external reference ID")
         }
 
         const status = body.status

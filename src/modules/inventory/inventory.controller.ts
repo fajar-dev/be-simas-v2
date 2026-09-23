@@ -4,6 +4,7 @@ import { InventoryUtilService } from "./inventory-util.service"
 import { InventorySerializer } from "./serializers/inventory.serialize"
 import { ApiResponse } from "../../core/helpers/response"
 import { InventoryFilter } from "./interfaces/inventory.repository.interface"
+import { parseIds } from "../../core/helpers/query-parser"
 
 export class InventoryController {
     constructor(
@@ -12,8 +13,6 @@ export class InventoryController {
     ) {}
 
     private parseFilters(c: Context): InventoryFilter {
-        const parseIds = (val: string | undefined) => val ? val.split(',').map(Number).filter(n => !isNaN(n)) : undefined
-
         const filters: InventoryFilter = {}
         const categoryIds = parseIds(c.req.query("categoryIds"))
         if (categoryIds?.length) filters.categoryIds = categoryIds

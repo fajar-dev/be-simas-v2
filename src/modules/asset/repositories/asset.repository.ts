@@ -1,14 +1,16 @@
-import { EntityManager, Repository } from "typeorm"
+import { EntityManager, IsNull, Repository } from "typeorm"
 import { AppDataSource } from "../../../config/database"
 import { Asset } from "../entities/asset.entity"
 import { AssetLabel } from "../entities/asset-label.entity"
 import { IAssetRepository, AssetFilter } from "../interfaces/asset.repository.interface"
 import { AssetHolder } from "../../asset-holder/entities/asset-holder.entity"
 import { AssetLocation } from "../../asset-location/entities/asset-location.entity"
+import { AssetMaintenance } from "../../asset-maintenance/entities/asset-maintenance.entity"
 import { Employee } from "../../employee/entities/employee.entity"
 import { Organization } from "../../organization/entities/organization.entity"
 import { Location } from "../../location/entities/location.entity"
 import { Branch } from "../../branch/entities/branch.entity"
+import { SubCategory } from "../../sub-category/entities/sub-category.entity"
 
 export class AssetRepository implements IAssetRepository {
     private readonly repository: Repository<Asset>
@@ -143,7 +145,6 @@ export class AssetRepository implements IAssetRepository {
             )
         }
 
-        // Useful life filter (years)
         if (filters?.usefulLifeOp && filters?.usefulLifeYears != null) {
             const op = filters.usefulLifeOp === '=' ? '=' : filters.usefulLifeOp === '<' ? '<' : '>'
             query.andWhere(`asset.useful_life IS NOT NULL AND asset.useful_life ${op} :usefulLifeYears`, { usefulLifeYears: filters.usefulLifeYears })
@@ -177,7 +178,6 @@ export class AssetRepository implements IAssetRepository {
             query.andWhere(`${depPrecondition} AND ${bookValExpr} <= :bookValueMax`, { bookValueMax: filters.bookValueMax })
         }
 
-        // Sorting
         const sortColumnMap: Record<string, string> = {
             name: "asset.name",
             code: "asset.code",
@@ -269,6 +269,27 @@ export class AssetRepository implements IAssetRepository {
 
     async delete(id: number): Promise<void> {
         await this.repository.delete(id)
+    }
+
+    async countActiveHolders(assetId: number): Promise<number> {
+        return await AppDataSource.getRepository(AssetHolder).count({ where: { assetId, returnedDate: IsNull() } })
+    }
+
+    async countLocations(assetId: number): Promise<number> {
+        return await AppDataSource.getRepository(AssetLocation).count({ where: { assetId } })
+    }
+
+    async countMaintenances(assetId: number): Promise<number> {
+        return await AppDataSource.getRepository(AssetMaintenance).count({ where: { assetId } })
+    }
+
+    async findSubCategoriesWithCategory(): Promise<SubCategory[]> {
+        return await AppDataSource.getRepository(SubCategory)
+            .createQueryBuilder('sc')
+            .leftJoinAndSelect('sc.category', 'cat')
+            .orderBy('cat.name', 'ASC')
+            .addOrderBy('sc.name', 'ASC')
+            .getMany()
     }
 
     async deleteLabels(entityType: string, entityId: number, manager?: EntityManager): Promise<void> {

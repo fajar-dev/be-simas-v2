@@ -1,10 +1,6 @@
 import { Asset } from "./entities/asset.entity"
 import { NotFoundException, BadRequestException, ConflictException } from "../../core/exceptions/base"
-import { EntityManager, IsNull } from "typeorm"
-import { AppDataSource } from "../../config/database"
-import { AssetHolder } from "../asset-holder/entities/asset-holder.entity"
-import { AssetLocation } from "../asset-location/entities/asset-location.entity"
-import { AssetMaintenance } from "../asset-maintenance/entities/asset-maintenance.entity"
+import { EntityManager } from "typeorm"
 import { IAssetRepository } from "./interfaces/asset.repository.interface"
 import { AssetFilter } from "./interfaces/asset.repository.interface"
 import { minio } from "../../core/helpers/minio"
@@ -53,21 +49,17 @@ export class AssetService {
     }
 
     private async populateRelations(asset: Asset): Promise<void> {
-        // Load labels
         const labels = await this.repository.getLabelsForEntity("Asset", asset.id)
         asset.labels = labels.map(l => ({ id: l.id, key: l.key, value: l.value }))
 
-        // Load activeHolder
         if (asset.hasHolder) {
             asset.activeHolder = await this.assetHolderService.findActiveHolder(asset.id)
         }
 
-        // Load lastLocation
         if (asset.hasLocation) {
             asset.lastLocation = await this.assetLocationService.findLastLocation(asset.id)
         }
 
-        // Load lastStatus
         asset.lastStatus = await this.assetStatusService.findLastStatus(asset.id)
     }
 
@@ -108,7 +100,6 @@ export class AssetService {
             throw new BadRequestException("Cannot assign an asset to both an employee and an organization")
         }
 
-        // Validate the initial holder before starting the transaction
         let holderName: string | null = null
         let employeeExists: Employee | null = null
         if (employeeId) {
@@ -125,7 +116,6 @@ export class AssetService {
             holderName = organizationExists.name
         }
 
-        // Validate location exists before starting transaction
         let locationExists: any = null
         if (locationId) {
             locationExists = await this.locationService.getById(locationId)
@@ -137,10 +127,8 @@ export class AssetService {
 
         try {
             const asset = await withTransaction(async (manager) => {
-                // 1. Save Asset
                 const asset = await this.repository.save(assetData, manager)
 
-                // Log Asset registration
                 await assetLogService.log({
                     assetId: asset.id,
                     module: "asset",
@@ -149,7 +137,6 @@ export class AssetService {
                     createdByUserId: assetData.createdByUserId,
                 }, manager)
 
-                // 2. If employeeId/organizationId is provided, create AssetHolder
                 if (employeeId || organizationId) {
                     const holderKind = employeeId ? "employee" : "organization"
                     const log = await this.assetHolderService.save({
@@ -167,7 +154,6 @@ export class AssetService {
                         await attachmentService.associate(assignAttachmentIds, "AssetHolder", log.id, manager)
                     }
 
-                    // Log Asset assignment
                     await assetLogService.log({
                         assetId: asset.id,
                         module: "holder",
@@ -177,7 +163,6 @@ export class AssetService {
                     }, manager)
                 }
 
-                // 3. If locationId is provided, create AssetLocation
                 if (locationId) {
                     const log = await this.assetLocationService.save({
                         assetId: asset.id,
@@ -191,7 +176,6 @@ export class AssetService {
                         await attachmentService.associate(locationAttachmentIds, "AssetLocation", log.id, manager)
                     }
 
-                    // Log Asset relocation
                     await assetLogService.log({
                         assetId: asset.id,
                         module: "location",
@@ -201,7 +185,6 @@ export class AssetService {
                     }, manager)
                 }
 
-                // 4. If status is provided, create AssetStatus
                 if (initialStatus) {
                     await this.assetStatusService.save({
                         assetId: asset.id,
@@ -219,12 +202,10 @@ export class AssetService {
                     }, manager)
                 }
 
-                // 5. If attachmentIds is provided, associate with Asset
                 if (attachmentIds && attachmentIds.length > 0) {
                     await attachmentService.associate(attachmentIds, "Asset", asset.id, manager)
                 }
 
-                // 6. Save labels
                 if (newLabels && newLabels.length > 0) {
                     await this.repository.saveLabels("Asset", asset.id, newLabels, manager)
                 }
@@ -236,7 +217,6 @@ export class AssetService {
                 await this.assetHolderService.notifyNusaworkAssignment(holderId)
             }
 
-            // Fetch the fully loaded asset (with category, branch, etc.)
             return await this.getById(asset.id)
         } catch (error: any) {
             if (error?.message?.includes("UNIQUE") || error?.message?.includes("Duplicate entry")) {
@@ -249,17 +229,14 @@ export class AssetService {
     async update(id: number, data: Partial<Asset> & { attachmentIds?: number[] }, operatorId?: number): Promise<Asset> {
         const asset = await this.getById(id)
 
-        // Capture old values before merge
         const oldValue = { ...asset }
 
         if (data.image !== undefined) {
             data.image = minio.sanitizePath(data.image) ?? undefined
         }
-        // Extract labels before merge
         const newLabels = data.labels
         delete data.labels
 
-        // Extract attachment IDs before merge
         const attachmentIds = data.attachmentIds
         delete data.attachmentIds
 
@@ -268,7 +245,6 @@ export class AssetService {
             await withTransaction(async (manager) => {
                 await this.repository.save(asset, manager)
 
-                // Handle labels: delete old, insert new
                 if (newLabels !== undefined) {
                     await this.repository.deleteLabels("Asset", id, manager)
                     if (newLabels && newLabels.length > 0) {
@@ -276,7 +252,6 @@ export class AssetService {
                     }
                 }
 
-                // Handle attachments: disassociate orphans and associate new
                 if (attachmentIds !== undefined) {
                     await attachmentService.disassociateOrphans("Asset", id, attachmentIds || [], manager)
                     if (attachmentIds && attachmentIds.length > 0) {
@@ -313,15 +288,15 @@ export class AssetService {
 
     async delete(id: number): Promise<void> {
         await this.getById(id)
-        const holderCount = await AppDataSource.getRepository(AssetHolder).count({ where: { assetId: id, returnedDate: IsNull() } })
+        const holderCount = await this.repository.countActiveHolders(id)
         if (holderCount > 0) {
             throw new ConflictException(`Cannot delete asset, it is currently assigned to an employee`)
         }
-        const locationCount = await AppDataSource.getRepository(AssetLocation).count({ where: { assetId: id } })
+        const locationCount = await this.repository.countLocations(id)
         if (locationCount > 0) {
             throw new ConflictException(`Cannot delete asset, ${locationCount} location history record(s) exist. Please delete them first`)
         }
-        const maintenanceCount = await AppDataSource.getRepository(AssetMaintenance).count({ where: { assetId: id } })
+        const maintenanceCount = await this.repository.countMaintenances(id)
         if (maintenanceCount > 0) {
             throw new ConflictException(`Cannot delete asset, ${maintenanceCount} maintenance record(s) exist. Please delete them first`)
         }

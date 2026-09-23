@@ -1,6 +1,7 @@
 import { EntityManager, Repository } from "typeorm"
 import { AppDataSource } from "../../../config/database"
 import { Category } from "../entities/category.entity"
+import { SubCategory } from "../../sub-category/entities/sub-category.entity"
 import { ICategoryRepository } from "../interfaces/category.repository.interface"
 
 export class CategoryRepository implements ICategoryRepository {
@@ -38,7 +39,6 @@ export class CategoryRepository implements ICategoryRepository {
 
         const total = await query.getCount()
 
-        // Whitelist of allowed sort columns
         const sortColumnMap: Record<string, string> = {
             code: "category.code",
             name: "category.name",
@@ -84,5 +84,9 @@ export class CategoryRepository implements ICategoryRepository {
 
     async delete(id: number): Promise<void> {
         await this.repository.delete(id)
+    }
+
+    async countSubCategories(categoryId: number): Promise<number> {
+        return await AppDataSource.getRepository(SubCategory).count({ where: { categoryId } })
     }
 }

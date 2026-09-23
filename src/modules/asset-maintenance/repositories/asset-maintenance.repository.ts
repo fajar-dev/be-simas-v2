@@ -40,7 +40,6 @@ export class AssetMaintenanceRepository implements IAssetMaintenanceRepository {
         query.distinct(true)
         const total = await query.getCount()
 
-        // Allowed sorting columns
         const sortColumnMap: Record<string, string> = {
             date: "maintenance.date",
             asset: "asset.name",

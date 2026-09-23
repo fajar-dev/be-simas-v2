@@ -47,8 +47,7 @@ export class AssetNoteController {
             ...body,
             createdByUserId: user?.id,
         })
-        
-        // Fetch fresh associated attachments to serialize
+
         const { attachments } = await this.service.getById(note.id)
         const data = await AssetNoteSerializer.single(note, attachments)
 
@@ -65,7 +64,6 @@ export class AssetNoteController {
         const body = c.req.valid("json" as never) as any
         const note = await this.service.update(id, body, user?.id)
 
-        // Fetch fresh associated attachments to serialize
         const { attachments } = await this.service.getById(note.id)
         const data = await AssetNoteSerializer.single(note, attachments)
 

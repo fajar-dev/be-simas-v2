@@ -141,42 +141,35 @@ class MinioHelper {
     sanitizePath(urlOrPath: string | null | undefined, bucket: string = BUCKET): string | null {
         if (!urlOrPath) return null
 
-        // If it's an external URL (not from our MinIO), return as-is
         if ((urlOrPath.startsWith("http://") || urlOrPath.startsWith("https://")) && !urlOrPath.includes(config.minio.endPoint)) {
             return urlOrPath
         }
-        
+
         let decoded = urlOrPath
         try {
-            // Recursively decode URL-encoded segments if nested
             while (decoded && decoded.includes('%')) {
                 const next = decodeURIComponent(decoded)
                 if (next === decoded) break
                 decoded = next
             }
         } catch {
-            // Ignore decoding errors
         }
 
-        // If the URL contains the bucket name, extract everything after the last occurrence of the bucket name
         const marker = `/${bucket}/`
         if (decoded.includes(marker)) {
             const parts = decoded.split(marker)
             decoded = parts[parts.length - 1]
         }
 
-        // Strip query parameters
         if (decoded.includes('?')) {
             decoded = decoded.split('?')[0]
         }
 
-        // Clean up leading/trailing slashes
         decoded = decoded.replace(/^\/+|\/+$/g, '')
 
         return decoded || null
     }
 }
 
-// Export a singleton instance
 export const minio = new MinioHelper()
 export default minio

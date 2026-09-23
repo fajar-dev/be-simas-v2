@@ -1,6 +1,9 @@
 import { EntityManager, Repository, IsNull } from "typeorm"
 import { AppDataSource } from "../../../config/database"
 import { AssetHolder } from "../entities/asset-holder.entity"
+import { Asset } from "../../asset/entities/asset.entity"
+import { HandoverItem } from "../../handover/entities/handover-item.entity"
+import { AssetStatus } from "../../asset-status/entities/asset-status.entity"
 import { IAssetHolderRepository } from "../interfaces/asset-holder.repository.interface"
 
 export class AssetHolderRepository implements IAssetHolderRepository {
@@ -52,7 +55,6 @@ export class AssetHolderRepository implements IAssetHolderRepository {
 
         const total = await query.getCount()
 
-        // Allowed sorting columns
         const sortColumnMap: Record<string, string> = {
             assignedDate: "holder.assignedDate",
             returnedDate: "holder.returnedDate",
@@ -123,5 +125,28 @@ export class AssetHolderRepository implements IAssetHolderRepository {
     async delete(id: number, manager?: EntityManager): Promise<void> {
         const repo = manager ? manager.getRepository(AssetHolder) : this.repository
         await repo.delete(id)
+    }
+
+    async assetExists(assetId: number): Promise<boolean> {
+        const count = await AppDataSource.getRepository(Asset).count({ where: { id: assetId } })
+        return count > 0
+    }
+
+    async findPendingHandoverAssetIds(): Promise<number[]> {
+        const pendingItems = await AppDataSource.getRepository(HandoverItem)
+            .createQueryBuilder("item")
+            .innerJoin("item.handover", "handover")
+            .where("handover.status = :status", { status: "pending" })
+            .select("item.assetId", "assetId")
+            .getRawMany()
+        return pendingItems.map(item => item.assetId)
+    }
+
+    async findLastAssetStatus(assetId: number): Promise<string | null> {
+        const status = await AppDataSource.getRepository(AssetStatus).findOne({
+            where: { assetId },
+            order: { id: "DESC" },
+        })
+        return status?.status ?? null
     }
 }

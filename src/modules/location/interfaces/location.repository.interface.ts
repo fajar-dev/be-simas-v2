@@ -9,4 +9,5 @@ export interface ILocationRepository {
     save(data: Partial<Location>, manager?: EntityManager): Promise<Location>
     merge(entity: Location, data: Partial<Location>): Location
     delete(id: number): Promise<void>
+    countAssetLocations(locationId: number): Promise<number>
 }

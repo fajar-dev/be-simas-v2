@@ -47,8 +47,7 @@ export class AssetMaintenanceController {
             ...body,
             createdByUserId: user?.id,
         })
-        
-        // Fetch fresh associated attachments to serialize
+
         const { attachments } = await this.service.getById(maintenance.id)
         const data = await AssetMaintenanceSerializer.single(maintenance, attachments)
 
@@ -65,7 +64,6 @@ export class AssetMaintenanceController {
         const body = c.req.valid("json" as never) as any
         const maintenance = await this.service.update(id, body, user?.id)
 
-        // Fetch fresh associated attachments to serialize
         const { attachments } = await this.service.getById(maintenance.id)
         const data = await AssetMaintenanceSerializer.single(maintenance, attachments)
 

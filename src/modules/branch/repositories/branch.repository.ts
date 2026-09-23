@@ -1,6 +1,7 @@
 import { EntityManager, Repository } from "typeorm"
 import { AppDataSource } from "../../../config/database"
 import { Branch } from "../entities/branch.entity"
+import { Location } from "../../location/entities/location.entity"
 import { IBranchRepository } from "../interfaces/branch.repository.interface"
 
 export class BranchRepository implements IBranchRepository {
@@ -40,7 +41,6 @@ export class BranchRepository implements IBranchRepository {
 
         const total = await query.getCount()
 
-        // Whitelist of allowed sort columns
         const sortColumnMap: Record<string, string> = {
             code: "branch.code",
             name: "branch.name",
@@ -86,5 +86,9 @@ export class BranchRepository implements IBranchRepository {
 
     async delete(id: number): Promise<void> {
         await this.repository.delete(id)
+    }
+
+    async countLocations(branchId: number): Promise<number> {
+        return await AppDataSource.getRepository(Location).count({ where: { branchId } })
     }
 }

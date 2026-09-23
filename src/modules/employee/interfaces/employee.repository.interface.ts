@@ -8,4 +8,6 @@ export interface IEmployeeRepository {
     save(data: Partial<Employee>, manager?: EntityManager): Promise<Employee>
     merge(entity: Employee, data: Partial<Employee>): Employee
     delete(id: number): Promise<void>
+    countActiveAssetHolders(employeeId: number): Promise<number>
+    countUsers(employeeId: number): Promise<number>
 }

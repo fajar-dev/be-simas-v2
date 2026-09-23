@@ -1,24 +1,24 @@
 import ExcelJS from "exceljs"
-import { In } from "typeorm"
 import { Inventory } from "./entities/inventory.entity"
 import { config } from "../../config/config"
-import { AppDataSource } from "../../config/database"
 import { InventoryVariant } from "../inventory-variant/entities/inventory-variant.entity"
 import { InventoryStockBalance } from "../inventory-stock/entities/inventory-stock-balance.entity"
+import type { IInventoryVariantRepository } from "../inventory-variant/interfaces/inventory-variant.repository.interface"
+import type { IInventoryStockRepository } from "../inventory-stock/interfaces/inventory-stock.repository.interface"
 
 export class InventoryUtilService {
+    constructor(
+        private readonly variantRepository: IInventoryVariantRepository,
+        private readonly stockRepository: IInventoryStockRepository
+    ) {}
+
     async export(data: Inventory[], labelKeys: string[]): Promise<Buffer> {
         const ids = data.map((item) => item.id)
 
-        // Fetch variants for the exported items, then balances for those variants — two batched
-        // queries instead of N+1, grouped in-memory below.
-        const variants = ids.length
-            ? await AppDataSource.getRepository(InventoryVariant).find({ where: { inventoryId: In(ids) }, order: { name: "ASC" } })
-            : []
+        // Batched in two queries (variants, then balances) instead of N+1, grouped in-memory below.
+        const variants = await this.variantRepository.findByInventoryIds(ids)
         const variantIds = variants.map((v) => v.id)
-        const balances = variantIds.length
-            ? await AppDataSource.getRepository(InventoryStockBalance).find({ where: { variantId: In(variantIds) }, relations: ["branch"], order: { branchId: "ASC", condition: "ASC" } })
-            : []
+        const balances = await this.stockRepository.findBalancesByVariants(variantIds)
 
         const variantsByInventory = new Map<number, InventoryVariant[]>()
         for (const v of variants) {
@@ -36,7 +36,6 @@ export class InventoryUtilService {
         const workbook = new ExcelJS.Workbook()
         const sheet = workbook.addWorksheet("Inventory")
 
-        // Define columns
         const columns: { header: string; key: string; width: number }[] = [
             { header: "No", key: "no", width: 5 },
             { header: "Image", key: "image", width: 15 },
@@ -55,14 +54,12 @@ export class InventoryUtilService {
             { header: "Quantity", key: "quantity", width: 12 },
         ]
 
-        // Add label columns dynamically (only checked ones)
         labelKeys.forEach((key) => {
             columns.push({ header: key, key: `label_${key}`, width: 20 })
         })
 
         sheet.columns = columns
 
-        // Column indices (1-indexed)
         const imageCol = columns.findIndex((c) => c.key === "image") + 1
         const codeCol = columns.findIndex((c) => c.key === "code") + 1
         const variantNameCol = columns.findIndex((c) => c.key === "variantName") + 1
@@ -73,20 +70,17 @@ export class InventoryUtilService {
         const firstLabelCol = labelKeys.length > 0 ? columns.findIndex((c) => c.key === `label_${labelKeys[0]}`) + 1 : 0
         const lastLabelCol = labelKeys.length > 0 ? firstLabelCol + labelKeys.length - 1 : 0
 
-        // Single-column headers, and the item-level data columns (one value per item, spanning all
-        // its leaf rows) — same set, plus label columns for the data-row merge.
+        // Item-level columns span all of that item's leaf rows via vertical merge below.
         const singleCols = ["no", "image", "code", "name", "description", "category", "subCategory", "unit", "status"]
         const itemColIndices = singleCols.map((key) => columns.findIndex((c) => c.key === key) + 1)
         labelKeys.forEach((key) => itemColIndices.push(columns.findIndex((c) => c.key === `label_${key}`) + 1))
-        // Variant-level columns — one value per variant, spans its own branch × condition rows.
+        // Variant-level columns span that variant's own branch × condition rows.
         const variantColIndices = [variantNameCol, variantCodeCol, variantDescriptionCol]
 
-        // Insert group header row (row 1), sub-header becomes row 2
         sheet.insertRow(1, [])
         const groupRow = sheet.getRow(1)
         const subHeaderRow = sheet.getRow(2)
 
-        // Single-column headers: merge vertically (row 1 + row 2)
         singleCols.forEach((key) => {
             const colIdx = columns.findIndex((c) => c.key === key) + 1
             const header = columns[colIdx - 1].header
@@ -94,15 +88,12 @@ export class InventoryUtilService {
             groupRow.getCell(colIdx).value = header
         })
 
-        // Variant: merge horizontally in row 1
         sheet.mergeCells(1, variantNameCol, 1, variantDescriptionCol)
         groupRow.getCell(variantNameCol).value = "Variant"
 
-        // Stock: merge horizontally in row 1
         sheet.mergeCells(1, branchCol, 1, quantityCol)
         groupRow.getCell(branchCol).value = "Stock"
 
-        // Labels: merge horizontally in row 1
         if (labelKeys.length > 0) {
             if (labelKeys.length > 1) {
                 sheet.mergeCells(1, firstLabelCol, 1, lastLabelCol)
@@ -110,7 +101,6 @@ export class InventoryUtilService {
             groupRow.getCell(firstLabelCol).value = "Labels"
         }
 
-        // Header style
         const headerStyle = {
             font: { bold: true, color: { argb: "FFFFFFFF" } } as ExcelJS.Font,
             fill: { type: "pattern" as const, pattern: "solid" as const, fgColor: { argb: "FF009838" } } as ExcelJS.FillPattern,
@@ -126,9 +116,7 @@ export class InventoryUtilService {
             })
         }
 
-        // Add data rows (starting from row 3) — one physical row per (item, variant, branch ×
-        // condition) leaf, but the item- and variant-level columns are merged (rowspan) across
-        // their own leaf rows instead of repeating the value, so the hierarchy reads visually.
+        // One row per (item, variant, branch × condition) leaf; item/variant columns are rowspan-merged.
         const mergeVertical = (colIdx: number, fromRow: number, toRow: number) => {
             if (toRow > fromRow) sheet.mergeCells(fromRow, colIdx, toRow, colIdx)
         }
@@ -194,7 +182,7 @@ export class InventoryUtilService {
 
             const itemEndRow = currentRow - 1
 
-            // Set the item's image hyperlink once, on the block's top (master) cell.
+            // Set once, on the block's top (master) cell — the rest are merged into it.
             if (item.image) {
                 const imageCell = sheet.getCell(itemStartRow, imageCol)
                 const proxyUrl = `${config.app.appUrl}/api/proxy?path=${encodeURI(item.image)}`
@@ -202,7 +190,6 @@ export class InventoryUtilService {
                 imageCell.font = { color: { argb: "FF0066CC" }, underline: true }
             }
 
-            // Link the item's code cell to its detail page, once on the block's top (master) cell.
             const codeCell = sheet.getCell(itemStartRow, codeCol)
             codeCell.value = { text: item.code || String(item.id), hyperlink: `${config.app.appUrl}/inventory/${item.id}` }
             codeCell.font = { color: { argb: "FF0066CC" }, underline: true }
@@ -236,7 +223,6 @@ export class InventoryUtilService {
             })
         }
 
-        // Auto-filter on sub-header row
         sheet.autoFilter = {
             from: { row: 2, column: 1 },
             to: { row: 2, column: columns.length },

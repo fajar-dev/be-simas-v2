@@ -25,8 +25,6 @@ export class AuthService {
         private readonly userService: UserService,
         private readonly mailHelper: Mail,
         private readonly passwordResetTokenRepository: IPasswordResetTokenRepository,
-
-
     ) {}
 
     async register(data: RegisterValidator) {
@@ -85,31 +83,6 @@ export class AuthService {
         return { user, accessToken, refreshToken }
     }
 
-
-    async nusaworklogin(data: LoginValidator) {
-        const user = await this.userService.getByEmailWithPassword(data.email)
-        if (!user) {
-            throw new UnauthorizedException("User not registered")
-        }
-
-        if (!user.isActive) {
-            throw new UnauthorizedException("Account is inactive")
-        }
-
-        if (!user.password) {
-            throw new UnauthorizedException("Invalid credentials")
-        }
-
-        const isValid = await comparePassword(data.password, user.password)
-        if (!isValid) {
-            throw new UnauthorizedException("Invalid credentials")
-        }
-
-        const { accessToken, refreshToken } = await AuthHelper.generateTokens(user)
-        // Biarkan controller+serializer yang strip sensitive data
-        return { user, accessToken, refreshToken }
-    }
-
     async refreshToken(data: RefreshTokenValidator) {
         try {
             const decoded = await verify(data.refreshToken, config.app.jwtRefreshSecret, "HS256") as { sub: number }
@@ -132,7 +105,7 @@ export class AuthService {
             throw new BadRequestException("Account is inactive")
         }
 
-      const resetToken = crypto.randomBytes(32).toString("hex")
+        const resetToken = crypto.randomBytes(32).toString("hex")
         const expiresAt = new Date(Date.now() + 36000000) // 10 hours
 
         await this.passwordResetTokenRepository.create(user.id, resetToken, expiresAt)
@@ -151,7 +124,7 @@ export class AuthService {
     }
 
     async resetPassword(data: ResetPasswordValidator) {
-         const resetToken = await this.passwordResetTokenRepository.findValidToken(data.token)
+        const resetToken = await this.passwordResetTokenRepository.findValidToken(data.token)
         if (!resetToken) {
             throw new BadRequestException("Invalid or expired reset token")
         }
@@ -179,7 +152,7 @@ export class AuthService {
 
     async updateProfile(userId: number, data: { name: string; email: string; photo?: string | null }) {
         const user = await this.userService.getByIdWithPassword(userId)
-        
+
         if (data.email && data.email !== user.email) {
             const existing = await this.userService.getByEmail(data.email)
             if (existing) {
@@ -198,7 +171,7 @@ export class AuthService {
 
     async updatePassword(userId: number, data: { oldPassword?: string; newPassword: string }) {
         const user = await this.userService.getByIdWithPassword(userId)
-        
+
         if (user.password) {
             if (!data.oldPassword) {
                 throw new BadRequestException("Old password is required")
