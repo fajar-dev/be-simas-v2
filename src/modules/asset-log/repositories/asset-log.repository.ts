@@ -36,7 +36,6 @@ export class AssetLogRepository implements IAssetLogRepository {
 
         const total = await query.getCount()
 
-        // Allowed sorting columns
         const sortColumnMap: Record<string, string> = {
             module: "log.module",
             action: "log.action",

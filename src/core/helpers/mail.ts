@@ -9,10 +9,6 @@ interface MailPayload {
 }
 
 export class Mail {
-    /**
-     * Internal method to send email via SMTP
-     * Handles centering of logic, logging, and error handling.
-     */
     private async transmit(payload: MailPayload) {
         const { to, subject, text, html } = payload
 
@@ -33,29 +29,15 @@ export class Mail {
         }
     }
 
-    /**
-     * Send a plain text email via SMTP
-     * @param to Recipient email address
-     * @param subject Email subject
-     * @param text Plain text content
-     */
     async sendText(to: string, subject: string, text: string) {
         return this.transmit({ to, subject, text })
     }
 
-    /**
-     * Send an HTML email via SMTP
-     * @param to Recipient email address
-     * @param subject Email subject
-     * @param html HTML content
-     * @param text Optional plain text content fallback
-     */
     async sendHtml(to: string, subject: string, html: string, text?: string) {
         return this.transmit({ to, subject, html, text })
     }
 }
 
-// Export a singleton instance
 export const mail = new Mail()
 export const mailHelper = mail
 export default mail

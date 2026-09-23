@@ -1,6 +1,8 @@
-import { EntityManager, Repository } from "typeorm"
+import { EntityManager, IsNull, Repository } from "typeorm"
 import { AppDataSource } from "../../../config/database"
 import { Employee } from "../entities/employee.entity"
+import { AssetHolder } from "../../asset-holder/entities/asset-holder.entity"
+import { User } from "../../user/entities/user.entity"
 import { IEmployeeRepository } from "../interfaces/employee.repository.interface"
 
 export class EmployeeRepository implements IEmployeeRepository {
@@ -36,7 +38,6 @@ export class EmployeeRepository implements IEmployeeRepository {
 
         const total = await query.getCount()
 
-        // Whitelist of allowed sort columns mapped to entity properties
         const sortColumnMap: Record<string, string> = {
             name: "employee.name",
             employeeId: "employee.employeeId",
@@ -85,5 +86,13 @@ export class EmployeeRepository implements IEmployeeRepository {
 
     async delete(id: number): Promise<void> {
         await this.repository.delete(id)
+    }
+
+    async countActiveAssetHolders(employeeId: number): Promise<number> {
+        return await AppDataSource.getRepository(AssetHolder).count({ where: { employeeId, returnedDate: IsNull() } })
+    }
+
+    async countUsers(employeeId: number): Promise<number> {
+        return await AppDataSource.getRepository(User).count({ where: { employeeId } })
     }
 }

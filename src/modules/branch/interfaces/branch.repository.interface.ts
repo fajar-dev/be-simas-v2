@@ -8,4 +8,5 @@ export interface IBranchRepository {
     save(data: Partial<Branch>, manager?: EntityManager): Promise<Branch>
     merge(entity: Branch, data: Partial<Branch>): Branch
     delete(id: number): Promise<void>
+    countLocations(branchId: number): Promise<number>
 }

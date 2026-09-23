@@ -1,8 +1,6 @@
 import { SubCategory } from "./entities/sub-category.entity"
 import { NotFoundException, ConflictException } from "../../core/exceptions/base"
 import { EntityManager } from "typeorm"
-import { AppDataSource } from "../../config/database"
-import { Asset } from "../asset/entities/asset.entity"
 import { ISubCategoryRepository } from "./interfaces/sub-category.repository.interface"
 
 export class SubCategoryService {
@@ -41,7 +39,7 @@ export class SubCategoryService {
 
     async delete(id: number): Promise<void> {
         await this.getById(id)
-        const assetCount = await AppDataSource.getRepository(Asset).count({ where: { subCategoryId: id } })
+        const assetCount = await this.repository.countAssets(id)
         if (assetCount > 0) {
             throw new ConflictException(`Cannot delete sub category, ${assetCount} asset(s) are still linked to this sub category`)
         }

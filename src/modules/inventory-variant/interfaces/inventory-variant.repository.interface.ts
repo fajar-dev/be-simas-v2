@@ -3,6 +3,7 @@ import { InventoryVariant } from "../entities/inventory-variant.entity"
 
 export interface IInventoryVariantRepository {
     findByInventory(inventoryId: number): Promise<InventoryVariant[]>
+    findByInventoryIds(inventoryIds: number[]): Promise<InventoryVariant[]>
     findById(id: number): Promise<InventoryVariant | null>
     countBalances(variantId: number): Promise<number>
     save(data: Partial<InventoryVariant>, manager?: EntityManager): Promise<InventoryVariant>

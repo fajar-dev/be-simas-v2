@@ -1,6 +1,7 @@
 import { EntityManager, Repository } from "typeorm"
 import { AppDataSource } from "../../../config/database"
 import { Location } from "../entities/location.entity"
+import { AssetLocation } from "../../asset-location/entities/asset-location.entity"
 import { ILocationRepository } from "../interfaces/location.repository.interface"
 
 export class LocationRepository implements ILocationRepository {
@@ -36,7 +37,6 @@ export class LocationRepository implements ILocationRepository {
 
         const total = await query.getCount()
 
-        // Whitelist of allowed sort columns mapped to entity properties
         const sortColumnMap: Record<string, string> = {
             name: "location.name",
             branch: "branch.name",
@@ -94,5 +94,9 @@ export class LocationRepository implements ILocationRepository {
 
     async delete(id: number): Promise<void> {
         await this.repository.delete(id)
+    }
+
+    async countAssetLocations(locationId: number): Promise<number> {
+        return await AppDataSource.getRepository(AssetLocation).count({ where: { locationId } })
     }
 }

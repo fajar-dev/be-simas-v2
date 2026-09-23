@@ -1,9 +1,6 @@
-import { IsNull } from "typeorm"
 import { Organization } from "./entities/organization.entity"
 import { NotFoundException, ConflictException, BadRequestException } from "../../core/exceptions/base"
 import { IOrganizationRepository } from "./interfaces/organization.repository.interface"
-import { AppDataSource } from "../../config/database"
-import { AssetHolder } from "../asset-holder/entities/asset-holder.entity"
 
 export class OrganizationService {
     constructor(private readonly repository: IOrganizationRepository) {}
@@ -48,8 +45,7 @@ export class OrganizationService {
         }
 
         if (data.parentId !== undefined) {
-            // `org.parent` was eagerly loaded by getById() above — if it's left in place, TypeORM's
-            // save() prioritizes that stale relation object over the new `parentId` scalar we just merged.
+            // `org.parent` was eagerly loaded above — save() would prioritize that stale relation over the new `parentId` scalar.
             org.parent = undefined as any
         }
         this.repository.merge(org, data)
@@ -64,7 +60,7 @@ export class OrganizationService {
         if (childCount > 0) {
             throw new ConflictException(`Cannot delete organization, ${childCount} sub-organization(s) are still linked to this organization`)
         }
-        const holderCount = await AppDataSource.getRepository(AssetHolder).count({ where: { organizationId: id, returnedDate: IsNull() } })
+        const holderCount = await this.repository.countActiveAssetHolders(id)
         if (holderCount > 0) {
             throw new ConflictException(`Cannot delete organization, ${holderCount} asset(s) are still assigned to this organization`)
         }

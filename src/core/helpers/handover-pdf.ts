@@ -93,7 +93,6 @@ export async function generateHandoverPdf(handover: Handover): Promise<Uint8Arra
     const cell = (x: number, top: number, w: number, h: number) =>
         page.drawRectangle({ x, y: top - h, width: w, height: h, borderColor: BORDER, borderWidth: 0.7 })
 
-    // ---- Title ----
     const title = "FORM SERAH TERIMA ASET/BARANG"
     const titleSize = 13
     const titleW = fontBold.widthOfTextAtSize(title, titleSize)
@@ -109,7 +108,6 @@ export async function generateHandoverPdf(handover: Handover): Promise<Uint8Arra
 
     y -= 35
 
-    // ---- Info table ----
     const tt = handover.transactionType as HandoverTransactionType
     const employeeName = resolveEmployeeName(handover)
 
@@ -150,10 +148,8 @@ export async function generateHandoverPdf(handover: Handover): Promise<Uint8Arra
         cell(LEFT, y, labelW, h)
         cell(LEFT + labelW, y, valueW, h)
 
-        // Label (top-aligned)
         drawText(sanitizeText(row.label), LEFT + 6, y - padV - size, size, font)
 
-        // Values
         let baseY = y - padV - size
         for (const line of visual) {
             let tx = LEFT + labelW + 8
@@ -173,7 +169,6 @@ export async function generateHandoverPdf(handover: Handover): Promise<Uint8Arra
     drawText("Telah diserahkan asset/barang berupa :", LEFT, y, size, font)
     y -= 12
 
-    // ---- Items table ----
     const conditionLabel = (c: string) => (c === "new" ? "Baru" : c === "used" ? "Bekas" : c)
     const cols = [
         { title: "No.", w: 30 },
@@ -189,7 +184,6 @@ export async function generateHandoverPdf(handover: Handover): Promise<Uint8Arra
         cx += c.w
     }
 
-    // Header
     const headerH = 24
     cx = LEFT
     for (const c of cols) {
@@ -200,8 +194,7 @@ export async function generateHandoverPdf(handover: Handover): Promise<Uint8Arra
     }
     y -= headerH
 
-    // Normalize asset + stock lines into one common {name, code, jumlah, note} shape —
-    // both kinds render together in a single table now.
+    // Normalize asset + stock lines into one common {name, code, jumlah, note} shape for one table.
     const assetRows = (handover.items ?? []).map((item) => ({
         name: item.asset?.name ?? "-",
         code: item.asset?.code ?? "-",
@@ -222,7 +215,6 @@ export async function generateHandoverPdf(handover: Handover): Promise<Uint8Arra
     })
     const rows = [...assetRows, ...stockRows]
 
-    // Rows
     rows.forEach((item, idx) => {
         const no = String(idx + 1)
         const name = item.name
@@ -253,7 +245,6 @@ export async function generateHandoverPdf(handover: Handover): Promise<Uint8Arra
         y -= rowH
     })
 
-    // ---- Signature ----
     y -= 30
     const halfW = CONTENT_W / 2
     const sigHeaderH = 24

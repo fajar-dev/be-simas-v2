@@ -8,20 +8,20 @@ const PANEL_BASE_URL = "https://panel.nusawork.com"
 export class AuthHelper {
     static async generateTokens(user: any) {
         const accessToken = await sign(
-            { 
-                sub: user.id, 
-                email: user.email, 
+            {
+                sub: user.id,
+                email: user.email,
                 exp: Math.floor(Date.now() / 1000) + 60 * 15 // 15 mins
-            }, 
+            },
             config.app.jwtSecret,
             "HS256"
         )
 
         const refreshToken = await sign(
-            { 
-                sub: user.id, 
+            {
+                sub: user.id,
                 exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7 // 7 days
-            }, 
+            },
             config.app.jwtRefreshSecret,
             "HS256"
         )
@@ -34,26 +34,21 @@ export class AuthHelper {
             config.google.clientId,
             config.google.clientSecret,
             'postmessage'
-        );
-        return oAuth2Client;
+        )
+        return oAuth2Client
     }
 
     static async verifyGoogleCode(code: string): Promise<any> {
-        const oAuth2Client = this.getOauth2Client();
-        const result = await oAuth2Client.getToken(code);
+        const oAuth2Client = this.getOauth2Client()
+        const result = await oAuth2Client.getToken(code)
         const ticket = await oAuth2Client.verifyIdToken({
             idToken: result.tokens.id_token!,
             audience: config.google.clientId,
-        });
-        const payload = ticket.getPayload();
-        return payload;
+        })
+        const payload = ticket.getPayload()
+        return payload
     }
 
-    // ── Panel QR Code Helpers ────────────────────────────────────────────
-
-    /**
-     * Fetch from Panel API with error handling.
-     */
     static async panelFetch(path: string, options?: RequestInit): Promise<Response> {
         let response: Response
         try {
@@ -72,9 +67,6 @@ export class AuthHelper {
         return response
     }
 
-    /**
-     * Extract QR token from qrcode_image URL.
-     */
     static extractQrToken(qrCodeImageUrl: string): string {
         const parts = qrCodeImageUrl.split("/api/companies/login/qrcode/")
         const token = parts.length > 1 ? parts[1] : null
@@ -86,9 +78,6 @@ export class AuthHelper {
         return token
     }
 
-    /**
-     * Fetch QR Code SVG from Panel and convert to base64 data URL.
-     */
     static async fetchQrCodeSvg(imageUrl: string): Promise<string> {
         try {
             const response = await fetch(imageUrl)
@@ -103,9 +92,6 @@ export class AuthHelper {
         throw new BadRequestException("Failed to load QR Code image from panel")
     }
 
-    /**
-     * Decode email from a Panel JWT token.
-     */
     static decodeEmailFromJwt(token: string): string {
         try {
             const parts = token.split(".")

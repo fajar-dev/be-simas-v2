@@ -94,7 +94,6 @@ export function expandOccurrences(schedule: RecurrenceSpec, from: string, to: st
         return occurrences
     }
 
-    // yearly
     const targetMonth = schedule.month ?? 1
     let guard = 0
     for (let y = sy; y <= ey && guard++ < MAX_OCCURRENCES; y++) {

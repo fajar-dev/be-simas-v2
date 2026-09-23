@@ -1,9 +1,6 @@
 import { Employee } from "./entities/employee.entity"
 import { NotFoundException, ConflictException } from "../../core/exceptions/base"
-import { EntityManager, IsNull } from "typeorm"
-import { AppDataSource } from "../../config/database"
-import { AssetHolder } from "../asset-holder/entities/asset-holder.entity"
-import { User } from "../user/entities/user.entity"
+import { EntityManager } from "typeorm"
 import { IEmployeeRepository } from "./interfaces/employee.repository.interface"
 import { minio } from "../../core/helpers/minio"
 
@@ -41,8 +38,7 @@ export class EmployeeService {
             data.photo = minio.sanitizePath(data.photo) ?? undefined
         }
         if (data.organizationId !== undefined) {
-            // `employee.organization` was eagerly loaded by getById() above — if it's left in place,
-            // TypeORM's save() prioritizes that stale relation object over the new scalar we just merged.
+            // `employee.organization` was eagerly loaded above — save() would prioritize that stale relation over the new scalar.
             employee.organization = undefined as any
         }
         this.repository.merge(employee, data)
@@ -53,11 +49,11 @@ export class EmployeeService {
 
     async delete(id: number): Promise<void> {
         await this.getById(id)
-        const holderCount = await AppDataSource.getRepository(AssetHolder).count({ where: { employeeId: id, returnedDate: IsNull() } })
+        const holderCount = await this.repository.countActiveAssetHolders(id)
         if (holderCount > 0) {
             throw new ConflictException(`Cannot delete employee, ${holderCount} asset(s) are still assigned to this employee`)
         }
-        const userCount = await AppDataSource.getRepository(User).count({ where: { employeeId: id } })
+        const userCount = await this.repository.countUsers(id)
         if (userCount > 0) {
             throw new ConflictException(`Cannot delete employee, ${userCount} user(s) are still linked to this employee`)
         }

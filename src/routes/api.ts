@@ -2,8 +2,7 @@ import { Hono } from "hono"
 import { zValidator } from "@hono/zod-validator"
 import crypto from "crypto"
 
-// ── Validators ──────────────────────────────────────────────────────────────
-import { RegisterValidator, LoginValidator, ForgotPasswordValidator, ResetPasswordValidator, RefreshTokenValidator, GoogleLoginValidator, UpdateProfileValidator, UpdatePasswordValidator } from "../modules/auth/validators/auth.validator"
+import { RegisterValidator, LoginValidator, ForgotPasswordValidator, ResetPasswordValidator, RefreshTokenValidator, GoogleLoginValidator, UpdateProfileValidator, UpdatePasswordValidator, QrCodeLoginValidator } from "../modules/auth/validators/auth.validator"
 import { CreateUserValidator, UpdateUserValidator } from "../modules/user/validators/user.validator"
 import { CreateCategoryValidator, UpdateCategoryValidator } from "../modules/category/validators/category.validator"
 import { CreateSubCategoryValidator, UpdateSubCategoryValidator } from "../modules/sub-category/validators/sub-category.validator"
@@ -20,6 +19,7 @@ import { CreateAssetStatusValidator, BulkCreateAssetStatusValidator } from "../m
 import { CreateRoleValidator, UpdateRoleValidator } from "../modules/role/validators/role.validator"
 import { DecodeBarcodeValidator } from "../modules/ai/validators/ai.validator"
 import { CreateAssetScheduleValidator, UpdateAssetScheduleValidator } from "../modules/asset-schedule/validators/asset-schedule.validator"
+import { CreateTransferValidator, MergeTransferValidator } from "../modules/transfer/validators/transfer.validator"
 import { CreateHandoverValidator } from "../modules/handover/validators/handover.validator"
 import { ReplaceHandoverFieldsValidator } from "../modules/handover-field/validators/handover-field.validator"
 import { CreateInventoryValidator, UpdateInventoryValidator } from "../modules/inventory/validators/inventory.validator"
@@ -31,13 +31,11 @@ import { InventoryStockInValidator } from "../modules/inventory-stock-in/validat
 import { InventoryStockOpnameValidator } from "../modules/inventory-stock-opname/validators/inventory-stock-opname.validator"
 import { CreateOrganizationValidator, UpdateOrganizationValidator } from "../modules/organization/validators/organization.validator"
 
-// ── Middlewares ──────────────────────────────────────────────────────────────
 import { authMiddleware } from "../core/middlewares/auth.middleware"
 import { validationHook } from "../core/helpers/validator"
 import { BadRequestException } from "../core/exceptions/base"
 import { requirePermission } from "../core/middlewares/permission.middleware"
 
-// ── Modules (controllers wired with their dependencies) ──────────────────────
 import { authController } from "../modules/auth/auth.module"
 import { userController } from "../modules/user/user.module"
 import { categoryController } from "../modules/category/category.module"
@@ -57,10 +55,12 @@ import { assetStatusController } from "../modules/asset-status/asset-status.modu
 import { statisticController } from "../modules/statistic/statistic.module"
 import { roleController } from "../modules/role/role.module"
 import { webhookClientController } from "../modules/webhook-client/webhook-client.module"
+import { MistWebhookValidator, EsignWebhookValidator } from "../modules/webhook-client/validators/webhook-client.validator"
 import { aiController } from "../modules/ai/ai.module"
 import { bookController } from "../modules/book/book.module"
 import { BorrowBookValidator, ReturnBookValidator } from "../modules/book/validators/book.validator"
 import { assetScheduleController } from "../modules/asset-schedule/asset-schedule.module"
+import { transferController } from "../modules/transfer/transfer.module"
 import { handoverController } from "../modules/handover/handover.module"
 import { handoverFieldController } from "../modules/handover-field/handover-field.module"
 import { inventoryController } from "../modules/inventory/inventory.module"
@@ -75,10 +75,8 @@ import { organizationController } from "../modules/organization/organization.mod
 import { queueController } from "../modules/queue/queue.module"
 import { apiKeyMiddleware } from "../core/middlewares/api-key.middleware"
 
-// ── Routes ───────────────────────────────────────────────────────────────────
 const routes = new Hono()
 
-// Auth
 routes.post("/auth/register", zValidator("json", RegisterValidator, validationHook), (c) => authController.register(c))
 routes.post("/auth/login", zValidator("json", LoginValidator, validationHook), (c) => authController.login(c))
 routes.post("/auth/nusawork-login", zValidator("json", LoginValidator, validationHook), (c) => authController.nusaworkLogin(c))
@@ -95,9 +93,8 @@ routes.post("/auth/logout", authMiddleware, (c) => authController.logout(c))
 // Auth - QR Code Login (public, no auth required)
 routes.get("/auth/qrcode/generate", (c) => authController.generateQrCode(c))
 routes.get("/auth/qrcode/:token/status", (c) => authController.qrCodeStatus(c))
-routes.post("/auth/qrcode/login", (c) => authController.qrCodeLogin(c))
+routes.post("/auth/qrcode/login", zValidator("json", QrCodeLoginValidator, validationHook), (c) => authController.qrCodeLogin(c))
 
-// User
 routes.get("/user", authMiddleware, requirePermission("user:read"), (c) => userController.index(c))
 routes.get("/user/options", authMiddleware, (c) => userController.options(c))
 routes.get("/user/:id", authMiddleware, requirePermission("user:read"), (c) => userController.show(c))
@@ -105,7 +102,6 @@ routes.post("/user", authMiddleware, requirePermission("user:create"), zValidato
 routes.put("/user/:id", authMiddleware, requirePermission("user:update"), zValidator("json", UpdateUserValidator, validationHook), (c) => userController.update(c))
 routes.delete("/user/:id", authMiddleware, requirePermission("user:delete"), (c) => userController.destroy(c))
 
-// Category
 routes.get("/category/list", authMiddleware, (c) => categoryController.list(c))
 routes.get("/category", authMiddleware, requirePermission("category:read"), (c) => categoryController.index(c))
 routes.get("/category/:id", authMiddleware, requirePermission("category:read"), (c) => categoryController.show(c))
@@ -113,7 +109,6 @@ routes.post("/category", authMiddleware, requirePermission("category:create"), z
 routes.put("/category/:id", authMiddleware, requirePermission("category:update"), zValidator("json", UpdateCategoryValidator, validationHook), (c) => categoryController.update(c))
 routes.delete("/category/:id", authMiddleware, requirePermission("category:delete"), (c) => categoryController.destroy(c))
 
-// Organization
 routes.get("/organization/list", authMiddleware, (c) => organizationController.list(c))
 routes.get("/organization", authMiddleware, requirePermission("organization:read"), (c) => organizationController.index(c))
 routes.get("/organization/:id", authMiddleware, requirePermission("organization:read"), (c) => organizationController.show(c))
@@ -121,7 +116,6 @@ routes.post("/organization", authMiddleware, requirePermission("organization:cre
 routes.put("/organization/:id", authMiddleware, requirePermission("organization:update"), zValidator("json", UpdateOrganizationValidator, validationHook), (c) => organizationController.update(c))
 routes.delete("/organization/:id", authMiddleware, requirePermission("organization:delete"), (c) => organizationController.destroy(c))
 
-// Sub Category
 routes.get("/sub-category", authMiddleware, requirePermission("sub-category:read"), (c) => subCategoryController.index(c))
 routes.get("/sub-category/by-category/:categoryId", authMiddleware, (c) => subCategoryController.byCategory(c))
 routes.get("/sub-category/:id", authMiddleware, requirePermission("sub-category:read"), (c) => subCategoryController.show(c))
@@ -129,11 +123,9 @@ routes.post("/sub-category", authMiddleware, requirePermission("sub-category:cre
 routes.put("/sub-category/:id", authMiddleware, requirePermission("sub-category:update"), zValidator("json", UpdateSubCategoryValidator, validationHook), (c) => subCategoryController.update(c))
 routes.delete("/sub-category/:id", authMiddleware, requirePermission("sub-category:delete"), (c) => subCategoryController.destroy(c))
 
-// Feedback
 routes.get("/feedback", authMiddleware, (c) => feedbackController.index(c))
 routes.post("/feedback", authMiddleware, zValidator("form", StoreFeedbackValidator, validationHook), (c) => feedbackController.store(c))
 
-// Employee
 routes.get("/employee/list", authMiddleware, (c) => employeeController.list(c))
 routes.get("/employee", authMiddleware, requirePermission("employee:read"), (c) => employeeController.index(c))
 routes.get("/employee/:id", authMiddleware, requirePermission("employee:read"), (c) => employeeController.show(c))
@@ -141,7 +133,6 @@ routes.post("/employee", authMiddleware, requirePermission("employee:create"), z
 routes.put("/employee/:id", authMiddleware, requirePermission("employee:update"), zValidator("json", UpdateEmployeeValidator, validationHook), (c) => employeeController.update(c))
 routes.delete("/employee/:id", authMiddleware, requirePermission("employee:delete"), (c) => employeeController.destroy(c))
 
-// Branch
 routes.get("/branch/list", authMiddleware, (c) => branchController.list(c))
 routes.get("/branch", authMiddleware, requirePermission("branch:read"), (c) => branchController.index(c))
 routes.get("/branch/:id", authMiddleware, requirePermission("branch:read"), (c) => branchController.show(c))
@@ -149,15 +140,12 @@ routes.post("/branch", authMiddleware, requirePermission("branch:create"), zVali
 routes.put("/branch/:id", authMiddleware, requirePermission("branch:update"), zValidator("json", UpdateBranchValidator, validationHook), (c) => branchController.update(c))
 routes.delete("/branch/:id", authMiddleware, requirePermission("branch:delete"), (c) => branchController.destroy(c))
 
-// Location
 routes.get("/location", authMiddleware, requirePermission("location:read"), (c) => locationController.index(c))
 routes.get("/location/by-branch/:branchId", authMiddleware, (c) => locationController.byBranch(c))
 routes.get("/location/:id", authMiddleware, requirePermission("location:read"), (c) => locationController.show(c))
 routes.post("/location", authMiddleware, requirePermission("location:create"), zValidator("json", CreateLocationValidator, validationHook), (c) => locationController.store(c))
 routes.put("/location/:id", authMiddleware, requirePermission("location:update"), zValidator("json", UpdateLocationValidator, validationHook), (c) => locationController.update(c))
 routes.delete("/location/:id", authMiddleware, requirePermission("location:delete"), (c) => locationController.destroy(c))
-
-// Asset
 routes.get("/asset", authMiddleware, requirePermission("asset:read"), (c) => assetController.index(c))
 routes.get("/asset/options", authMiddleware, (c) => assetController.options(c))
 routes.get("/asset/check-code", authMiddleware, (c) => assetController.checkCode(c))
@@ -171,11 +159,9 @@ routes.put("/asset/:id", authMiddleware, requirePermission("asset:update"), zVal
 routes.post("/asset/bulk-delete", authMiddleware, requirePermission("asset:delete"), zValidator("json", BulkDeleteAssetValidator, validationHook), (c) => assetController.bulkDestroy(c))
 routes.delete("/asset/:id", authMiddleware, requirePermission("asset:delete"), (c) => assetController.destroy(c))
 
-// Attachment
 routes.post("/attachment", authMiddleware, (c) => attachmentController.upload(c))
 routes.delete("/attachment/:id", authMiddleware, (c) => attachmentController.destroy(c))
 
-// Asset Maintenance
 routes.get("/asset-maintenance", authMiddleware, requirePermission("asset-maintenance:read"), (c) => assetMaintenanceController.index(c))
 routes.get("/asset-maintenance/label-keys", authMiddleware, requirePermission("asset-maintenance:read"), (c) => assetMaintenanceController.getLabelKeys(c))
 routes.get("/asset-maintenance/:id", authMiddleware, requirePermission("asset-maintenance:read"), (c) => assetMaintenanceController.show(c))
@@ -183,7 +169,6 @@ routes.post("/asset-maintenance", authMiddleware, requirePermission("asset-maint
 routes.put("/asset-maintenance/:id", authMiddleware, requirePermission("asset-maintenance:update"), zValidator("json", UpdateAssetMaintenanceValidator, validationHook), (c) => assetMaintenanceController.update(c))
 routes.delete("/asset-maintenance/:id", authMiddleware, requirePermission("asset-maintenance:delete"), (c) => assetMaintenanceController.destroy(c))
 
-// Asset Note
 routes.get("/asset-note", authMiddleware, requirePermission("asset-note:read"), (c) => assetNoteController.index(c))
 routes.get("/asset-note/label-keys", authMiddleware, requirePermission("asset-note:read"), (c) => assetNoteController.getLabelKeys(c))
 routes.get("/asset-note/:id", authMiddleware, requirePermission("asset-note:read"), (c) => assetNoteController.show(c))
@@ -191,12 +176,10 @@ routes.post("/asset-note", authMiddleware, requirePermission("asset-note:create"
 routes.put("/asset-note/:id", authMiddleware, requirePermission("asset-note:update"), zValidator("json", UpdateAssetNoteValidator, validationHook), (c) => assetNoteController.update(c))
 routes.delete("/asset-note/:id", authMiddleware, requirePermission("asset-note:delete"), (c) => assetNoteController.destroy(c))
 
-// Asset Location
 routes.get("/asset-location", authMiddleware, requirePermission("asset-location:read"), (c) => assetLocationController.index(c))
 routes.get("/asset-location/:id", authMiddleware, requirePermission("asset-location:read"), (c) => assetLocationController.show(c))
 routes.post("/asset-location", authMiddleware, requirePermission("asset-location:create"), zValidator("json", CreateAssetLocationValidator, validationHook), (c) => assetLocationController.store(c))
 
-// Asset Holder
 routes.get("/asset-holder", authMiddleware, requirePermission("asset-holder:read"), (c) => assetHolderController.index(c))
 routes.get("/asset-holder/active/:assetId", authMiddleware, requirePermission("asset-holder:read"), (c) => assetHolderController.active(c))
 routes.get("/asset-holder/:id", authMiddleware, requirePermission("asset-holder:read"), (c) => assetHolderController.show(c))
@@ -205,15 +188,12 @@ routes.put("/asset-holder/:id", authMiddleware, requirePermission("asset-holder:
 routes.delete("/asset-holder/:id", authMiddleware, requirePermission("asset-holder:delete"), (c) => assetHolderController.destroy(c))
 routes.post("/asset-holder/:id/return", authMiddleware, requirePermission("asset-holder:return"), zValidator("json", ReturnAssetValidator, validationHook), (c) => assetHolderController.returnAsset(c))
 
-// Asset Log
 routes.get("/asset-log", authMiddleware, requirePermission("asset:read"), (c) => assetLogController.index(c))
 
-// Asset Status
 routes.get("/asset-status", authMiddleware, requirePermission("asset-status:read"), (c) => assetStatusController.index(c))
 routes.post("/asset-status/bulk", authMiddleware, requirePermission("asset-status:create"), zValidator("json", BulkCreateAssetStatusValidator, validationHook), (c) => assetStatusController.bulkStore(c))
 routes.post("/asset-status", authMiddleware, requirePermission("asset-status:create"), zValidator("json", CreateAssetStatusValidator, validationHook), (c) => assetStatusController.store(c))
 
-// Asset Schedule (calendar)
 routes.get("/asset-schedule", authMiddleware, requirePermission("asset-schedule:read"), (c) => assetScheduleController.index(c))
 routes.get("/asset-schedule/calendar", authMiddleware, requirePermission("asset-schedule:read"), (c) => assetScheduleController.calendar(c))
 routes.get("/asset-schedule/:id", authMiddleware, requirePermission("asset-schedule:read"), (c) => assetScheduleController.show(c))
@@ -221,7 +201,12 @@ routes.post("/asset-schedule", authMiddleware, requirePermission("asset-schedule
 routes.put("/asset-schedule/:id", authMiddleware, requirePermission("asset-schedule:update"), zValidator("json", UpdateAssetScheduleValidator, validationHook), (c) => assetScheduleController.update(c))
 routes.delete("/asset-schedule/:id", authMiddleware, requirePermission("asset-schedule:delete"), (c) => assetScheduleController.destroy(c))
 
-// Asset Handover
+// Transfer (external intake staging, completed and merged into Asset by a user)
+routes.post("/transfer", apiKeyMiddleware, zValidator("json", CreateTransferValidator, validationHook), (c) => transferController.intake(c))
+routes.get("/transfer", authMiddleware, requirePermission("transfer:read"), (c) => transferController.index(c))
+routes.get("/transfer/:id", authMiddleware, requirePermission("transfer:read"), (c) => transferController.show(c))
+routes.post("/transfer/:id/merge", authMiddleware, requirePermission("transfer:merge"), zValidator("json", MergeTransferValidator, validationHook), (c) => transferController.merge(c))
+
 routes.get("/handover", authMiddleware, requirePermission("handover:read"), (c) => handoverController.index(c))
 routes.get("/handover/pending-assets", authMiddleware, (c) => handoverController.pendingAssetIds(c))
 routes.get("/handover/:id", authMiddleware, requirePermission("handover:read"), (c) => handoverController.show(c))
@@ -230,33 +215,26 @@ routes.post("/handover/:id/cancel", authMiddleware, requirePermission("handover:
 routes.get("/handover-field", authMiddleware, requirePermission("handover-field:read"), (c) => handoverFieldController.index(c))
 routes.put("/handover-field/:transactionType", authMiddleware, requirePermission("handover-field:manage"), zValidator("json", ReplaceHandoverFieldsValidator, validationHook), (c) => handoverFieldController.replace(c))
 
-// Inventory Stock (balance / entry)
 // NOTE: registered before "/inventory/:id" so the static "/inventory/stock*" paths win.
 routes.get("/inventory/stock/entry-template", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockController.entryTemplate(c))
 routes.get("/inventory/stock", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockController.index(c))
 routes.post("/inventory/stock/entry", authMiddleware, requirePermission("inventory-stock:entry"), zValidator("json", InventoryStockEntryValidator, validationHook), (c) => inventoryStockController.entry(c))
 
-// Inventory Stock Out (own module, mirrors asset-holder/asset-status)
 routes.get("/inventory-stock-out", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockOutController.index(c))
 routes.post("/inventory-stock-out", authMiddleware, requirePermission("inventory-stock:assign"), zValidator("json", InventoryStockAssignValidator, validationHook), (c) => inventoryStockOutController.assign(c))
 routes.post("/inventory-stock-out/return", authMiddleware, requirePermission("inventory-stock:return"), zValidator("json", InventoryStockReturnValidator, validationHook), (c) => inventoryStockOutController.returnStock(c))
 
-// Inventory Stock Transfer (own module, mirrors asset-holder/asset-status)
 routes.get("/inventory-stock-transfer", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockTransferController.index(c))
 routes.post("/inventory-stock-transfer", authMiddleware, requirePermission("inventory-stock:transfer"), zValidator("json", InventoryStockTransferValidator, validationHook), (c) => inventoryStockTransferController.store(c))
 
-// Inventory Stock In (own module, mirrors asset-holder/asset-status)
 routes.get("/inventory-stock-in", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockInController.index(c))
 routes.post("/inventory-stock-in", authMiddleware, requirePermission("inventory-stock:entry"), zValidator("json", InventoryStockInValidator, validationHook), (c) => inventoryStockInController.store(c))
 
-// Inventory Stock Opname (own module, mirrors inventory-stock-in)
 routes.get("/inventory-stock-opname", authMiddleware, requirePermission("inventory-stock:read"), (c) => inventoryStockOpnameController.index(c))
 routes.post("/inventory-stock-opname", authMiddleware, requirePermission("inventory-stock:opname"), zValidator("json", InventoryStockOpnameValidator, validationHook), (c) => inventoryStockOpnameController.store(c))
 
-// Inventory Log (activity audit trail, mirrors asset-log)
 routes.get("/inventory-log", authMiddleware, requirePermission("inventory:read"), (c) => inventoryLogController.index(c))
 
-// Inventory (master item)
 routes.get("/inventory", authMiddleware, requirePermission("inventory:read"), (c) => inventoryController.index(c))
 routes.get("/inventory/export", authMiddleware, requirePermission("inventory:export"), (c) => inventoryController.export(c))
 routes.get("/inventory/list", authMiddleware, requirePermission("inventory:read"), (c) => inventoryController.list(c))
@@ -266,14 +244,12 @@ routes.post("/inventory", authMiddleware, requirePermission("inventory:create"),
 routes.put("/inventory/:id", authMiddleware, requirePermission("inventory:update"), zValidator("json", UpdateInventoryValidator, validationHook), (c) => inventoryController.update(c))
 routes.delete("/inventory/:id", authMiddleware, requirePermission("inventory:delete"), (c) => inventoryController.destroy(c))
 
-// Inventory Variant
 routes.get("/inventory-variant", authMiddleware, requirePermission("inventory-variant:read"), (c) => inventoryVariantController.index(c))
 routes.get("/inventory-variant/:id", authMiddleware, requirePermission("inventory-variant:read"), (c) => inventoryVariantController.show(c))
 routes.post("/inventory-variant", authMiddleware, requirePermission("inventory-variant:create"), zValidator("json", CreateInventoryVariantValidator, validationHook), (c) => inventoryVariantController.store(c))
 routes.put("/inventory-variant/:id", authMiddleware, requirePermission("inventory-variant:update"), zValidator("json", UpdateInventoryVariantValidator, validationHook), (c) => inventoryVariantController.update(c))
 routes.delete("/inventory-variant/:id", authMiddleware, requirePermission("inventory-variant:delete"), (c) => inventoryVariantController.destroy(c))
 
-// Statistic
 routes.get("/statistic/summary", authMiddleware, requirePermission("dashboard:read"), (c) => statisticController.summary(c))
 routes.get("/statistic/assets-by-category", authMiddleware, requirePermission("dashboard:read"), (c) => statisticController.assetsByCategory(c))
 routes.get("/statistic/assets-by-location", authMiddleware, requirePermission("dashboard:read"), (c) => statisticController.assetsByLocation(c))
@@ -282,7 +258,6 @@ routes.get("/statistic/asset-aging", authMiddleware, requirePermission("dashboar
 routes.get("/statistic/data-quality", authMiddleware, requirePermission("dashboard:read"), (c) => statisticController.dataQuality(c))
 routes.get("/statistic/depreciation", authMiddleware, requirePermission("dashboard:read"), (c) => statisticController.depreciation(c))
 
-// Role
 routes.get("/role/permissions", authMiddleware, (c) => roleController.permissions(c))
 routes.get("/role", authMiddleware, requirePermission("role:read"), (c) => roleController.index(c))
 routes.get("/role/:id", authMiddleware, requirePermission("role:read"), (c) => roleController.show(c))
@@ -290,7 +265,6 @@ routes.post("/role", authMiddleware, requirePermission("role:create"), zValidato
 routes.put("/role/:id", authMiddleware, requirePermission("role:update"), zValidator("json", UpdateRoleValidator, validationHook), (c) => roleController.update(c))
 routes.delete("/role/:id", authMiddleware, requirePermission("role:delete"), (c) => roleController.destroy(c))
 
-// Upload
 routes.post("/upload", authMiddleware, async (c) => {
     const body = await c.req.parseBody()
     const file = body["file"]
@@ -314,7 +288,6 @@ routes.post("/upload", authMiddleware, async (c) => {
     return ApiResponse.success(c, { path: objectName }, "File uploaded successfully")
 })
 
-// Proxy MinIO
 routes.get("/proxy", async (c) => {
     const path = c.req.query("path")
     if (!path) return c.json({ message: "Missing 'path' query parameter" }, 400)
@@ -323,20 +296,17 @@ routes.get("/proxy", async (c) => {
     return minio.proxyHandler(path)
 })
 
-// AI - Barcode/QR Code Decoder
 routes.post("/ai/decode-barcode", authMiddleware, zValidator("form", DecodeBarcodeValidator, validationHook), (c) => aiController.decodeBarcode(c))
 
 // Mist BLE Webhook (no auth - uses its own secret verification)
-routes.post("/webhook/mist", (c) => webhookClientController.handleMist(c))
-routes.post("/webhook/esign", (c) => webhookClientController.handleEsign(c))
+routes.post("/webhook/mist", zValidator("json", MistWebhookValidator, validationHook), (c) => webhookClientController.handleMist(c))
+routes.post("/webhook/esign", zValidator("json", EsignWebhookValidator, validationHook), (c) => webhookClientController.handleEsign(c))
 
-// Book (Borrow/Return)
 routes.get("/book/loan", apiKeyMiddleware, (c) => bookController.loans(c))
 routes.get("/book/my-books", authMiddleware, (c) => bookController.myBooks(c))
 routes.post("/book/borrow", authMiddleware, zValidator("json", BorrowBookValidator, validationHook), (c) => bookController.borrow(c))
 routes.post("/book/return", authMiddleware, zValidator("json", ReturnBookValidator, validationHook), (c) => bookController.returnBook(c))
 
-// Queue (failed jobs admin view)
 routes.get("/queue/pending", authMiddleware, requirePermission("queue:read"), (c) => queueController.pending(c))
 routes.get("/queue/failed", authMiddleware, requirePermission("queue:read"), (c) => queueController.index(c))
 routes.post("/queue/failed/:id/retry", authMiddleware, requirePermission("queue:retry"), (c) => queueController.retry(c))

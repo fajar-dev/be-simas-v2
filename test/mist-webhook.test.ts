@@ -8,6 +8,7 @@ import {
     request,
     registerAndLogin,
 } from "./setup"
+import { config } from "../src/config/config"
 
 // ── Mock MinIO to prevent real connections ──────────────────────────────────
 mock.module("../src/core/helpers/minio", () => {
@@ -32,14 +33,13 @@ const TEST_ZONE_ID = "zone-uuid-1234"
 const WEBHOOK_SECRET = "test-mist-secret"
 
 beforeAll(async () => {
-    // Set the webhook secret for tests
-    process.env.MIST_WEBHOOK_SECRET = WEBHOOK_SECRET
+    config.mist.webhookSecret = WEBHOOK_SECRET
     await initTestDatabase()
     app = createTestApp()
 })
 
 afterAll(async () => {
-    delete process.env.MIST_WEBHOOK_SECRET
+    config.mist.webhookSecret = ''
     await destroyTestDatabase()
 })
 

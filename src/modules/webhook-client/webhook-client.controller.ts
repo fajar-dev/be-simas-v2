@@ -1,21 +1,20 @@
 import { Context } from "hono"
 import { WebhookClientService } from "./webhook-client.service"
 import { ApiResponse } from "../../core/helpers/response"
+import { MistWebhookValidator, EsignWebhookValidator } from "./validators/webhook-client.validator"
 
 export class WebhookClientController {
     constructor(private readonly service: WebhookClientService) {}
 
     async handleMist(c: Context) {
-        // Verify webhook secret
         const secret = c.req.header('X-Mist-Secret') || c.req.query('secret') || ''
         if (!this.service.verifyMistSecret(secret)) {
             return c.json({ error: 'Unauthorized' }, 401)
         }
 
-        const body = await c.req.json()
+        const body = c.req.valid("json" as never) as MistWebhookValidator
         const topic = body.topic
 
-        // Only handle zone events
         if (topic !== 'zone') {
             return ApiResponse.success(c, { message: `Topic '${topic}' ignored` })
         }
@@ -36,7 +35,7 @@ export class WebhookClientController {
     }
 
     async handleEsign(c: Context) {
-        const body = await c.req.json()
+        const body = c.req.valid("json" as never) as EsignWebhookValidator
         try {
             const result = await this.service.handleEsignEvent(body)
             return ApiResponse.success(c, result, "Esign webhook handled successfully")

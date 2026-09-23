@@ -5,6 +5,7 @@ import { AssetSerializer } from "./serializers/asset.serialize"
 import { ApiResponse } from "../../core/helpers/response"
 import { AssetFilter } from "./interfaces/asset.repository.interface"
 import { resolveFileUrl } from "../../core/helpers/serializer-utils"
+import { parseIds } from "../../core/helpers/query-parser"
 
 const MAX_OPTIONS_LIMIT = 50
 
@@ -15,8 +16,6 @@ export class AssetController {
     ) {}
 
     private parseFilters(c: Context): AssetFilter {
-        const parseIds = (val: string | undefined) => val ? val.split(',').map(Number).filter(n => !isNaN(n)) : undefined
-
         const filters: AssetFilter = {}
         const categoryIds = parseIds(c.req.query("categoryIds"))
         if (categoryIds?.length) filters.categoryIds = categoryIds

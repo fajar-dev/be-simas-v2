@@ -1,8 +1,6 @@
 import { Category } from "./entities/category.entity"
 import { NotFoundException, ConflictException } from "../../core/exceptions/base"
 import { EntityManager } from "typeorm"
-import { AppDataSource } from "../../config/database"
-import { SubCategory } from "../sub-category/entities/sub-category.entity"
 import { ICategoryRepository } from "./interfaces/category.repository.interface"
 
 export class CategoryService {
@@ -41,7 +39,7 @@ export class CategoryService {
 
     async delete(id: number): Promise<void> {
         await this.getById(id)
-        const subCategoryCount = await AppDataSource.getRepository(SubCategory).count({ where: { categoryId: id } })
+        const subCategoryCount = await this.repository.countSubCategories(id)
         if (subCategoryCount > 0) {
             throw new ConflictException(`Cannot delete category, ${subCategoryCount} sub category(s) are still linked to this category`)
         }

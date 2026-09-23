@@ -7,6 +7,7 @@ export interface IOrganizationRepository {
     findList(): Promise<Organization[]>
     findById(id: number): Promise<Organization | null>
     countChildren(id: number): Promise<number>
+    countActiveAssetHolders(organizationId: number): Promise<number>
     save(data: Partial<Organization>, manager?: EntityManager): Promise<Organization>
     merge(entity: Organization, data: Partial<Organization>): Organization
     delete(id: number): Promise<void>

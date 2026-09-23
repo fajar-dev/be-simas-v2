@@ -23,7 +23,6 @@ export class BookService {
         assignNote?: string | null
         attachmentIds?: number[]
     }) {
-        // Validate asset exists and is a book
         const asset = await this.assetService.getById(data.assetId)
         const categoryName = asset.subCategory?.category?.name || ''
         if (categoryName.toLowerCase() !== BOOK_CATEGORY.toLowerCase()) {
@@ -33,7 +32,6 @@ export class BookService {
             throw new BadRequestException('Holder feature is not enabled for this asset')
         }
 
-        // Validate: last status must be active
         const lastStatus = asset.lastStatus?.status
         if (lastStatus !== 'active') {
             throw new BadRequestException('This book is not in active status')

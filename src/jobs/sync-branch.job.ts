@@ -11,7 +11,8 @@ async function sync() {
         await AppDataSource.initialize()
         logger.info("App database connected")
 
-        const branches = await nusaworkHelper.getBranch()
+        const rawBranches = await nusaworkHelper.getBranch()
+        const branches = rawBranches.filter(b => Number(b.id_parent) > 0)
         if (branches.length === 0) {
             logger.info("No branches found from Nusawork")
             await AppDataSource.destroy()

@@ -9,13 +9,7 @@ export class AiService {
         this.genAI = new GoogleGenerativeAI(config.gemini.apiKey)
     }
 
-    /**
-     * Decode barcode or QR code from an uploaded image using Gemini Vision.
-     * Throws BadRequestException if the image doesn't contain a valid barcode/QR code
-     * or if the image is too unclear to read.
-     */
     async decodeBarcode(file: File): Promise<{ type: string; content: string }> {
-        // Convert file to base64
         const buffer = Buffer.from(await file.arrayBuffer())
         const base64Data = buffer.toString("base64")
 
@@ -50,7 +44,6 @@ Or if image is unclear:
         const response = result.response
         const text = response.text().trim()
 
-        // Parse the JSON response from Gemini
         let parsed: any
         try {
             const cleanText = text
@@ -63,7 +56,6 @@ Or if image is unclear:
             throw new BadRequestException("Failed to process the image")
         }
 
-        // Handle error responses from Gemini
         if (parsed.error) {
             if (parsed.error === "NO_CODE_FOUND") {
                 throw new BadRequestException("No barcode or QR code found in the image")

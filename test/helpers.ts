@@ -47,6 +47,17 @@ export function createAssetScheduleData(assetIds: number[], overrides: Record<st
     }
 }
 
+// ── Transfer Test Data ───────────────────────────────────────────────────────
+
+export function createTransferData(overrides: Record<string, any> = {}) {
+    return {
+        name: "Laptop Dell Latitude",
+        price: 15000000,
+        purchaseDate: "2026-09-01",
+        ...overrides,
+    }
+}
+
 // ── Response Assertions ─────────────────────────────────────────────────────
 
 export function expectSuccess(body: any, statusCode: number = 200) {

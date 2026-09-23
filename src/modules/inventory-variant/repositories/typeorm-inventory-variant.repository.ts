@@ -1,4 +1,4 @@
-import { EntityManager, Repository } from "typeorm"
+import { EntityManager, In, Repository } from "typeorm"
 import { AppDataSource } from "../../../config/database"
 import { InventoryVariant } from "../entities/inventory-variant.entity"
 import { InventoryStockBalance } from "../../inventory-stock/entities/inventory-stock-balance.entity"
@@ -13,6 +13,11 @@ export class TypeOrmInventoryVariantRepository implements IInventoryVariantRepos
 
     async findByInventory(inventoryId: number): Promise<InventoryVariant[]> {
         return await this.repository.find({ where: { inventoryId }, order: { id: "ASC" } })
+    }
+
+    async findByInventoryIds(inventoryIds: number[]): Promise<InventoryVariant[]> {
+        if (inventoryIds.length === 0) return []
+        return await this.repository.find({ where: { inventoryId: In(inventoryIds) }, order: { name: "ASC" } })
     }
 
     async findById(id: number): Promise<InventoryVariant | null> {

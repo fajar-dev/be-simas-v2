@@ -5,6 +5,7 @@ import { ApiResponse } from "../../core/helpers/response"
 import { AuthSerializer } from "./serializers/auth.serialize"
 import { NusaworkAuthSerializer } from "./serializers/nusawork-auth.serialize"
 import { BadRequestException } from "../../core/exceptions/base"
+import { QrCodeLoginValidator } from "./validators/auth.validator"
 
 export class AuthController {
     constructor(
@@ -109,8 +110,6 @@ export class AuthController {
         return ApiResponse.success(c, null, "Password updated successfully")
     }
 
-    // ── QR Code Login ────────────────────────────────────────────────────
-
     async generateQrCode(c: Context) {
         const data = await this.nusaworkAuthService.generateQrCode()
         return ApiResponse.success(c, NusaworkAuthSerializer.generate(data), "QR Code generated successfully")
@@ -127,8 +126,7 @@ export class AuthController {
     }
 
     async qrCodeLogin(c: Context) {
-        const body = await c.req.json()
-        if (!body.panelToken) throw new BadRequestException("Panel token is required")
+        const body = c.req.valid("json" as never) as QrCodeLoginValidator
 
         const data = await this.nusaworkAuthService.exchangeToken(body.panelToken)
         const serializedUser = await AuthSerializer.single(data.user)

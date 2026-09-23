@@ -14,4 +14,6 @@ export interface IAssetLocationRepository {
     findLatestByAssetId(assetId: number): Promise<AssetLocation | null>
     findLastLocation(assetId: number): Promise<AssetLocation | null>
     save(data: Partial<AssetLocation>, manager?: EntityManager): Promise<AssetLocation>
+    assetExists(assetId: number): Promise<boolean>
+    findLastAssetStatus(assetId: number): Promise<string | null>
 }

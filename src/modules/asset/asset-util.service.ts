@@ -1,18 +1,20 @@
 import { Asset } from "./entities/asset.entity"
 import ExcelJS from "exceljs"
 import { config } from "../../config/config"
-import { AppDataSource } from "../../config/database"
-import { SubCategory } from "../sub-category/entities/sub-category.entity"
+import { BadRequestException } from "../../core/exceptions/base"
+import type { IAssetRepository } from "./interfaces/asset.repository.interface"
 import type { AssetService } from "./asset.service"
 
 export class AssetUtilService {
-    constructor(private readonly assetService: AssetService) {}
+    constructor(
+        private readonly assetService: AssetService,
+        private readonly repository: IAssetRepository
+    ) {}
 
     async export(data: Asset[], labelKeys: string[]): Promise<Buffer> {
         const workbook = new ExcelJS.Workbook()
         const sheet = workbook.addWorksheet('Assets')
 
-        // Define columns
         const columns: { header: string; key: string; width: number }[] = [
             { header: 'No', key: 'no', width: 5 },
             { header: 'Image', key: 'image', width: 15 },
@@ -39,14 +41,12 @@ export class AssetUtilService {
             { header: 'Book Value', key: 'bookValue', width: 18 },
         ]
 
-        // Add label columns dynamically (only checked ones)
         labelKeys.forEach(key => {
             columns.push({ header: key, key: `label_${key}`, width: 20 })
         })
 
         sheet.columns = columns
 
-        // Column indices (1-indexed)
         const imageCol = columns.findIndex(c => c.key === 'image') + 1
         const codeCol = columns.findIndex(c => c.key === 'code') + 1
         const holderTypeCol = columns.findIndex(c => c.key === 'holderType') + 1
@@ -57,12 +57,10 @@ export class AssetUtilService {
         const firstLabelCol = labelKeys.length > 0 ? columns.findIndex(c => c.key === `label_${labelKeys[0]}`) + 1 : 0
         const lastLabelCol = labelKeys.length > 0 ? firstLabelCol + labelKeys.length - 1 : 0
 
-        // Insert group header row (row 1), sub-header becomes row 2
         sheet.insertRow(1, [])
         const groupRow = sheet.getRow(1)
         const subHeaderRow = sheet.getRow(2)
 
-        // Single-column headers: merge vertically (row 1 + row 2)
         const singleCols = ['no', 'image', 'code', 'name', 'description', 'category', 'subCategory', 'brand', 'model', 'bleTagMac', 'price', 'purchaseDate', 'age', 'status']
         singleCols.forEach(key => {
             const colIdx = columns.findIndex(c => c.key === key) + 1
@@ -71,15 +69,12 @@ export class AssetUtilService {
             groupRow.getCell(colIdx).value = header
         })
 
-        // Active Holder: merge horizontally in row 1
         sheet.mergeCells(1, holderTypeCol, 1, holderEmpIdCol)
         groupRow.getCell(holderTypeCol).value = 'Active Holder'
 
-        // Last Location: merge horizontally in row 1
         sheet.mergeCells(1, locationCol, 1, branchCol)
         groupRow.getCell(locationCol).value = 'Last Location'
 
-        // Labels: merge horizontally in row 1
         if (labelKeys.length > 0) {
             if (labelKeys.length > 1) {
                 sheet.mergeCells(1, firstLabelCol, 1, lastLabelCol)
@@ -87,13 +82,11 @@ export class AssetUtilService {
             groupRow.getCell(firstLabelCol).value = 'Labels'
         }
 
-        // Depreciation: merge horizontally in row 1
         const usefulLifeCol = columns.findIndex(c => c.key === 'usefulLife') + 1
         const bookValueCol = columns.findIndex(c => c.key === 'bookValue') + 1
         sheet.mergeCells(1, usefulLifeCol, 1, bookValueCol)
         groupRow.getCell(usefulLifeCol).value = 'Depreciation'
 
-        // Header style
         const headerStyle = {
             font: { bold: true, color: { argb: 'FFFFFFFF' } } as ExcelJS.Font,
             fill: { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FF009838' } } as ExcelJS.FillPattern,
@@ -109,7 +102,6 @@ export class AssetUtilService {
             })
         }
 
-        // Add data rows (starting from row 3)
         data.forEach((asset, index) => {
             const row: Record<string, any> = {
                 no: index + 1,
@@ -133,7 +125,6 @@ export class AssetUtilService {
                 branch: asset.lastLocation?.location?.branch?.name || '',
             }
 
-            // Compute depreciation
             const dep = this.calculateDepreciation(asset.price, asset.usefulLife, asset.purchaseDate)
             row.usefulLife = asset.usefulLife ?? ''
             row.monthlyDepreciation = dep.monthlyDepreciation ?? ''
@@ -147,7 +138,6 @@ export class AssetUtilService {
 
             const dataRow = sheet.addRow(row)
 
-            // Set hyperlink for image cell
             if (asset.image) {
                 const imageCell = dataRow.getCell(imageCol)
                 const proxyUrl = `${config.app.appUrl}/api/proxy?path=${encodeURI(asset.image)}`
@@ -155,7 +145,6 @@ export class AssetUtilService {
                 imageCell.font = { color: { argb: 'FF0066CC' }, underline: true }
             }
 
-            // Link the code cell to the asset's detail page
             const codeCell = dataRow.getCell(codeCol)
             codeCell.value = { text: asset.code, hyperlink: `${config.app.appUrl}/asset/${asset.id}` }
             codeCell.font = { color: { argb: 'FF0066CC' }, underline: true }
@@ -169,7 +158,6 @@ export class AssetUtilService {
             }
         })
 
-        // Add borders to all cells
         sheet.eachRow((row) => {
             row.eachCell((cell) => {
                 cell.border = {
@@ -181,7 +169,6 @@ export class AssetUtilService {
             })
         })
 
-        // Auto-filter on sub-header row
         sheet.autoFilter = {
             from: { row: 2, column: 1 },
             to: { row: 2, column: columns.length },
@@ -199,7 +186,6 @@ export class AssetUtilService {
             alignment: { vertical: 'middle' as const, horizontal: 'center' as const } as Partial<ExcelJS.Alignment>,
         }
 
-        // ── Sheet 1: Template ──
         const templateSheet = workbook.addWorksheet('Template')
         templateSheet.columns = [
             { header: 'Asset Code *', key: 'code', width: 18 },
@@ -223,7 +209,6 @@ export class AssetUtilService {
             cell.alignment = headerStyle.alignment
         })
 
-        // Add example row
         templateSheet.addRow({
             code: 'AST-001',
             name: 'Laptop Dell XPS 15',
@@ -240,18 +225,10 @@ export class AssetUtilService {
         const exampleRow = templateSheet.getRow(2)
         exampleRow.font = { italic: true, color: { argb: 'FF999999' } }
 
-        // ── Sheet 2: Reference ──
         const refSheet = workbook.addWorksheet('Reference')
 
-        // Fetch reference data
-        const subCategories = await AppDataSource.getRepository(SubCategory)
-            .createQueryBuilder('sc')
-            .leftJoinAndSelect('sc.category', 'cat')
-            .orderBy('cat.name', 'ASC')
-            .addOrderBy('sc.name', 'ASC')
-            .getMany()
+        const subCategories = await this.repository.findSubCategoriesWithCategory()
 
-        // Status types for reference
         const statusTypes = [
             { value: 'active', label: 'Active' },
             { value: 'idle', label: 'Idle' },
@@ -262,7 +239,6 @@ export class AssetUtilService {
             { value: 'disposed', label: 'Disposed' },
         ]
 
-        // Sub Category reference table
         const scStartCol = 1
         refSheet.getColumn(scStartCol).width = 5
         refSheet.getColumn(scStartCol + 1).width = 18
@@ -296,7 +272,6 @@ export class AssetUtilService {
             row.getCell(scStartCol + 3).value = sc.category?.name || ''
         })
 
-        // Status reference table (start after a gap)
         const stStartCol = 6
         refSheet.getColumn(stStartCol).width = 5
         refSheet.getColumn(stStartCol + 1).width = 18
@@ -326,7 +301,6 @@ export class AssetUtilService {
             row.getCell(stStartCol + 2).value = st.label
         })
 
-        // Add borders to reference sheet
         refSheet.eachRow((row) => {
             row.eachCell((cell) => {
                 cell.border = {
@@ -338,7 +312,6 @@ export class AssetUtilService {
             })
         })
 
-        // Add dropdown validation on Template sheet
         const scCodeCol = templateSheet.getColumn('subCategoryCode')
         const statusCol = templateSheet.getColumn('status')
         const scLastRow = 2 + subCategories.length  // data starts at row 3 in Reference
@@ -372,19 +345,15 @@ export class AssetUtilService {
         await workbook.xlsx.load(buffer as any)
 
         const sheet = workbook.getWorksheet('Template') || workbook.getWorksheet(1)
-        if (!sheet) throw new Error('Worksheet not found')
+        if (!sheet) throw new BadRequestException('Worksheet not found')
 
-        // Build lookup maps
-        const subCategoryRepo = AppDataSource.getRepository(SubCategory)
-
-        const subCategories = await subCategoryRepo.find()
+        const subCategories = await this.repository.findSubCategoriesWithCategory()
         const scMap = new Map(subCategories.map(sc => [sc.code.toLowerCase(), sc]))
 
 
         const errors: { row: number; message: string }[] = []
         let success = 0
 
-        // Read header row to determine column mapping
         const headerRow = sheet.getRow(1)
         const colMap: Record<string, number> = {}
         headerRow.eachCell((cell, colNumber) => {
@@ -410,21 +379,18 @@ export class AssetUtilService {
             return String(val).trim()
         }
 
-        // Process data rows (skip header and example row if italic)
         for (let i = 2; i <= sheet.rowCount; i++) {
             const row = sheet.getRow(i)
 
             const code = getCellValue(row, 'code')
             const name = getCellValue(row, 'name')
 
-            // Skip empty rows
             if (!code && !name) continue
 
             // Skip example row (italic)
             const firstCell = row.getCell(colMap['code'] || 1)
             if (firstCell.font?.italic) continue
 
-            // Validate required fields
             if (!code) {
                 errors.push({ row: i, message: 'Asset Code is required' })
                 continue

@@ -43,6 +43,7 @@ import { PasswordResetToken } from "../src/modules/auth/entities/password-reset-
 import { Organization } from "../src/modules/organization/entities/organization.entity"
 import { Job } from "../src/modules/queue/entities/job.entity"
 import { FailedJob } from "../src/modules/queue/entities/failed-job.entity"
+import { Transfer } from "../src/modules/transfer/entities/transfer.entity"
 import { ApiResponse } from "../src/core/helpers/response"
 import { BaseException, ValidationException } from "../src/core/exceptions/base"
 import { ZodError } from "zod"
@@ -65,7 +66,7 @@ const TestDataSource = new DataSource({
     database: testDbName,
     synchronize: true,
     dropSchema: true,
-    entities: [User, Role, Permission, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetNote, AssetLocation, AssetHolder, AssetLog, AssetStatus, AssetSchedule, AssetScheduleAsset, AssetScheduleUser, Handover, HandoverItem, HandoverStockItem, HandoverField, Inventory, InventoryLabel, InventoryVariant, InventoryStockBalance, InventoryStockOut, InventoryStockOutItem, InventoryStockTransfer, InventoryStockTransferItem, InventoryStockIn, InventoryStockInItem, InventoryStockOpname, InventoryStockOpnameItem, InventoryLog, PasswordResetToken, Organization, Job, FailedJob],
+    entities: [User, Role, Permission, Category, SubCategory, Employee, Branch, Location, Asset, AssetLabel, Attachment, AssetMaintenance, AssetNote, AssetLocation, AssetHolder, AssetLog, AssetStatus, AssetSchedule, AssetScheduleAsset, AssetScheduleUser, Handover, HandoverItem, HandoverStockItem, HandoverField, Inventory, InventoryLabel, InventoryVariant, InventoryStockBalance, InventoryStockOut, InventoryStockOutItem, InventoryStockTransfer, InventoryStockTransferItem, InventoryStockIn, InventoryStockInItem, InventoryStockOpname, InventoryStockOpnameItem, InventoryLog, PasswordResetToken, Organization, Job, FailedJob, Transfer],
     logging: false,
 })
 

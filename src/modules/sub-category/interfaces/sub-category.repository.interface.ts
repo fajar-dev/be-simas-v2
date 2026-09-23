@@ -8,4 +8,5 @@ export interface ISubCategoryRepository {
     save(data: Partial<SubCategory>, manager?: EntityManager): Promise<SubCategory>
     merge(entity: SubCategory, data: Partial<SubCategory>): SubCategory
     delete(id: number): Promise<void>
+    countAssets(subCategoryId: number): Promise<number>
 }

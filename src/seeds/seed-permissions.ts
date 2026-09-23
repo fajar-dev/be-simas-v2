@@ -92,6 +92,8 @@ const PERMISSIONS = [
     { module: 'role', action: 'delete' },
     { module: 'queue', action: 'read' },
     { module: 'queue', action: 'retry' },
+    { module: 'transfer', action: 'read' },
+    { module: 'transfer', action: 'merge' },
 ]
 
 async function seed() {
@@ -102,7 +104,6 @@ async function seed() {
     const roleRepo = AppDataSource.getRepository(Role)
     const userRepo = AppDataSource.getRepository(User)
 
-    // Upsert permissions
     for (const p of PERMISSIONS) {
         const key = `${p.module}:${p.action}`
         const existing = await permRepo.findOne({ where: { key } })
@@ -112,10 +113,8 @@ async function seed() {
         }
     }
 
-    // Get all permissions
     const allPermissions = await permRepo.find()
 
-    // Create or update Super Admin role
     let superAdmin = await roleRepo.findOne({ where: { name: 'Super Admin' } })
     if (!superAdmin) {
         superAdmin = roleRepo.create({ name: 'Super Admin', isSuperAdmin: true })
@@ -125,7 +124,6 @@ async function seed() {
     await roleRepo.save(superAdmin)
     console.log('Super Admin role ready with all permissions')
 
-    // Assign all users without a role to Super Admin
     const usersNoRole = await userRepo
         .createQueryBuilder('user')
         .where('user.role_id IS NULL')
@@ -137,7 +135,6 @@ async function seed() {
         console.log(`  Assigned Super Admin to user: ${user.name}`)
     }
 
-    // Create or update Employee role
     const employeePermissionKeys = [
         'asset:read',
         'asset-holder:read',

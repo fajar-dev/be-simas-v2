@@ -1,6 +1,8 @@
 import { EntityManager, Repository } from "typeorm"
 import { AppDataSource } from "../../../config/database"
 import { AssetLocation } from "../entities/asset-location.entity"
+import { Asset } from "../../asset/entities/asset.entity"
+import { AssetStatus } from "../../asset-status/entities/asset-status.entity"
 import { IAssetLocationRepository } from "../interfaces/asset-location.repository.interface"
 
 export class AssetLocationRepository implements IAssetLocationRepository {
@@ -39,7 +41,6 @@ export class AssetLocationRepository implements IAssetLocationRepository {
 
         const total = await query.getCount()
 
-        // Allowed sorting columns
         const sortColumnMap: Record<string, string> = {
             date: "assetLocation.date",
             location: "location.name",
@@ -85,5 +86,18 @@ export class AssetLocationRepository implements IAssetLocationRepository {
     async save(data: Partial<AssetLocation>, manager?: EntityManager): Promise<AssetLocation> {
         const repo = manager ? manager.getRepository(AssetLocation) : this.repository
         return await repo.save(data)
+    }
+
+    async assetExists(assetId: number): Promise<boolean> {
+        const count = await AppDataSource.getRepository(Asset).count({ where: { id: assetId } })
+        return count > 0
+    }
+
+    async findLastAssetStatus(assetId: number): Promise<string | null> {
+        const status = await AppDataSource.getRepository(AssetStatus).findOne({
+            where: { assetId },
+            order: { id: "DESC" },
+        })
+        return status?.status ?? null
     }
 }

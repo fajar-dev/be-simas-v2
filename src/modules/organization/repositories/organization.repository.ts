@@ -1,6 +1,7 @@
-import { EntityManager, Repository } from "typeorm"
+import { EntityManager, IsNull, Repository } from "typeorm"
 import { AppDataSource } from "../../../config/database"
 import { Organization } from "../entities/organization.entity"
+import { AssetHolder } from "../../asset-holder/entities/asset-holder.entity"
 import { IOrganizationRepository } from "../interfaces/organization.repository.interface"
 
 export class OrganizationRepository implements IOrganizationRepository {
@@ -53,6 +54,10 @@ export class OrganizationRepository implements IOrganizationRepository {
 
     async countChildren(id: number): Promise<number> {
         return await this.repository.count({ where: { parentId: id } })
+    }
+
+    async countActiveAssetHolders(organizationId: number): Promise<number> {
+        return await AppDataSource.getRepository(AssetHolder).count({ where: { organizationId, returnedDate: IsNull() } })
     }
 
     async save(data: Partial<Organization>, manager?: EntityManager): Promise<Organization> {
